@@ -2,6 +2,7 @@ import sys, os
 import magic
 import shutil
 
+
 class File_Magic():
     def __init__(self):
         self.dirs = \
