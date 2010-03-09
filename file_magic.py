@@ -25,7 +25,7 @@ class File_Magic():
         self.setup_filters()
 
     def process_file(self, file):
-        self.filemagic = magic.from_file(file)
+        self.filemagic = magic.file(file)
         ext = os.path.splitext(file)[1][1:].upper()
         for filter in self.filters:
             if self.filemagic.split()[0] in self.filters[filter] or ext in self.filters[filter]:
