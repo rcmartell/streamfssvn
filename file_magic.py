@@ -7,15 +7,15 @@ class File_Magic():
     def __init__(self):
         self.dirs = \
         {
-            'imgdir' : '../Complete/img//',
-            'pdfdir' : '../Complete/pdf//',
-            'viddir' : '../Complete/vid//',
-            'bindir' : '../Complete/bin//',
-            'sysdir' : '../Complete/sys//',
-            'musicdir' : '../Complete/music//',
-            'txtdir' : '../Complete/txt//',
-            'htmldir' : '../Complete/html//',
-            'otherdir' : '../Complete/other//'
+            'image' : '../Complete/image//',
+            'pdf' : '../Complete/pdf//',
+            'video' : '../Complete/video//',
+            'application' : '../Complete/application//',
+            'system' : '../Complete/system//',
+            'audio' : '../Complete/audio//',
+            'text' : '../Complete/text//',
+            'html' : '../Complete/html//',
+            'other' : '../Complete/other//'
         }
         for val in self.dirs.values():
             try:
@@ -24,31 +24,43 @@ class File_Magic():
                 pass
         self.setup_filters()
 
-    def process_file(self, file):
-        self.filemagic = magic.file(file)
-        ext = os.path.splitext(file)[1][1:].upper()
-        for filter in self.filters:
-            if self.filemagic.split()[0] in self.filters[filter] or ext in self.filters[filter]:
-                if filter == 'bin' and ext in self.filters['sys']:
-                    shutil.move(file, self.dirs['sysdir'])
-                else:
-                    shutil.move(file, self.dirs['%sdir' % filter])
-                return
-        shutil.move(file, self.dirs['otherdir'])
+    #def process_file(self, file):
+    #    self.filemagic = magic.file(file)
+    #    ext = os.path.splitext(file)[1][1:].upper()
+    #    for filter in self.filters:
+    #        if self.filemagic.split()[0] in self.filters[filter] or ext in self.filters[filter]:
+    #            if filter == 'bin' and ext in self.filters['sys']:
+    #                shutil.move(file, self.dirs['sysdir'])
+    #            else:
+    #                shutil.move(file, self.dirs['%sdir' % filter])
+    #            return
+    #    shutil.move(file, self.dirs['otherdir'])
 
+	def process_file(self, file):
+	    self.filemagic = magic.file(file)
+	    category, type = self.filemagic.split('/')
+	    if category in self.dirs:
+	        shutil.move(file, self.dirs[category])
+	    else:
+	        for filter in self.filters:
+	            if os.path.splitext(file)[1][1:].upper() in self.filters[filter]:
+	                shutil.move(file, self.dirs[filter])
+	                return
+	        shutil.move(file, self.dirs['other'])
+	    
     def setup_filters(self):
         self.filters = \
         {
-            'vid' : ['AVI', 'MPEG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4',
+            'video' : ['AVI', 'MPEG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4',
                     'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV', 'NTSC'],
             'pdf' : ['PDF'],
-            'img' : ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX'],
-            'music':['MP3', 'MP4A', 'MP4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG'],
-            'bin' : ['data', 'executable', 'ELF', 'PE32', 'BIN'],
-            'txt' : ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office',
+            'image' : ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX'],
+            'audio':['MP3', 'MP4A', 'MP4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG'],
+            'application' : ['data', 'executable', 'ELF', 'PE32', 'BIN'],
+            'text' : ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office',
                     'Unicode', 'CDF V2 Document', 'TXT', 'XML', 'CHM',
                     'CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD'],
             'html': ['HTML', 'ASP', 'PHP', 'CSS'],
-            'sys' : ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
+            'system' : ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
         }
 
