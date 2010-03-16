@@ -1,4 +1,5 @@
 class MFT_ENTRY():
+    """Object representing a standard MFT Entry"""
     def __init__(self, entry_num=None, std_info=None, attr_list=None, filename=None, object_id=None,
                  sec_file=None, idx_root=None, idx_alloc=None, data=None, bitmap=None):
         self.entry_num = entry_num
@@ -13,6 +14,7 @@ class MFT_ENTRY():
         self.bitmap = bitmap
 
 class FILE_RECORD(object):
+    """Object representing the necessary metadata we need to model a file entry"""
     def __init__(self, name=None, ctime=None, mtime=None, atime=None, parent=None, real_size=None, data_size=None, clusters=None, ads_data=None):
         self.name = name
         self.ctime = ctime
@@ -25,6 +27,7 @@ class FILE_RECORD(object):
         self.ads_data = ads_data
 
 class MFT_STANDARD_HEADER():
+    """Standard MFT Entry header. All entries should start with one...Should..."""
     def __init__(self,lsn=None, seq_num=None, lnk_cnt=None,flags=None, entry_num=None, mft_base=None):
         self.lsn = lsn
         self.seq_num = seq_num
@@ -34,6 +37,7 @@ class MFT_STANDARD_HEADER():
         self.mft_base = mft_base
 
 class STANDARD_INFO():
+    """Standard MAC time info and flags"""
     def __init__(self, ctime=None, mtime=None, atime=None, flags=None):
         self.ctime = ctime
         self.mtime = mtime
@@ -41,6 +45,7 @@ class STANDARD_INFO():
         self.flags = flags
 
 class FILENAME():
+    """Standard filename entry info"""
     def __init__(self, parent=None, ctime=None, mtime=None, atime=None,
                  alloc_size=None, real_size=None, flags=None, name_len=None, name=None, seq_num=None, namespace=None):
         self.parent = parent
