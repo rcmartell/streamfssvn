@@ -1,8 +1,8 @@
 #!/usr/bin/python
-from mft_parser import *
+from mft_parser import MFT_Parser
 from time import ctime
 from progressbar import *
-from stream_server import *
+from stream_server import Stream_Server
 import Pyro.core, threading
 
 
@@ -52,15 +52,9 @@ class Image_Reader():
             if self.count >= 100:
                 data = ifh.read(100 * self.cluster_size)
                 cluster_range = range(cluster, cluster+100)
-                threads = []
-                for stream in self.streams:
-                    threads.append(threading.Thread(target=stream.get_data, args=(cluster_range, data)))
-                    threads[-1].start()
-                #for s in self.streams:
-                #    s.get_data(cluster_range, data)
+                for s in self.streams:
+                    s.get_data(cluster_range, data)
                 #ofh.write(data)
-                for thread in threads:
-                    thread.join()
                 bytes_copied += 100 * self.cluster_size
                 self.count -= 100
                 cluster += 100
@@ -81,8 +75,11 @@ class Image_Reader():
 
 
 if __name__ == "__main__":
-    import psyco
-    psyco.full()
+    try:
+        import psyco
+        psyco.full()
+    except:
+        pass
     irdr = Image_Reader(src=sys.argv[1], dest=sys.argv[2])
     print ctime()
     irdr.init_fs_metadata(img=sys.argv[1])

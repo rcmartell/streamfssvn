@@ -27,6 +27,8 @@ class Stream_Server(Pyro.core.ObjBase):
         os.chdir('Incomplete')
         self.magic = File_Magic()
 
+    def print_test(self, msg):
+        print msg
 
     def set_cluster_size(self, size):
         self.cluster_size = int(size)
@@ -96,9 +98,13 @@ def main():
     daemon = Pyro.core.Daemon()
     daemon.useNameServer(ns)
     uri = daemon.connect(Stream_Server(), sys.argv[1])
+    print uri
     daemon.requestLoop()
 
 if __name__ == "__main__":
-    import psyco
-    psyco.full()
+    try:
+        import psyco
+        psyco.full()
+    except:
+        pass
     main()
