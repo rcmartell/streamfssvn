@@ -94,7 +94,7 @@ class Stream_Server(Pyro.core.ObjBase):
 
 def main():
     Pyro.core.initServer()
-    ns = Pyro.naming.NameServerLocator().getNS()
+    ns = Pyro.naming.NameServerLocator().getNS(host='192.168.0.199')
     daemon = Pyro.core.Daemon()
     daemon.useNameServer(ns)
     uri = daemon.connect(Stream_Server(), sys.argv[1])
