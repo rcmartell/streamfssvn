@@ -35,7 +35,9 @@ class Image_Reader():
     def image_drive(self):
         print 'Imaging drive...'
         self.clusters = []
+        threads = []
         for s in self.streams:
+            threads.append(threading.Thread(target=self.distribute))
             s.setup_clustermap()
             s.setup_file_progress()
             try:
@@ -49,30 +51,37 @@ class Image_Reader():
         bytes_copied = 0
         pbar = ProgressBar(widgets=self.widgets, maxval=self.count * self.cluster_size).start()
         while self.count:
-            if self.count >= 100:
-                data = ifh.read(100 * self.cluster_size)
-                cluster_range = range(cluster, cluster+100)
-                for s in self.streams:
-                    s.get_data(cluster_range, data)
+            if self.count >= 1000:
+                data = ifh.read(1000 * self.cluster_size)
+                cluster_range = range(cluster, cluster+1000)
+                for i in range(len(self.streams)):
+                    threads[i]._Thread__args = (self.streams[i], cluster_range, data)
+                    threads[i].start()
                 #ofh.write(data)
-                bytes_copied += 100 * self.cluster_size
-                self.count -= 100
-                cluster += 100
+                bytes_copied += 1000 * self.cluster_size
+                self.count -= 1000
+                cluster += 1000
             else:
                 data = ifh.read(self.count * self.cluster_size)
                 cluster_range = range(cluster, cluster + self.count)
-                for s in self.streams:
-                    s.get_data(cluster_range, data)
+                for i in range(len(self.streams)):
+                    threads[i]._Thread__args = (self.streams[i], cluster_range, data)
+                    threads[i].start()
                 #ofh.write(data)
                 bytes_copied += self.count * self.cluster_size
                 cluster += self.count
                 break
+            for t in threads:
+                t.join()
             pbar.update(bytes_copied)
         pbar.finish()
         ifh.close()
         ofh.close()
         print "Copied %i bytes" % bytes_copied
 
+    def distribute(self, server, cluster_range, data):
+        server.get_data(cluster_range, data)
+        
 
 if __name__ == "__main__":
     try:

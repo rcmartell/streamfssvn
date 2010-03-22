@@ -69,8 +69,8 @@ class Stream_Server(Pyro.core.ObjBase):
     def get_data(self, clusters_, data_):
         idx = 0
         for cluster in clusters_:
-			if cluster not in self.clusters:
-				continue
+            if cluster not in self.clusters:
+                continue
             data = data_[idx:idx+self.cluster_size]
             idx += self.cluster_size
             if cluster in self.clustermap:
