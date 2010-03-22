@@ -57,18 +57,20 @@ class Stream_Server(Pyro.core.ObjBase):
             self.file_progress[file] = len(self.files[file][1])
 
     def list_clusters(self):
-        clusters = []
+        self.clusters = []
         for k,v in self.files.iteritems():
             try:
-                clusters.extend(v[1])
+                self.clusters.extend(v[1])
             except:
-                clusters.append(v[1])
-        return clusters
+                self.clusters.append(v[1])
+        return self.clusters
 
 
-    def get_data(self, clusters, data_):
+    def get_data(self, clusters_, data_):
         idx = 0
-        for cluster in clusters:
+        for cluster in clusters_:
+			if cluster not in self.clusters:
+				continue
             data = data_[idx:idx+self.cluster_size]
             idx += self.cluster_size
             if cluster in self.clustermap:
@@ -94,7 +96,7 @@ class Stream_Server(Pyro.core.ObjBase):
 
 def main():
     Pyro.core.initServer()
-    ns = Pyro.naming.NameServerLocator().getNS(host='192.168.0.199')
+    ns = Pyro.naming.NameServerLocator().getNS()
     daemon = Pyro.core.Daemon()
     daemon.useNameServer(ns)
     uri = daemon.connect(Stream_Server(), sys.argv[1])

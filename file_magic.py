@@ -5,8 +5,7 @@ import shutil
 
 class File_Magic():
     def __init__(self):
-        self.dirs = \
-        {
+        self.dirs = {
             'image'         : '../Complete/image//',
             'pdf'           : '../Complete/pdf//',
             'video'         : '../Complete/video//',
@@ -17,28 +16,7 @@ class File_Magic():
             'html'          : '../Complete/html//',
             'other'         : '../Complete/other//'
         }
-        for val in self.dirs.values():
-            try:
-                os.mkdir(val)
-            except:
-                pass
-        self.setup_filters()
-
-	def process_file(self, file):
-	    self.filemagic = magic.file(file)
-	    category, type = self.filemagic.split('/')
-	    if category in self.dirs:
-	        shutil.move(file, self.dirs[category])
-	    else:
-	        for filter in self.filters:
-	            if os.path.splitext(file)[1][1:].upper() in self.filters[filter]:
-	                shutil.move(file, self.dirs[filter])
-	                return
-	        shutil.move(file, self.dirs['other'])
-	    
-    def setup_filters(self):
-        self.filters = \
-        {
+        self.filters = {
             'video'         :   ['AVI', 'MPEG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4',
                                 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV', 'NTSC'],
             'pdf'           :   ['PDF'],
@@ -51,4 +29,17 @@ class File_Magic():
             'html'          :   ['HTML', 'ASP', 'PHP', 'CSS'],
             'system'        :   ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
         }
+        for val in self.dirs.values():
+            os.mkdir(val)
 
+    def process_file(self, file):
+	    self.filemagic = magic.file(file)
+	    category = self.filemagic.split('/')[0]
+	    if category in self.dirs:
+	        shutil.move(file, self.dirs[category])
+	    else:
+	        for filter in self.filters:
+	            if os.path.splitext(file)[1][1:].upper() in self.filters[filter]:
+	                shutil.move(file, self.dirs[filter])
+	                return
+	        shutil.move(file, self.dirs['other'])
