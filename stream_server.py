@@ -89,6 +89,7 @@ class Stream_Server(Pyro.core.ObjBase):
                 self.file_progress[file] -= 1
                 if not self.file_progress[file]:
                     self.file_complete(file)
+        return
 
     def file_complete(self, filename):
         del(self.files[filename])

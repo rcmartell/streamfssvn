@@ -25,7 +25,7 @@ class Image_Reader():
     def setup_stream_listeners(self, servers):
         files = []
         self.streams = []
-    threads = []
+        threads = []
         for idx in range(len(servers)):
             files = [entry for entry in self.entries[idx: len(self.entries): len(servers)]]
             self.streams.append(Pyro.core.getProxyForURI("PYRONAME://%s" % servers[idx]))
@@ -39,10 +39,10 @@ class Image_Reader():
         threads = []
         for s in self.streams:
             threads.append(threading.Thread(target=self.setup_clusters, args=(s,)))
-        threads[-1].start()
-    for t in threads:
-        t.join()
-    self.count = int(self.img_size)
+            threads[-1].start()
+        for t in threads:
+            t.join()
+        self.count = int(self.img_size)
         ifh = open(self.src, 'rb')
         ofh = open(self.dest, 'wb+')
         cluster = 0
@@ -53,11 +53,9 @@ class Image_Reader():
             if self.count >= 1000:
                 data = ifh.read(1000 * self.cluster_size)
                 c_range = set(range(cluster, cluster+1000)).intersection(set(self.clusters))
-                for s in self.streams:
-                    try:
-                        s.get_data(c_range, [data[c:c+cluster_size] for c in c_range])
-                    except Exception, x:
-                        print ''.join(Pyro.util.getPyroTraceback(x))
+                for i in range(len(self.streams)):
+                    threads[i] = threading.Thread(target=self.streams[i].get_data, args=(c_range, [data[c:c+cluster_size] for c in c_range]))
+                    threads[i].start()
                 #ofh.write(data)
                 bytes_copied += 1000 * self.cluster_size
                 self.count -= 1000
@@ -81,8 +79,8 @@ class Image_Reader():
         print "Copied %i bytes" % bytes_copied
 
     def setup_clusters(self, server):
-    server.setup_clustermap()
-    server.setup_file_progress()
+        server.setup_clustermap()
+        server.setup_file_progress()
     try:
         self.clusters.extend(server.list_clusters())
     except:
