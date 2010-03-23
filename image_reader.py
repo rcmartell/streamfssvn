@@ -25,6 +25,7 @@ class Image_Reader():
     def setup_stream_listeners(self, servers):
         files = []
         self.streams = []
+	threads = []
         for idx in range(len(servers)):
             files = [entry for entry in self.entries[idx: len(self.entries): len(servers)]]
             self.streams.append(Pyro.core.getProxyForURI("PYRONAME://%s" % servers[idx]))
@@ -37,14 +38,11 @@ class Image_Reader():
         self.clusters = []
         threads = []
         for s in self.streams:
-            threads.append(threading.Thread(target=self.distribute))
-            s.setup_clustermap()
-            s.setup_file_progress()
-            try:
-                self.clusters.extend(s.list_clusters())
-            except:
-                self.clusters.append(s.list_clusters())
-        self.count = int(self.img_size)
+            threads.append(threading.Thread(target=self.setup_clusters, args=(s,)))
+	    threads[-1].start()
+	for t in threads:
+	    t.join()
+	self.count = int(self.img_size)
         ifh = open(self.src, 'rb')
         ofh = open(self.dest, 'wb+')
         cluster = 0
@@ -52,37 +50,38 @@ class Image_Reader():
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=self.count * self.cluster_size).start()
         while self.count:
-            if self.count >= 1000:
-                data = ifh.read(1000 * self.cluster_size)
-                cluster_range = range(cluster, cluster+1000)
-                for i in range(len(self.streams)):
-                    threads[i]._Thread__args = (self.streams[i], cluster_range, data)
-                    threads[i].start()
-                #ofh.write(data)
-                bytes_copied += 1000 * self.cluster_size
-                self.count -= 1000
-                cluster += 1000
+            if self.count >= 500:
+                data = ifh.read(500 * self.cluster_size)
+                cluster_range = range(cluster, cluster+500)
+		for s in self.streams:
+		    s.get_data(cluster_range, data)
+		#ofh.write(data)
+                bytes_copied += 500 * self.cluster_size
+                self.count -= 500
+                cluster += 500
             else:
                 data = ifh.read(self.count * self.cluster_size)
                 cluster_range = range(cluster, cluster + self.count)
-                for i in range(len(self.streams)):
-                    threads[i]._Thread__args = (self.streams[i], cluster_range, data)
-                    threads[i].start()
-                #ofh.write(data)
+		for s in self.streams:
+		    s.get_data(cluster_range, data)
+		#ofh.write(data)
                 bytes_copied += self.count * self.cluster_size
                 cluster += self.count
                 break
-            for t in threads:
-                t.join()
             pbar.update(bytes_copied)
         pbar.finish()
         ifh.close()
         ofh.close()
         print "Copied %i bytes" % bytes_copied
 
-    def distribute(self, server, cluster_range, data):
-        server.get_data(cluster_range, data)
-        
+    def setup_clusters(self, server):
+	server.setup_clustermap()
+	server.setup_file_progress()
+	try:
+	    self.clusters.extend(server.list_clusters())
+	except:
+	    self.clusters.append(server.list_clusters())
+
 
 if __name__ == "__main__":
     try:
