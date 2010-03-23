@@ -232,12 +232,12 @@ class MFT_Parser():
                             clusters.extend(data.clusters)
                         if hasattr(data, 'ads_data'):
                             ads_data = data.ads_data
-			else:
-			    ads_data = None
+			            else:
+			                ads_data = None
                         if hasattr(data, 'real_size'):
                             data_size = data.real_size
-			else:
-			    data_size = None
+			            else:
+			                data_size = None
 
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and self.header.flags != 0:
