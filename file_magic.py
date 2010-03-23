@@ -53,7 +53,7 @@ class File_Magic():
                     except:
                         os.remove(self.dirs[filter] + file)
                         shutil.move(file, self.dirs[filter])
-			return
+			            return
             try:
                 shutil.move(file, self.dirs['other'])
             except:
