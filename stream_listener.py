@@ -49,15 +49,6 @@ class Stream_Listener(SocketServer.BaseRequestHandler):
             else:
                 self.server.files[entry.name] = [entry.real_size, entry.clusters]
   
-    def write_pickle(self):
-        fh = open('dump_clusters.pkl', 'wb+')
-        pickle.dump(self.files, fh)
-        fh.close()
-        
-    def read_pickle(self):
-        fh = open('dump_clusters.pkl', 'rb')
-        files = pickle.load(fh)
-        fh.close()
         
     def setup_clustermap(self):
         for k,v in self.server.files.iteritems():

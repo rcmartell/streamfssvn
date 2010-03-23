@@ -54,7 +54,10 @@ class Image_Reader():
                 data = ifh.read(500 * self.cluster_size)
                 cluster_range = range(cluster, cluster+500)
 		for s in self.streams:
-		    s.get_data(cluster_range, data)
+		    try:
+			s.get_data(cluster_range, data)
+		    except Exception, x:
+			print ''.join(Pyro.util.getPyroTraceback(x))
 		#ofh.write(data)
                 bytes_copied += 500 * self.cluster_size
                 self.count -= 500
@@ -63,7 +66,10 @@ class Image_Reader():
                 data = ifh.read(self.count * self.cluster_size)
                 cluster_range = range(cluster, cluster + self.count)
 		for s in self.streams:
-		    s.get_data(cluster_range, data)
+		    try:
+			s.get_data(cluster_range, data)
+		    except Exception, x:
+			print ''.join(Pyro.util.getPyroTraceback(x))
 		#ofh.write(data)
                 bytes_copied += self.count * self.cluster_size
                 cluster += self.count
