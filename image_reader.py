@@ -50,18 +50,19 @@ class Image_Reader():
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=self.count * self.cluster_size).start()
         while self.count:
-            if self.count >= 500:
-                data = ifh.read(500 * self.cluster_size)
-                cluster_range = range(cluster, cluster+500)
+            if self.count >= 1000:
+		_data = []
+                data = ifh.read(1000 * self.cluster_size)
+		c_range = set(range(cluster, cluster+1000)).intersection(set(self.clusters))
 		for s in self.streams:
 		    try:
-			s.get_data(cluster_range, data)
+			s.get_data(c_range, [data[c:c+cluster_size] for c in c_range])
 		    except Exception, x:
 			print ''.join(Pyro.util.getPyroTraceback(x))
 		#ofh.write(data)
-                bytes_copied += 500 * self.cluster_size
-                self.count -= 500
-                cluster += 500
+                bytes_copied += 1000 * self.cluster_size
+                self.count -= 1000
+                cluster += 1000
             else:
                 data = ifh.read(self.count * self.cluster_size)
                 cluster_range = range(cluster, cluster + self.count)
