@@ -48,13 +48,13 @@ class File_Magic():
             for filter in self.filters:
                 if os.path.splitext(file)[1][1:].upper() in self.filters[filter]:
                     try:
-                        shutil.move(file, self.dirs[category])
+                        shutil.move(file, self.dirs[filter])
                         return
                     except:
-                        os.remove(self.dirs[category] + file)
-                        shutil.move(file, self.dirs[category])
+                        os.remove(self.dirs[filter] + file)
+                        shutil.move(file, self.dirs[filter])
             try:
-                shutil.move(file, self.dirs[category])
+                shutil.move(file, self.dirs['other'])
             except:
-                os.remove(self.dirs[category] + file)
-                shutil.move(file, self.dirs[category])
+                os.remove(self.dirs['other'] + file)
+                shutil.move(file, self.dirs['other'])
