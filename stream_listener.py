@@ -85,16 +85,14 @@ class Stream_Listener(SocketServer.BaseRequestHandler):
             cluster = int(self.request.recv(4096))
             self.request.send('ok')
             data = self.request.recv(4096)
-            file = self.server.clustermap[cluster]
+	    if cluster in self.server.clustermap:
+		file = self.server.clustermap[cluster]
+	    else:
+		continue
             try:
                 fh = open(file, 'rb+')
             except:
                 fh = open(file, 'wb')
-                try:
-                    fh.write('\x00' * int(self.server.files[file][0]))
-                except MemoryError:
-                    print file
-                    return
             fh.seek(self.server.cluster_size * self.server.files[file][1].index(cluster), os.SEEK_SET)
             if (fh.tell() + self.server.cluster_size) > int(self.server.files[file][0]):
                 left = int(self.server.files[file][0]) - fh.tell()
@@ -111,7 +109,7 @@ class Stream_Listener(SocketServer.BaseRequestHandler):
 
     def file_complete(self, filename):
         del(self.server.files[filename])
-        #self.server.magic.process_file(filename)
+        self.server.magic.process_file(filename)
         
 class TCPServer(SocketServer.TCPServer):
     def setup(self):
@@ -122,8 +120,11 @@ class TCPServer(SocketServer.TCPServer):
         self.file_progress = {}
         
 if __name__ == '__main__':
-    import psyco
-    psyco.full()
+    try:
+	import psyco
+	psyco.full()
+    except:
+	pass
     server = TCPServer((gethostname(), 9999), Stream_Listener)
     server.setup()
     try:
