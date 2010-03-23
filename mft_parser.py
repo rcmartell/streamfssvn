@@ -595,10 +595,10 @@ class MFT_Parser():
 
 if __name__ == "__main__":
     try:
-	import psyco
-	psyco.full()
+	    import psyco
+	    psyco.full()
     except:
-	pass
+	    pass
     parser = MFT_Parser(sys.argv[1])
     parser.setup_mft_data()
     clusters = []
