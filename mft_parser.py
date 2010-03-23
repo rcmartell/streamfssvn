@@ -232,14 +232,18 @@ class MFT_Parser():
                             clusters.extend(data.clusters)
                         if hasattr(data, 'ads_data'):
                             ads_data = data.ads_data
+			else:
+			    ads_data = None
                         if hasattr(data, 'real_size'):
                             data_size = data.real_size
+			else:
+			    data_size = None
 
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and self.header.flags != 0:
                         # FILE_RECORDs represent each file's metadata
                         self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
-                                                    real_size=real_size, data_size=data.real_size, clusters=clusters, ads_data=ads_data))
+                                                    real_size=real_size, data_size=data_size, clusters=clusters, ads_data=ads_data))
                     inode += 1
                     count += 1
 
@@ -590,8 +594,11 @@ class MFT_Parser():
         print ''
 
 if __name__ == "__main__":
-    import psyco
-    psyco.full()
+    try:
+	import psyco
+	psyco.full()
+    except:
+	pass
     parser = MFT_Parser(sys.argv[1])
     parser.setup_mft_data()
     clusters = []

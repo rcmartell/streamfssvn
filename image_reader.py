@@ -31,9 +31,9 @@ class Image_Reader():
             self.streams[-1].set_cluster_size(self.cluster_size)
             self.streams[-1].process_entries(self.entries)
         self.entries = []
+        files = []
 
     def image_drive(self):
-        print 'Imaging drive...'
         self.clusters = []
         threads = []
         for s in self.streams:
@@ -49,6 +49,7 @@ class Image_Reader():
         ofh = open(self.dest, 'wb+')
         cluster = 0
         bytes_copied = 0
+        print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=self.count * self.cluster_size).start()
         while self.count:
             if self.count >= 1000:
