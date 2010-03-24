@@ -5,7 +5,18 @@ from progressbar import *
 from stream_server import Stream_Server
 import Pyro.core, Pyro.util, threading
 
-
+class Send_Data(Thread):
+    def __init__(self, server, clusters, data):
+        Thread.__init__(self)
+        self.server = server
+        self.clusters = clusters
+        self.data = data
+        
+    def run(self):
+        self.server.get_data(self.clusters, self.data)
+    
+    
+    
 class Image_Reader():
     def __init__(self, src=None, dest=None):
         self.cluster_size = 0
@@ -25,7 +36,6 @@ class Image_Reader():
     def setup_stream_listeners(self, servers):
         files = []
         self.streams = []
-        threads = []
         for idx in range(len(servers)):
             files = [entry for entry in self.entries[idx: len(self.entries): len(servers)]]
             self.streams.append(Pyro.core.getProxyForURI("PYRONAME://%s" % servers[idx]))
@@ -57,7 +67,7 @@ class Image_Reader():
                     c_range = set(range(cluster, cluster+100)).intersection(set(self.clusters))
                     for i in range(len(self.streams)):
                         d = ''.join([data[c:c+self.cluster_size] for c in c_range])
-                        threads[i] = threading.Thread(target=self.streams[i].get_data, args=(c_range, d))
+                        threads[i] = Send_Data(self.streams[i], c_range, d)
                         threads[i].start()
                 except Exception, x:
                     print ''.join(Pyro.util.getPyroTraceback(x))
