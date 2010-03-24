@@ -38,9 +38,9 @@ class Image_Reader():
         self.streams = []
         for idx in range(len(servers)):
             files = [entry for entry in self.entries[idx: len(self.entries): len(servers)]]
-            self.streams.append(Pyro.core.getProxyForURI("PYRONAME://%s" % servers[idx]))
+            self.streams.append(Pyro.core.getProxyForURI("PYROLOC://%s" % servers[idx]))
             self.streams[-1].set_cluster_size(self.cluster_size)
-            self.streams[-1].process_entries(self.entries)
+            self.streams[-1].process_entries(files)
         self.entries = []
         files = []
 
@@ -64,13 +64,9 @@ class Image_Reader():
                 data = ifh.read(1000 * self.cluster_size)
                 try:
                     cluster_range = range(cluster, cluster+1000)
-                    #c_range = list(set(range(cluster, cluster+1000)).intersection(set(self.clusters)))
-                    #d = ''.join([data[c:c+self.cluster_size] for c in c_range])
-                    i = 0
-                    for s in self.streams:
-                        threads[i] = Send_Data(s, cluster_range, data)
+                    for i in range(len(self.streams)):
+                        threads[i] = Send_Data(self.streams[i], cluster_range, data)
                         threads[i].start()
-                        i += 1
                     for thread in threads:
                         thread.join()
                 except Exception, x:
@@ -107,8 +103,8 @@ class Image_Reader():
 
 
 if __name__ == "__main__":
-    import psyco
-    psyco.full()
+    #import psyco
+   # psyco.full()
     irdr = Image_Reader(src=sys.argv[1], dest=sys.argv[2])
     print ctime()
     irdr.init_fs_metadata(img=sys.argv[1])
