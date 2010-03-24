@@ -3,7 +3,7 @@ from mft_parser import MFT_Parser
 from time import ctime
 from progressbar import *
 from stream_server import Stream_Server
-import Pyro.core, threading
+import Pyro.core, Pyro.util, threading
 
 
 class Image_Reader():
@@ -50,16 +50,21 @@ class Image_Reader():
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=self.count * self.cluster_size).start()
         while self.count:
-            if self.count >= 1000:
-                data = ifh.read(1000 * self.cluster_size)
-                c_range = set(range(cluster, cluster+1000)).intersection(set(self.clusters))
-                for i in range(len(self.streams)):
-                    threads[i] = threading.Thread(target=self.streams[i].get_data, args=(c_range, [data[c:c+cluster_size] for c in c_range]))
-                    threads[i].start()
+            print 'Loop'
+            if self.count >= 100:
+                data = ifh.read(100 * self.cluster_size)
+                try:
+                    c_range = list(set(range(cluster, cluster+100)).intersection(set(self.clusters)))
+                    for i in range(len(self.streams)):
+                        d = [data[c:c+self.cluster_size] for c in c_range]
+                        threads[i] = threading.Thread(target=self.streams[i].get_data, args=(c_range, d))
+                        threads[i].start()
+                except Exception, x:
+                    print ''.join(Pyro.util.getPyroTraceback(x))
                 #ofh.write(data)
-                bytes_copied += 1000 * self.cluster_size
-                self.count -= 1000
-                cluster += 1000
+                bytes_copied += 100 * self.cluster_size
+                self.count -= 100
+                cluster += 100
             else:
                 data = ifh.read(self.count * self.cluster_size)
                 cluster_range = range(cluster, cluster + self.count)
@@ -81,10 +86,10 @@ class Image_Reader():
     def setup_clusters(self, server):
         server.setup_clustermap()
         server.setup_file_progress()
-    try:
-        self.clusters.extend(server.list_clusters())
-    except:
-        self.clusters.append(server.list_clusters())
+        try:
+            self.clusters.extend(server.list_clusters())
+        except:
+            self.clusters.append(server.list_clusters())
 
 
 if __name__ == "__main__":

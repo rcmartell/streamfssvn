@@ -1,6 +1,6 @@
 import sys, os
 import magic
-import shutil
+import shutil, Pyro.core, Pyro.util
 
 
 class File_Magic():
@@ -38,24 +38,27 @@ class File_Magic():
     def process_file(self, file):
         self.filemagic = magic.file(file)
         category = self.filemagic.split('/')[0]
-        if category in self.dirs:
-            try:
-                shutil.move(file, self.dirs[category])
-            except:
-                os.remove(self.dirs[category] + file)
-                shutil.move(file, self.dirs[category])
-        else:
-            for filter in self.filters:
-                if os.path.splitext(file)[1][1:].upper() in self.filters[filter]:
-                    try:
-                        shutil.move(file, self.dirs[filter])
-                        return
-                    except:
-                        os.remove(self.dirs[filter] + file)
-                        shutil.move(file, self.dirs[filter])
-			            return
-            try:
-                shutil.move(file, self.dirs['other'])
-            except:
-                os.remove(self.dirs['other'] + file)
-                shutil.move(file, self.dirs['other'])
+        try:
+            if category in self.dirs:
+                try:
+                    shutil.move(file, self.dirs[category])
+                except:
+                    os.remove(self.dirs[category] + file)
+                    shutil.move(file, self.dirs[category])
+            else:
+                for filter in self.filters:
+                    if os.path.splitext(file)[1][1:].upper() in self.filters[filter]:
+                        try:
+                            shutil.move(file, self.dirs[filter])
+                            return
+                        except:
+                            os.remove(self.dirs[filter] + file)
+                            shutil.move(file, self.dirs[filter])
+                            return
+                try:
+                    shutil.move(file, self.dirs['other'])
+                except:
+                    os.remove(self.dirs['other'] + file)
+                    shutil.move(file, self.dirs['other'])
+        except Exception, x:
+            print ''.join(Pyro.util.getPyroTraceback(x))
