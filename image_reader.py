@@ -54,9 +54,9 @@ class Image_Reader():
             if self.count >= 100:
                 data = ifh.read(100 * self.cluster_size)
                 try:
-                    c_range = list(set(range(cluster, cluster+100)).intersection(set(self.clusters)))
+                    c_range = set(range(cluster, cluster+100)).intersection(set(self.clusters))
                     for i in range(len(self.streams)):
-                        d = [data[c:c+self.cluster_size] for c in c_range]
+                        d = ''.join([data[c:c+self.cluster_size] for c in c_range])
                         threads[i] = threading.Thread(target=self.streams[i].get_data, args=(c_range, d))
                         threads[i].start()
                 except Exception, x:
