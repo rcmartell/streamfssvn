@@ -76,27 +76,27 @@ class Stream_Listener(SocketServer.BaseRequestHandler):
             cluster = int(self.request.recv(4096))
             self.request.send('ok')
             data = self.request.recv(4096)
-	    if cluster in self.server.clustermap:
-		    file = self.server.clustermap[cluster]
-	    else:
-		    continue
-        try:
-            fh = open(file, 'rb+')
-        except:
-            fh = open(file, 'wb')
-        fh.seek(self.server.cluster_size * self.server.files[file][1].index(cluster), os.SEEK_SET)
-        if (fh.tell() + self.server.cluster_size) > int(self.server.files[file][0]):
-            left = int(self.server.files[file][0]) - fh.tell()
-            fh.write(data[:left])
-        else:
-            fh.write(data)
-        fh.close()
-        self.server.file_progress[file] -= 1
-        if not self.server.file_progress[file]:
-            self.file_complete(file)
-        del(self.server.clustermap[cluster])
-        if len(self.server.clustermap) == 0:
-            break
+	        if cluster in self.server.clustermap:
+    		    file = self.server.clustermap[cluster]
+    	    else:
+    		    continue
+            try:
+                fh = open(file, 'rb+')
+            except:
+                fh = open(file, 'wb')
+            fh.seek(self.server.cluster_size * self.server.files[file][1].index(cluster), os.SEEK_SET)
+            if (fh.tell() + self.server.cluster_size) > int(self.server.files[file][0]):
+                left = int(self.server.files[file][0]) - fh.tell()
+                fh.write(data[:left])
+            else:
+                fh.write(data)
+            fh.close()
+            self.server.file_progress[file] -= 1
+            if not self.server.file_progress[file]:
+                self.file_complete(file)
+            del(self.server.clustermap[cluster])
+            if len(self.server.clustermap) == 0:
+                break
 
     def file_complete(self, filename):
         del(self.server.files[filename])

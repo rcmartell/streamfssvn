@@ -19,7 +19,9 @@ magic.py
 '''
 
 import re, struct, string
+import psyco
 
+psyco.full()
 __version__ = '0.1'
 
 magic = [
@@ -1109,7 +1111,8 @@ for m in magic:
   magicNumbers.append(magicTest(m[0], m[1], m[2], m[3], m[4]))
 
 if __name__ == '__main__':
-  import sys
+  import sys, psyco
+  psyco.full()
   for arg in sys.argv[1:]:
     msg = file(arg)
     if msg:

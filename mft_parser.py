@@ -63,11 +63,8 @@ class MFT_Parser():
         return self.num_clusters
 
     def main(self):
-        try:
-            import psyco
-            psyco.full()
-        except:
-            pass
+        import psyco
+        psyco.full()
         self.setup_mft_data()
         self.parse_mft()
         return self.entries

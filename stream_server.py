@@ -4,8 +4,6 @@ import sys, os, shutil
 import random, pickle
 from time import ctime
 from file_magic import *
-import mmap
-
 
 class Stream_Server(Pyro.core.ObjBase):
     def __init__(self):
@@ -26,9 +24,6 @@ class Stream_Server(Pyro.core.ObjBase):
             pass
         os.chdir('Incomplete')
         self.magic = File_Magic()
-
-    def print_test(self, msg):
-        print msg
 
     def set_cluster_size(self, size):
         self.cluster_size = int(size)
@@ -65,30 +60,28 @@ class Stream_Server(Pyro.core.ObjBase):
                 self.clusters.append(v[1])
         return self.clusters
 
-
     def get_data(self, _clusters_, _data_):
         idx = 0
         for cluster in _clusters_:
-            if cluster not in self.clusters:
+            if cluster not in self.clustermap:
                 continue
             data = _data_[idx:idx+self.cluster_size]
             idx += self.cluster_size
-            if cluster in self.clustermap:
-                file = self.clustermap[cluster]
-                try:
-                    fh = open(file, 'rb+')
-                except:
-                    fh = open(file, 'wb')
-                fh.seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
-                if (fh.tell() + self.cluster_size) > int(self.files[file][0]):
-                    left = int(self.files[file][0]) - fh.tell()
-                    fh.write(data[:left])
-                else:
-                    fh.write(data)
-                fh.close()
-                self.file_progress[file] -= 1
-                if not self.file_progress[file]:
-                    self.file_complete(file)
+            file = self.clustermap[cluster]
+            try:
+                fh = open(file, 'rb+')
+            except:
+                fh = open(file, 'wb')
+            fh.seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
+            if (fh.tell() + self.cluster_size) > int(self.files[file][0]):
+                left = int(self.files[file][0]) - fh.tell()
+                fh.write(data[:left])
+            else:
+                fh.write(data)
+            fh.close()
+            self.file_progress[file] -= 1
+            if not self.file_progress[file]:
+                self.file_complete(file)
         return
 
     def file_complete(self, filename):
@@ -105,9 +98,6 @@ def main():
     daemon.requestLoop()
 
 if __name__ == "__main__":
-    try:
-        import psyco
-        psyco.full()
-    except:
-        pass
+    import psyco
+    psyco.full()
     main()
