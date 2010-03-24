@@ -103,8 +103,8 @@ class Image_Reader():
 
 
 if __name__ == "__main__":
-    #import psyco
-   # psyco.full()
+    import psyco
+    psyco.full()
     irdr = Image_Reader(src=sys.argv[1], dest=sys.argv[2])
     print ctime()
     irdr.init_fs_metadata(img=sys.argv[1])
