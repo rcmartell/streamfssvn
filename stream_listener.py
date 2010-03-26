@@ -4,6 +4,7 @@ from time import ctime
 from file_magic import *
 import SocketServer
 from socket import gethostname
+import array
 
 class Stream_Listener(SocketServer.BaseRequestHandler):
 
@@ -72,11 +73,17 @@ class Stream_Listener(SocketServer.BaseRequestHandler):
     
         
     def get_data(self):
-        while True:
-            cluster = int(self.request.recv(4096))
-            self.request.send('ok')
-            data = self.request.recv(4096)
-	        if cluster in self.server.clustermap:
+        arr = array.array("b")
+        msg = ''
+        self.request.recv_into(msg)
+        if msg:
+            clusters = list(msg)
+        else:
+            break
+        data = ''
+        self.request.recv_into(data)
+        for cluster in clusters:
+            if cluster in self.server.clustermap:
     		    file = self.server.clustermap[cluster]
     	    else:
     		    continue

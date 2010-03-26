@@ -253,7 +253,7 @@ class MFT_Parser():
             except KeyboardInterrupt:
                 print "User aborted"
                 break
-        print "Processed %i MFT entries" % ((inode-1)-start)
+        print "Processed %i MFT entries" % ((inode)-start)
         self.img.close()
         return self.entries
 
@@ -607,7 +607,9 @@ if __name__ == "__main__":
         if sys.argv[2] == '-p' or sys.argv[2] == '-d':
             parser.parse_mft(start=int(sys.argv[3]), end=int(sys.argv[3]))
             if sys.argv[2] == '-p':
-                parser.print_header(parser)
+                if hasattr(parser, 'header'):
+                    if parser.header != None:
+                        parser.print_header(parser)
                 if hasattr(parser, 'std_info'):
                     if parser.std_info != None:
                         parser.print_std_info(parser)
