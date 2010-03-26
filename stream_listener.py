@@ -112,10 +112,10 @@ class TCPServer(SocketServer.TCPServer):
         
 if __name__ == '__main__':
     try:
-	import psyco
-	psyco.full()
+	    import psyco
+	    psyco.full()
     except:
-	pass
+	    pass
     server = TCPServer((gethostname(), 9999), Stream_Listener)
     server.setup()
     try:

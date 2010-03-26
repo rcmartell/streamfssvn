@@ -1,9 +1,15 @@
 #!/usr/bin/python
-import Pyro.core, Pyro.naming
+import Pyro.core, Pyro.naming, Pyro.util
 import sys, os, shutil
 import random, pickle
 from time import ctime
 from file_magic import *
+
+try:
+    import psyco
+    psyco.full()
+except:
+    pass
 
 class Stream_Server(Pyro.core.ObjBase):
     def __init__(self):
@@ -62,27 +68,30 @@ class Stream_Server(Pyro.core.ObjBase):
 
     def get_data(self, _clusters_, _data_):
         idx = 0
-        for cluster in _clusters_:
-            if cluster not in self.clustermap:
-                continue
-            data = _data_[idx:idx+self.cluster_size]
-            idx += self.cluster_size
-            file = self.clustermap[cluster]
-            try:
-                fh = open(file, 'rb+')
-            except:
-                fh = open(file, 'wb')
-            fh.seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
-            if (fh.tell() + self.cluster_size) > int(self.files[file][0]):
-                left = int(self.files[file][0]) - fh.tell()
-                fh.write(data[:left])
-            else:
-                fh.write(data)
-            fh.close()
-            self.file_progress[file] -= 1
-            if not self.file_progress[file]:
-                self.file_complete(file)
-        return
+        try:
+            for cluster in _clusters_:
+                if cluster not in self.clustermap:
+                    continue
+                data = _data_[idx:idx+self.cluster_size]
+                idx += self.cluster_size
+                file = self.clustermap[cluster]
+                try:
+                    fh = open(file, 'rb+')
+                except:
+                    fh = open(file, 'wb')
+                fh.seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
+                if (fh.tell() + self.cluster_size) > int(self.files[file][0]):
+                    left = int(self.files[file][0]) - fh.tell()
+                    fh.write(data[:left])
+                else:
+                    fh.write(data)
+                fh.close()
+                self.file_progress[file] -= 1
+                if not self.file_progress[file]:
+                    self.file_complete(file)
+            return
+        except Exception, x:
+            print ''.join(Pyro.util.getPyroTraceback(x))
 
     def file_complete(self, filename):
         del(self.files[filename])
@@ -98,6 +107,9 @@ def main():
     daemon.requestLoop()
 
 if __name__ == "__main__":
-    import psyco
-    psyco.full()
+    try:
+        import psyco
+        psyco.full()
+    except:
+        pass
     main()

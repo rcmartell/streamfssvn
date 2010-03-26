@@ -19,9 +19,11 @@ magic.py
 '''
 
 import re, struct, string
-import psyco
-
-psyco.full()
+try:
+    import psyco
+    psyco.full()
+except:
+    pass
 __version__ = '0.1'
 
 magic = [

@@ -2,8 +2,11 @@ import sys, os
 import magic
 import shutil, Pyro.core, Pyro.util
 
-import psyco
-psyco.full()
+try:
+    import psyco
+    psyco.full()
+except:
+    pass
 
 class File_Magic():
     def __init__(self):
