@@ -32,16 +32,15 @@ class Image_Reader():
             self.streams[-1].set_cluster_size(self.cluster_size)
             self.streams[-1].process_entries(files)
         self.entries = []
-        self.sc = [0] * len(self.streams)
         files = []
 
     def image_drive(self):
-        threads = {}
+        threads = [0] * (2 * len(self.streams))
         for idx in range(len(self.streams)):
             threads[idx] = threading.Thread(target=self.setup_clusters, args=(idx,))
             threads[idx].start()
-        for thread in threads:
-            threads[thread].join()
+        for t in range(len(self.streams)):
+            threads[t].join()
         self.count = int(self.img_size)
         ifh = open(self.src, 'rb')
         ofh = open(self.dest, 'wb+')
@@ -50,26 +49,23 @@ class Image_Reader():
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=self.count * self.cluster_size).start()
         while self.count:
-            if self.count >= 500:
-                data = ifh.read(500 * self.cluster_size)
+            print ctime()
+            if self.count >= 10000:
+                data = ifh.read(10000 * self.cluster_size)
+                dlen = len(data)
                 try:
-                    cluster_range = range(cluster, cluster+500)
-                    cls = []
-                    d = ''
+                    cluster_range = range(cluster, cluster+10000)
                     for idx in range(len(self.streams)):
-                    #for s in self.streams:
-                        for c in cluster_range:
-                            if c in self.sc[idx]:
-                                cls.append(c)
-                                d += data[cluster_range.index(c):cluster_range.index(c) + self.cluster_size]
-                        threads[idx] = threading.Thread(target=self.streams[idx].get_data, args=(cls, d))
+                        threads[idx] = threading.Thread(target=self.streams[idx].get_data, args=(cluster_range[:5000], data[:dlen/2]))
+                        threads[idx+len(self.streams)] = threading.Thread(target=self.streams[idx].get_data, args=(cluster_range[5000:], data[dlen/2:]))
                         threads[idx].start()
+                        threads[idx+len(self.streams)].start()
                 except Exception, x:
                     print ''.join(Pyro.util.getPyroTraceback(x))
                 #ofh.write(data)
-                bytes_copied += 500 * self.cluster_size
-                self.count -= 500
-                cluster += 500
+                bytes_copied += 10000 * self.cluster_size
+                self.count -= 10000
+                cluster += 10000
             else:
                 data = ifh.read(self.count * self.cluster_size)
                 cluster_range = range(cluster, cluster + self.count)
@@ -82,8 +78,8 @@ class Image_Reader():
                 bytes_copied += self.count * self.cluster_size
                 cluster += self.count
                 break
-            for thread in threads:
-                threads[thread].join(5)
+            for t in range(len(threads)):
+                threads[t].join(2)
             pbar.update(bytes_copied)
         pbar.finish()
         ifh.close()
@@ -93,7 +89,6 @@ class Image_Reader():
     def setup_clusters(self, idx):
         self.streams[idx].setup_clustermap()
         self.streams[idx].setup_file_progress()
-        self.sc[idx] = self.streams[idx].list_clusters()
 
 
 if __name__ == "__main__":
