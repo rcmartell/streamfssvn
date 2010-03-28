@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import Pyro.core, Pyro.naming, Pyro.util
 import sys, os, shutil
-import random, pickle
+import threading
 from time import ctime
 from file_magic import *
 
@@ -42,11 +42,11 @@ class Stream_Server(Pyro.core.ObjBase):
                 pass
             if entry.real_size == 0:
                 if entry.data_size != 0:
-                    self.files[entry.name] = [entry.data_size, entry.clusters]
+                    self.files[intern(entry.name)] = [entry.data_size, entry.clusters]
                 else:
-                    self.files[entry.name] = [len(entry.clusters) * self.cluster_size, entry.clusters]
+                    self.files[intern(entry.name)] = [len(entry.clusters) * self.cluster_size, entry.clusters]
             else:
-                self.files[entry.name] = [entry.real_size, entry.clusters]
+                self.files[intern(entry.name)] = [entry.real_size, entry.clusters]
 
     def setup_clustermap(self):
         for k,v in self.files.iteritems():
@@ -55,6 +55,7 @@ class Stream_Server(Pyro.core.ObjBase):
 
     def setup_file_progress(self):
         for file in self.files:
+            file = intern(file)
             self.file_progress[file] = len(self.files[file][1])
 
     def list_clusters(self):
@@ -64,34 +65,36 @@ class Stream_Server(Pyro.core.ObjBase):
                 self.clusters.extend(v[1])
             except:
                 self.clusters.append(v[1])
-        return self.clusters
-
-    def get_data(self, _clusters_, _data_):
+    
+    def get_data(self, clusters, _data_):
         idx = 0
-        try:
-            for cluster in _clusters_:
-                if cluster not in self.clustermap:
-                    continue
-                data = _data_[idx:idx+self.cluster_size]
-                idx += self.cluster_size
-                file = self.clustermap[cluster]
-                try:
-                    fh = open(file, 'rb+')
-                except:
-                    fh = open(file, 'wb')
-                fh.seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
-                if (fh.tell() + self.cluster_size) > int(self.files[file][0]):
-                    left = int(self.files[file][0]) - fh.tell()
-                    fh.write(data[:left])
-                else:
-                    fh.write(data)
-                fh.close()
-                self.file_progress[file] -= 1
-                if not self.file_progress[file]:
-                    self.file_complete(file)
-            return
-        except Exception, x:
-            print ''.join(Pyro.util.getPyroTraceback(x))
+        for cluster in clusters:
+            data = _data_[idx:idx+self.cluster_size]
+            idx += self.cluster_size
+            #TODO: see which is faster
+            file = self.clustermap.get(cluster)
+            if file is None:
+                continue
+            #try:
+            #    file = self.clustermap[cluster]
+            #except:
+            #    continue
+            try:
+                fh = open(file, 'rb+')
+            except:
+                fh = open(file, 'wb')
+            #file = intern(file)
+            fh.seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
+            if (fh.tell() + self.cluster_size) > int(self.files[file][0]):
+                left = int(self.files[file][0]) - fh.tell()
+                fh.write(data[:left])
+            else:
+                fh.write(data)
+            fh.close()
+            self.file_progress[file] -= 1
+            if not self.file_progress[file]:
+                self.file_complete(file)
+        return
 
     def file_complete(self, filename):
         del(self.files[filename])

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from mft_parser import MFT_Parser
-from time import ctime
+from time import time, ctime
 from progressbar import *
 from stream_server import Stream_Server
 import Pyro.core, Pyro.util, threading
@@ -35,37 +35,31 @@ class Image_Reader():
         files = []
 
     def image_drive(self):
-        threads = [0] * (2 * len(self.streams))
-        for idx in range(len(self.streams)):
-            threads[idx] = threading.Thread(target=self.setup_clusters, args=(idx,))
-            threads[idx].start()
-        for t in range(len(self.streams)):
-            threads[t].join()
         self.count = int(self.img_size)
         ifh = open(self.src, 'rb')
         ofh = open(self.dest, 'wb+')
         cluster = 0
         bytes_copied = 0
+        for s in self.streams:
+            s.setup_clustermap()
+            s.setup_file_progress()
+            s.list_clusters()
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=self.count * self.cluster_size).start()
         while self.count:
-            print ctime()
-            if self.count >= 10000:
-                data = ifh.read(10000 * self.cluster_size)
-                dlen = len(data)
+            t1 = time.time()
+            if self.count >= 10240:
+                data = ifh.read(10240 * self.cluster_size)
                 try:
-                    cluster_range = range(cluster, cluster+10000)
-                    for idx in range(len(self.streams)):
-                        threads[idx] = threading.Thread(target=self.streams[idx].get_data, args=(cluster_range[:5000], data[:dlen/2]))
-                        threads[idx+len(self.streams)] = threading.Thread(target=self.streams[idx].get_data, args=(cluster_range[5000:], data[dlen/2:]))
-                        threads[idx].start()
-                        threads[idx+len(self.streams)].start()
+                    cluster_range = range(cluster, cluster+10240)
+                    for s in self.streams:
+                        s.get_data(cluster_range, data)
                 except Exception, x:
                     print ''.join(Pyro.util.getPyroTraceback(x))
                 #ofh.write(data)
-                bytes_copied += 10000 * self.cluster_size
-                self.count -= 10000
-                cluster += 10000
+                bytes_copied += 10240 * self.cluster_size
+                self.count -= 10240
+                cluster += 10240
             else:
                 data = ifh.read(self.count * self.cluster_size)
                 cluster_range = range(cluster, cluster + self.count)
@@ -78,17 +72,13 @@ class Image_Reader():
                 bytes_copied += self.count * self.cluster_size
                 cluster += self.count
                 break
-            for t in range(len(threads)):
-                threads[t].join(2)
+            t2 = time.time()
+            print "Avg. MBs: %0.3f" % (40.0 / (t2 - t1)) 
             pbar.update(bytes_copied)
         pbar.finish()
         ifh.close()
         ofh.close()
         print "Copied %i bytes" % bytes_copied
-
-    def setup_clusters(self, idx):
-        self.streams[idx].setup_clustermap()
-        self.streams[idx].setup_file_progress()
 
 
 if __name__ == "__main__":
