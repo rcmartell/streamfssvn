@@ -5,7 +5,6 @@ from progressbar import *
 from stream_server import Stream_Server
 import Pyro.core, Pyro.util, threading
 from threading import Thread
-
     
 class Image_Reader():
     def __init__(self, src=None, dest=None):
@@ -15,9 +14,9 @@ class Image_Reader():
         self.entries = None
         self.widgets = ['Progress: ', Percentage(), ' ', Bar(marker=RotatingMarker()),' ', ETA(), ' ', FileTransferSpeed()]
         
-    def init_fs_metadata(self, img):
+    def init_fs_metadata(self, imgfile):
         print 'Parsing filesystem metadata'
-        parser = MFT_Parser(img)
+        parser = MFT_Parser(imgfile)
         self.cluster_size = parser.get_cluster_size()
         self.img_size = parser.get_img_size()
         self.entries = parser.main()
@@ -40,10 +39,10 @@ class Image_Reader():
         ofh = open(self.dest, 'wb+')
         cluster = 0
         bytes_copied = 0
+        threads = [0] * (2 * len(self.streams))
         for s in self.streams:
             s.setup_clustermap()
             s.setup_file_progress()
-            s.list_clusters()
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=self.count * self.cluster_size).start()
         while self.count:
@@ -52,10 +51,17 @@ class Image_Reader():
                 data = ifh.read(10240 * self.cluster_size)
                 try:
                     cluster_range = range(cluster, cluster+10240)
-                    for s in self.streams:
-                        s.get_data(cluster_range, data)
+                    for idx in range(len(self.streams)):
+                        threads[idx] = threading.Thread(target=self.streams[idx].write_data, args=(cluster_range[:5120], data[:5120 * self.cluster_size]))
+                        threads[idx+len(self.streams)] = threading.Thread(target=self.streams[idx].write_data, args=(cluster_range[5120:], data[5120 * self.cluster_size:]))
+                        threads[idx].start()
+                        threads[idx+len(self.streams)].start()
+                    #for s in self.streams:
+                    #    s.get_data(cluster_range, data)
                 except Exception, x:
                     print ''.join(Pyro.util.getPyroTraceback(x))
+                for t in threads:
+                    t.join()
                 #ofh.write(data)
                 bytes_copied += 10240 * self.cluster_size
                 self.count -= 10240
@@ -89,7 +95,7 @@ if __name__ == "__main__":
         pass
     irdr = Image_Reader(src=sys.argv[1], dest=sys.argv[2])
     print ctime()
-    irdr.init_fs_metadata(img=sys.argv[1])
+    irdr.init_fs_metadata(imgfile=sys.argv[1])
     print ctime()
     irdr.setup_stream_listeners(sys.argv[3:])
     print ctime()

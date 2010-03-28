@@ -52,6 +52,7 @@ class Stream_Server(Pyro.core.ObjBase):
         for k,v in self.files.iteritems():
             for c in v[1]:
                 self.clustermap[c] = k
+    
 
     def setup_file_progress(self):
         for file in self.files:
@@ -65,9 +66,11 @@ class Stream_Server(Pyro.core.ObjBase):
                 self.clusters.extend(v[1])
             except:
                 self.clusters.append(v[1])
+        self.clusters.sort()
     
-    def get_data(self, clusters, _data_):
+    def write_data(self, clusters, _data_):
         idx = 0
+        self.rlock = threading.RLock()
         for cluster in clusters:
             data = _data_[idx:idx+self.cluster_size]
             idx += self.cluster_size
@@ -75,15 +78,11 @@ class Stream_Server(Pyro.core.ObjBase):
             file = self.clustermap.get(cluster)
             if file is None:
                 continue
-            #try:
-            #    file = self.clustermap[cluster]
-            #except:
-            #    continue
+            self.rlock.acquire()
             try:
                 fh = open(file, 'rb+')
             except:
                 fh = open(file, 'wb')
-            #file = intern(file)
             fh.seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
             if (fh.tell() + self.cluster_size) > int(self.files[file][0]):
                 left = int(self.files[file][0]) - fh.tell()
@@ -91,6 +90,7 @@ class Stream_Server(Pyro.core.ObjBase):
             else:
                 fh.write(data)
             fh.close()
+            self.rlock.release()
             self.file_progress[file] -= 1
             if not self.file_progress[file]:
                 self.file_complete(file)

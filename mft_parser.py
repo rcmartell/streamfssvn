@@ -242,8 +242,10 @@ class MFT_Parser():
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and self.header.flags != 0:
                         # FILE_RECORDs represent each file's metadata
-                        self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
-                                                    real_size=real_size, data_size=data_size, clusters=clusters, ads_data=ads_data))
+                        #TODO: Remove time + ads info
+                        #self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
+                                                    #real_size=real_size, data_size=data_size, clusters=clusters, ads_data=ads_data))
+                        self.entries.append(FILE_RECORD(name=name, parent=parent, real_size=real_size, data_size=data_size, clusters=clusters))
                     inode += 1
                     count += 1
 
