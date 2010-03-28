@@ -4,7 +4,7 @@ from time import time, ctime
 from progressbar import *
 from stream_server import Stream_Server
 import Pyro.core, Pyro.util, threading
-from threading import Thread
+from ThreadPool import *
     
 class Image_Reader():
     def __init__(self, src=None, dest=None):
@@ -39,7 +39,8 @@ class Image_Reader():
         ofh = open(self.dest, 'wb+')
         cluster = 0
         bytes_copied = 0
-        threads = [0] * (2 * len(self.streams))
+        pool = ThreadPool(len(self.streams))
+        #threads = [0] * (2 * len(self.streams))
         for s in self.streams:
             s.setup_clustermap()
             s.setup_file_progress()
@@ -52,16 +53,21 @@ class Image_Reader():
                 try:
                     cluster_range = range(cluster, cluster+10240)
                     for idx in range(len(self.streams)):
-                        threads[idx] = threading.Thread(target=self.streams[idx].write_data, args=(cluster_range[:5120], data[:5120 * self.cluster_size]))
-                        threads[idx+len(self.streams)] = threading.Thread(target=self.streams[idx].write_data, args=(cluster_range[5120:], data[5120 * self.cluster_size:]))
-                        threads[idx].start()
-                        threads[idx+len(self.streams)].start()
+                        pool.add_job(self.streams[idx].write_data, [cluster_range, data])
+                        #threads[idx] = threading.Thread(target=self.streams[idx].write_data, args=(cluster_range[:5120], data[:5120 * self.cluster_size]))
+                        #threads[idx+len(self.streams)] = threading.Thread(target=self.streams[idx].write_data, args=(cluster_range[5120:], data[5120 * self.cluster_size:]))
+                        #threads[idx].start()
+                        #threads[idx+len(self.streams)].start()
                     #for s in self.streams:
                     #    s.get_data(cluster_range, data)
                 except Exception, x:
                     print ''.join(Pyro.util.getPyroTraceback(x))
-                for t in threads:
-                    t.join()
+               # if threading.active_count() > 50:
+               #     for t in threads:
+                #        t.join()
+                #else:
+                #    for t in threads:
+               #         t.join(2)
                 #ofh.write(data)
                 bytes_copied += 10240 * self.cluster_size
                 self.count -= 10240
@@ -81,6 +87,7 @@ class Image_Reader():
             t2 = time.time()
             print "Avg. MBs: %0.3f" % (40.0 / (t2 - t1)) 
             pbar.update(bytes_copied)
+        pool.shutdown()
         pbar.finish()
         ifh.close()
         ofh.close()

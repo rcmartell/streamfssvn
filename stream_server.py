@@ -4,6 +4,7 @@ import sys, os, shutil
 import threading
 from time import ctime
 from file_magic import *
+from threading import Lock
 
 try:
     import psyco
@@ -70,7 +71,7 @@ class Stream_Server(Pyro.core.ObjBase):
     
     def write_data(self, clusters, _data_):
         idx = 0
-        self.rlock = threading.RLock()
+        #self.rlock = threading.Lock()
         for cluster in clusters:
             data = _data_[idx:idx+self.cluster_size]
             idx += self.cluster_size
@@ -78,7 +79,7 @@ class Stream_Server(Pyro.core.ObjBase):
             file = self.clustermap.get(cluster)
             if file is None:
                 continue
-            self.rlock.acquire()
+            #self.rlock.acquire()
             try:
                 fh = open(file, 'rb+')
             except:
@@ -90,7 +91,7 @@ class Stream_Server(Pyro.core.ObjBase):
             else:
                 fh.write(data)
             fh.close()
-            self.rlock.release()
+            #self.rlock.release()
             self.file_progress[file] -= 1
             if not self.file_progress[file]:
                 self.file_complete(file)
