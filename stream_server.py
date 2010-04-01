@@ -1,16 +1,10 @@
 #!/usr/bin/python
 import Pyro.core, Pyro.naming, Pyro.util
 import sys, os, shutil
-import threading
+import threading, socket
 from time import ctime
 from file_magic import *
 from threading import Lock
-
-try:
-    import psyco
-    psyco.full()
-except:
-    pass
 
 class Stream_Server(Pyro.core.ObjBase):
     def __init__(self):
@@ -31,6 +25,7 @@ class Stream_Server(Pyro.core.ObjBase):
             pass
         os.chdir('Incomplete')
         self.magic = File_Magic()
+        self.handles = {}
 
     def set_cluster_size(self, size):
         self.cluster_size = int(size)
@@ -67,38 +62,26 @@ class Stream_Server(Pyro.core.ObjBase):
                 self.clusters.extend(v[1])
             except:
                 self.clusters.append(v[1])
-        self.clusters.sort()
+        return self.clusters
     
-    def write_data(self, clusters, _data_):
-        idx = 0
-        #self.rlock = threading.Lock()
-        for cluster in clusters:
-            data = _data_[idx:idx+self.cluster_size]
-            idx += self.cluster_size
-            #TODO: see which is faster
-            file = self.clustermap.get(cluster)
-            if file is None:
-                continue
-            #self.rlock.acquire()
-            try:
-                fh = open(file, 'rb+')
-            except:
-                fh = open(file, 'wb')
-            fh.seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
-            if (fh.tell() + self.cluster_size) > int(self.files[file][0]):
-                left = int(self.files[file][0]) - fh.tell()
-                fh.write(data[:left])
-            else:
-                fh.write(data)
-            fh.close()
-            #self.rlock.release()
-            self.file_progress[file] -= 1
-            if not self.file_progress[file]:
-                self.file_complete(file)
+    def write_data(self, cluster, data):
+        file = self.clustermap.get(cluster)
+        if file not in self.handles:
+            self.handles[file] = open(file, 'wb')
+        self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
+        if (self.handles[file].tell() + self.cluster_size) > int(self.files[file][0]):
+            left = int(self.files[file][0]) - self.handles[file].tell()
+            self.handles[file].write(data[:left])
+        else:
+            self.handles[file].write(data)
+        self.file_progress[file] -= 1
+        if not self.file_progress[file]:
+            self.handles[file].close()
+            del self.handles[file]
+            self.file_complete(file)
         return
 
     def file_complete(self, filename):
-        del(self.files[filename])
         self.magic.process_file(filename)
 
 def main():
@@ -111,9 +94,6 @@ def main():
     daemon.requestLoop()
 
 if __name__ == "__main__":
-    try:
-        import psyco
-        psyco.full()
-    except:
-        pass
+    import psyco
+    psyco.full()
     main()
