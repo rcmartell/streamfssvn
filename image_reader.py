@@ -60,43 +60,10 @@ class Image_Reader():
                 continue
             data = ifh.read(self.cluster_size)
             self.mapping[idx].write_data(idx, data)
-            #threads[self.mapping[idx]] = threading.Thread(target=self.mapping[idx].write_data, args=(idx, data))
-            #threads[self.mapping[idx]].start()
-            #threads[self.mapping[idx]].join()
             t2 = time.time()
             pbar.update(idx * self.cluster_size)
             avg = (avg + ((1.0/256.0) / (t2-t1))) / 2.0
             print "Avg. MBs: %0.03f" % avg
-        #while self.count:
-            #t1 = time.time()
-            #if self.count >= 10240:
-              #  data = ifh.read(10240 * self.cluster_size)
-              #  try:
-               #     cluster_range = range(cluster, cluster+10240)
-               #     for s in self.streams:
-               #         pool.putRequest(WorkRequest(s.write_data, args=[cluster_range, data]))   
-              #  except Exception, x:
-            #        print ''.join(Pyro.util.getPyroTraceback(x))
-                #ofh.write(data)
-           #     pool.wait()
-           #     bytes_copied += 10240 * self.cluster_size
-            #    self.count -= 10240
-            #    cluster += 10240
-           # else:
-           #     data = ifh.read(self.count * self.cluster_size)
-           #     cluster_range = range(cluster, cluster + self.count)
-           #     for s in self.streams:
-            #        try:
-           #             s.get_data(cluster_range, data)
-          #          except Exception, x:
-           #             print ''.join(Pyro.util.getPyroTraceback(x))
-                #ofh.write(data)
-         #       bytes_copied += self.count * self.cluster_size
-          #      cluster += self.count
-          #      break
-         #   t2 = time.time()
-          #  print "Avg. MBs: %0.3f" % (40.0 / (t2 - t1)) 
-         #   pbar.update(bytes_copied)
         pbar.finish()
         ifh.close()
         ofh.close()
