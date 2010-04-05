@@ -50,11 +50,63 @@ class Image_Reader():
             s.setup_clustermap()
             s.setup_file_progress()
         print 'Imaging drive...'
+<<<<<<< .mine
+        for stream in self.streams:
+            threads[stream] = 0
+        #pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
+        for idx in range(len(self.mapping)):
+=======
         for stream in self.streams:
             threads[stream] = 0
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(len(self.mapping)):
+>>>>>>> .r39
             t1 = time.time()
+<<<<<<< .mine
+            if self.mapping[idx] == 0:
+                ifh.seek(self.cluster_size, os.SEEK_CUR)
+                continue
+            data = ifh.read(self.cluster_size)
+            self.mapping[idx].write_data(idx, data)
+            #threads[self.mapping[idx]] = threading.Thread(target=self.mapping[idx].write_data, args=(idx, data))
+            #threads[self.mapping[idx]].start()
+            #threads[self.mapping[idx]].join()
+            t2 = time.time()
+            #pbar.update(idx * self.cluster_size)
+            avg = (avg + ((1.0/256.0) / (t2-t1))) / 2.0
+            print "Avg. MBs: %0.03f" % avg
+        #while self.count:
+            #t1 = time.time()
+            #if self.count >= 10240:
+              #  data = ifh.read(10240 * self.cluster_size)
+              #  try:
+               #     cluster_range = range(cluster, cluster+10240)
+               #     for s in self.streams:
+               #         pool.putRequest(WorkRequest(s.write_data, args=[cluster_range, data]))   
+              #  except Exception, x:
+            #        print ''.join(Pyro.util.getPyroTraceback(x))
+                #ofh.write(data)
+           #     pool.wait()
+           #     bytes_copied += 10240 * self.cluster_size
+            #    self.count -= 10240
+            #    cluster += 10240
+           # else:
+           #     data = ifh.read(self.count * self.cluster_size)
+           #     cluster_range = range(cluster, cluster + self.count)
+           #     for s in self.streams:
+            #        try:
+           #             s.get_data(cluster_range, data)
+          #          except Exception, x:
+           #             print ''.join(Pyro.util.getPyroTraceback(x))
+                #ofh.write(data)
+         #       bytes_copied += self.count * self.cluster_size
+          #      cluster += self.count
+          #      break
+         #   t2 = time.time()
+          #  print "Avg. MBs: %0.3f" % (40.0 / (t2 - t1)) 
+         #   pbar.update(bytes_copied)
+        #pbar.finish()
+=======
             if self.mapping[idx] == 0:
                 ifh.seek(self.cluster_size, os.SEEK_CUR)
                 continue
@@ -65,6 +117,7 @@ class Image_Reader():
             avg = (avg + ((1.0/256.0) / (t2-t1))) / 2.0
             print "Avg. MBs: %0.03f" % avg
         pbar.finish()
+>>>>>>> .r39
         ifh.close()
         ofh.close()
         print "Copied %i bytes" % bytes_copied
