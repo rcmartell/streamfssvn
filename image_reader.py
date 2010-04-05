@@ -50,19 +50,9 @@ class Image_Reader():
             s.setup_clustermap()
             s.setup_file_progress()
         print 'Imaging drive...'
-<<<<<<< .mine
-        for stream in self.streams:
-            threads[stream] = 0
         #pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(len(self.mapping)):
-=======
-        for stream in self.streams:
-            threads[stream] = 0
-        pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
-        for idx in range(len(self.mapping)):
->>>>>>> .r39
             t1 = time.time()
-<<<<<<< .mine
             if self.mapping[idx] == 0:
                 ifh.seek(self.cluster_size, os.SEEK_CUR)
                 continue
@@ -106,18 +96,6 @@ class Image_Reader():
           #  print "Avg. MBs: %0.3f" % (40.0 / (t2 - t1)) 
          #   pbar.update(bytes_copied)
         #pbar.finish()
-=======
-            if self.mapping[idx] == 0:
-                ifh.seek(self.cluster_size, os.SEEK_CUR)
-                continue
-            data = ifh.read(self.cluster_size)
-            self.mapping[idx].write_data(idx, data)
-            t2 = time.time()
-            pbar.update(idx * self.cluster_size)
-            avg = (avg + ((1.0/256.0) / (t2-t1))) / 2.0
-            print "Avg. MBs: %0.03f" % avg
-        pbar.finish()
->>>>>>> .r39
         ifh.close()
         ofh.close()
         print "Copied %i bytes" % bytes_copied
