@@ -3,7 +3,7 @@ import Pyro.core, Pyro.naming, Pyro.util
 import sys, os, shutil
 import threading, socket
 from time import ctime
-from file_magic import *
+from file_magic import File_Magic
 from threading import Lock
 
 class Stream_Server(Pyro.core.ObjBase):
@@ -49,7 +49,6 @@ class Stream_Server(Pyro.core.ObjBase):
             for c in v[1]:
                 self.clustermap[c] = k
     
-
     def setup_file_progress(self):
         for file in self.files:
             file = intern(file)
