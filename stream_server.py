@@ -1,17 +1,16 @@
 #!/usr/bin/python
 import Pyro.core, Pyro.naming, Pyro.util
-import sys, os, shutil
+import sys, os, shutil, time
 import threading, socket
-from time import ctime
 from file_magic import File_Magic
 from threading import Lock
+import Pyrex
 
 class Stream_Server(Pyro.core.ObjBase):
     def __init__(self):
         Pyro.core.ObjBase.__init__(self)
         self.cluster_size = 0
         self.files = {}
-        self.clustermap = {}
         self.file_progress = {}
         try:
             os.rmdir('Incomplete')
@@ -26,10 +25,16 @@ class Stream_Server(Pyro.core.ObjBase):
         os.chdir('Incomplete')
         self.magic = File_Magic()
         self.handles = {}
+        self.lock = Lock()
+        self.queue = []
 
     def set_cluster_size(self, size):
         self.cluster_size = int(size)
 
+    def set_num_clusters(self, num):
+        self.num_clusters = int(num)
+        self.clustermap = [0] * int(num)
+    
     def process_entries(self, entries):
         for entry in entries:
             try:
@@ -47,7 +52,7 @@ class Stream_Server(Pyro.core.ObjBase):
     def setup_clustermap(self):
         for k,v in self.files.iteritems():
             for c in v[1]:
-                self.clustermap[c] = k
+                self.clustermap[int(c)] = k
     
     def setup_file_progress(self):
         for file in self.files:
@@ -63,25 +68,40 @@ class Stream_Server(Pyro.core.ObjBase):
                 self.clusters.append(v[1])
         return self.clusters
     
-    def write_data(self, cluster, data):
-        file = self.clustermap.get(cluster)
-        if file not in self.handles:
-            self.handles[file] = open(file, 'wb')
-        self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
-        if (self.handles[file].tell() + self.cluster_size) > int(self.files[file][0]):
-            left = int(self.files[file][0]) - self.handles[file].tell()
-            self.handles[file].write(data[:left])
-        else:
-            self.handles[file].write(data)
-        self.file_progress[file] -= 1
-        if not self.file_progress[file]:
-            self.handles[file].close()
-            del self.handles[file]
-            self.file_complete(file)
+    def queue_writes(self):
+        self.thread = threading.Thread(target=self.write_data)
+        self.thread.start()
         return
-
-    def file_complete(self, filename):
-        self.magic.process_file(filename)
+    
+    def add_queue(self, cluster, data):
+        self.queue.append([int(cluster), data])
+    
+    def write_data(self):
+        while True:
+            while len(self.queue) == 0:
+                time.sleep(1)
+            cluster, data = self.queue.pop()
+            print len(self.queue)
+            try:
+                file = self.clustermap[cluster]
+                if file == None:
+                    continue
+            except:
+                continue
+            if file not in self.handles:
+                self.handles[file] = open(file, 'wb')
+            self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
+            if (self.handles[file].tell() + self.cluster_size) > int(self.files[file][0]):
+                left = int(self.files[file][0]) - self.handles[file].tell()
+                self.handles[file].write(data[:left])
+            else:
+                self.handles[file].write(data)
+            self.file_progress[file] -= 1
+            if not self.file_progress[file]:
+                self.handles[file].close()
+                del self.handles[file]
+                self.magic.process_file(file)
+        
 
 def main():
     Pyro.core.initServer()

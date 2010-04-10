@@ -31,6 +31,7 @@ class Image_Reader():
             files = [entry for entry in self.entries[idx: len(self.entries): len(servers)]]
             self.streams.append(Pyro.core.getProxyForURI("PYROLOC://%s" % servers[idx]))
             self.streams[-1].set_cluster_size(self.cluster_size)
+            self.streams[-1].set_num_clusters(self.img_size)
             self.streams[-1].process_entries(files)
             clusters = self.streams[-1].list_clusters()
             for cluster in clusters:
@@ -49,6 +50,7 @@ class Image_Reader():
         for s in self.streams:
             s.setup_clustermap()
             s.setup_file_progress()
+            s.queue_writes()
         print 'Imaging drive...'
         #pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(len(self.mapping)):
@@ -57,7 +59,7 @@ class Image_Reader():
                 ifh.seek(self.cluster_size, os.SEEK_CUR)
                 continue
             data = ifh.read(self.cluster_size)
-            self.mapping[idx].write_data(idx, data)
+            self.mapping[idx].add_queue(idx, data)
             #threads[self.mapping[idx]] = threading.Thread(target=self.mapping[idx].write_data, args=(idx, data))
             #threads[self.mapping[idx]].start()
             #threads[self.mapping[idx]].join()
