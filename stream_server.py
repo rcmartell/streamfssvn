@@ -25,7 +25,6 @@ class Stream_Server(Pyro.core.ObjBase):
         os.chdir('Incomplete')
         self.magic = File_Magic()
         self.handles = {}
-        self.lock = Lock()
         self.queue = []
 
     def set_cluster_size(self, size):
@@ -74,20 +73,14 @@ class Stream_Server(Pyro.core.ObjBase):
         return
     
     def add_queue(self, cluster, data):
-        self.queue.append([int(cluster), data])
+        self.queue.append((int(cluster), data))
     
     def write_data(self):
         while True:
             while len(self.queue) == 0:
                 time.sleep(1)
             cluster, data = self.queue.pop()
-            print len(self.queue)
-            try:
-                file = self.clustermap[cluster]
-                if file == None:
-                    continue
-            except:
-                continue
+            file = self.clustermap[cluster]
             if file not in self.handles:
                 self.handles[file] = open(file, 'wb')
             self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
@@ -101,7 +94,6 @@ class Stream_Server(Pyro.core.ObjBase):
                 self.handles[file].close()
                 del self.handles[file]
                 self.magic.process_file(file)
-        
 
 def main():
     Pyro.core.initServer()
