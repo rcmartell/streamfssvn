@@ -540,7 +540,7 @@ class MFT_Parser():
         return None
     
     def getFiletypeStats(self):
-        filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'pdf' : [], 'html' : [], 'system' : []}
+        filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'pdf' : [], 'html' : [], 'system' : [], 'other' : []}
         video = ['AVI', 'MPEG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV', 'NTSC', 'PAL']
         pdf = ['PDF']
         image = ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX']
@@ -555,6 +555,7 @@ class MFT_Parser():
             try:
                 name, ext = entry.name.split('.')
             except:
+                filestats['other'].append(entry.name)
                 continue
             i = 0
             for ftype in filetypes:
@@ -562,8 +563,11 @@ class MFT_Parser():
                     filestats[types[i]].append(entry.name)
                     break
                 i += 1
+            if i == 8:
+                filestats['other'].append(entry.name)
         print "Finished analysing files."
         print "Results:"
+        print "Number of entries: %i" % len(self.entries)
         print "video    : %i" % len(filestats['video'])
         print "pdf      : %i" % len(filestats['pdf'])
         print "images   : %i" % len(filestats['image'])
@@ -572,7 +576,7 @@ class MFT_Parser():
         print "text     : %i" % len(filestats['text'])
         print "html     : %i" % len(filestats['html'])
         print "system   : %i" % len(filestats['system'])
-            
+        print "other    : %i" % len(filestats['other'])     
     
     
     
