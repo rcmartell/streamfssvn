@@ -565,8 +565,7 @@ class MFT_Parser():
                 i += 1
             if i == 8:
                 filestats['other'].append(entry.name)
-        print "Finished analysing files."
-        print
+        print "Finished analysing files.\n"
         print "Number of entries: %i" % len(self.entries)
         print "video    : %i" % len(filestats['video'])
         print "pdf      : %i" % len(filestats['pdf'])
@@ -576,15 +575,13 @@ class MFT_Parser():
         print "text     : %i" % len(filestats['text'])
         print "html     : %i" % len(filestats['html'])
         print "system   : %i" % len(filestats['system'])
-        print "other    : %i" % len(filestats['other'])     
-        if sys.argv[3] != None:
+        print "other    : %i" % len(filestats['other'])
+        if len(sys.argv) >= 4:
             ftype = sys.argv[3].lower()
             if ftype in filestats:
-                print
-                print "********** Listing of %s files **********" % ftype
+                print "\n********** Listing of %s files **********" % ftype
                 for f in filestats[ftype]:
                     print f
-    
     
     def print_header(self, parser):
         print "*****************HEADER INFO*****************"
