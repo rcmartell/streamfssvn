@@ -544,7 +544,7 @@ class MFT_Parser():
         video = ['AVI', 'MPEG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV', 'NTSC', 'PAL']
         pdf = ['PDF']
         image = ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX']
-        audio = ['MP3', 'MP4A', 'MP4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG']
+        audio = ['MP3', 'M4A', 'M4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG']
         binaries = ['data', 'executable', 'ELF', 'PE32', 'BIN', 'EXE', 'APP']
         text = ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office', 'Unicode', 'CDF V2 Document', 'TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD']
         html = ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML']
