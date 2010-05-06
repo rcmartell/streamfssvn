@@ -2,11 +2,11 @@ import sys, os
 import magic
 import shutil, Pyro.core, Pyro.util
 
-try:
-    import psyco
-    psyco.full()
-except:
-    pass
+#try:
+#    import psyco
+#    psyco.full()
+#except:
+#    pass
 
 class File_Magic():
     def __init__(self):
@@ -26,7 +26,7 @@ class File_Magic():
                                 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV', 'NTSC', 'PAL'],
             'pdf'           :   ['PDF'],
             'image'         :   ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX'],
-            'audio'         :   ['MP3', 'MP4A', 'MP4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG'],
+            'audio'         :   ['MP3', 'M4A', 'M4P', 'MP4A', 'MP4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG'],
             'application'   :   ['data', 'executable', 'ELF', 'PE32', 'BIN', 'EXE', 'APP'],
             'text'          :   ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office',
                                 'Unicode', 'CDF V2 Document', 'TXT', 'XML', 'CHM',

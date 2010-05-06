@@ -52,8 +52,8 @@ class MFT_Parser():
         self.sector_size = unpack('<H', self.img.read(0x0D)[-2:])[0]
         self.cluster_size = int(b2a_hex(unpack("<c", self.img.read(1))[0]),16) * self.sector_size
         self.num_sectors = unpack('<Q', self.img.read(0x22)[-8:])[0]
-        self.num_bytes = self.num_sectors * self.sector_size
-        self.num_clusters = self.num_bytes / self.cluster_size
+        self.num_bytes = (self.num_sectors + 1) * self.sector_size
+        self.num_clusters = int(math.ceil(self.num_bytes / self.cluster_size))
         self.mft_base_offset = unpack("<Q", self.img.read(8))[0] * self.cluster_size
 
     def get_cluster_size(self):
@@ -114,6 +114,7 @@ class MFT_Parser():
 
 
     def parse_mft(self, start=0, end=9999999999):
+        print len(self.mft_data)
         count = start
         inode = start
         self.pos = [0.0, 0.25, 0.50, 0.75]
@@ -358,10 +359,15 @@ class MFT_Parser():
     def parse_std_info(self, offset):
         std_info_len = unpack("<I", self.entry[offset+4:offset+8])[0]
         std_info = self.entry[offset+24:offset + std_info_len]
-        ctime = time.ctime((unpack("<Q", std_info[0:8])[0] - NTFS_EPOCH) / 10**(7))
-        mtime = time.ctime((unpack("<Q", std_info[8:16])[0] - NTFS_EPOCH) / 10**(7))
-        #mft_mod_time = time.ctime((unpack("<Q", std_info[16:24])[0] - NTFS_EPOCH) / 10**(7))
-        atime = time.ctime((unpack("<Q", std_info[24:32])[0] - NTFS_EPOCH) / 10**(7))
+        try:
+            ctime = time.ctime((unpack("<Q", std_info[0:8])[0] - NTFS_EPOCH) / 10**(7))
+            mtime = time.ctime((unpack("<Q", std_info[8:16])[0] - NTFS_EPOCH) / 10**(7))
+            #mft_mod_time = time.ctime((unpack("<Q", std_info[16:24])[0] - NTFS_EPOCH) / 10**(7))
+            atime = time.ctime((unpack("<Q", std_info[24:32])[0] - NTFS_EPOCH) / 10**(7))
+        except:
+            ctime = None
+            mtime = None
+            atime = None
         flags = unpack("<I", std_info[32:36])[0]
         attrs = [key for key in ATTRIBUTES if flags & ATTRIBUTES[key]]
         self.offset += std_info_len
@@ -371,10 +377,15 @@ class MFT_Parser():
         attr_len = unpack("<I", self.entry[offset+4:offset+8])[0]
         filename = self.entry[offset+24:offset + attr_len]
         parent = unpack("<Q", filename[0:8])[0] & 0x00FFFFFF
-        ctime = time.ctime((unpack("<Q", filename[8:16])[0] - NTFS_EPOCH) / 10**(7))
-        mtime = time.ctime((unpack("<Q", filename[16:24])[0] - NTFS_EPOCH) / 10**(7))
-        #mft_mod_time = time.ctime((unpack("<Q", filename[24:32])[0] - NTFS_EPOCH) / 10**(7))
-        atime = time.ctime((unpack("<Q", filename[32:40])[0] - NTFS_EPOCH) / 10**(7))
+        try:
+            ctime = time.ctime((unpack("<Q", filename[8:16])[0] - NTFS_EPOCH) / 10**(7))
+            mtime = time.ctime((unpack("<Q", filename[16:24])[0] - NTFS_EPOCH) / 10**(7))
+            #mft_mod_time = time.ctime((unpack("<Q", filename[24:32])[0] - NTFS_EPOCH) / 10**(7))
+            atime = time.ctime((unpack("<Q", filename[32:40])[0] - NTFS_EPOCH) / 10**(7))
+        except:
+            ctime = None
+            mtime = None
+            atime = None
         self.alloc_size = unpack("<Q", filename[40:48])[0]
         self.real_size = unpack("<Q", filename[48:56])[0]
         flags = unpack("<I", filename[56:60])[0]
@@ -499,7 +510,6 @@ class MFT_Parser():
                         data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
                                                                (data_run_offset - max_sign[data_run_offset_bytes]))
                 clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
-                #clusters.append((data_run_offset, data_run_offset + data_run_len-1))
                 if data[0] == DATA_RUN_END:
                     break
                 else:
@@ -528,7 +538,44 @@ class MFT_Parser():
     def parse_sec_desc(self, offset):
         self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
         return None
-
+    
+    def getFiletypeStats(self):
+        filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'pdf' : [], 'html' : [], 'system' : []}
+        video = ['AVI', 'MPEG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV', 'NTSC', 'PAL']
+        pdf = ['PDF']
+        image = ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX']
+        audio = ['MP3', 'MP4A', 'MP4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG']
+        binaries = ['data', 'executable', 'ELF', 'PE32', 'BIN', 'EXE', 'APP']
+        text = ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office', 'Unicode', 'CDF V2 Document', 'TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD']
+        html = ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML']
+        system = ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
+        filetypes = video, pdf, image, audio, binaries, text, html, system
+        types = ['video', 'pdf', 'image', 'audio', 'binaries', 'text', 'html', 'system']
+        for entry in self.entries:
+            try:
+                name, ext = entry.name.split('.')
+            except:
+                continue
+            i = 0
+            for ftype in filetypes:
+                if ext.upper() in ftype:
+                    filestats[types[i]].append(entry.name)
+                    break
+                i += 1
+        print "Finished analysing files."
+        print "Results:"
+        print "video    : %i" % len(filestats['video'])
+        print "pdf      : %i" % len(filestats['pdf'])
+        print "images   : %i" % len(filestats['image'])
+        print "audio    : %i" % len(filestats['audio'])
+        print "binaries : %i" % len(filestats['binaries'])
+        print "text     : %i" % len(filestats['text'])
+        print "html     : %i" % len(filestats['html'])
+        print "system   : %i" % len(filestats['system'])
+            
+    
+    
+    
     def print_header(self, parser):
         print "*****************HEADER INFO*****************"
         print "Entry:                           %i" % parser.header.entry_num
@@ -593,7 +640,19 @@ class MFT_Parser():
             print "ADS Data: "
             print data.ads_data
         print ''
-
+        
+    def print_fsdata(self, parser):
+        print "******************FS INFO******************"
+        print "Volume Type: NTFS"
+        print "Volume Size: %i" % self.num_bytes
+        print "Sector Size: %i" % self.sector_size
+        print "Cluster Size: %i" % self.cluster_size
+        print "Number of Sectors: %i" % (self.num_bytes / self.sector_size)
+        print "Number of Clusters: %i" % self.num_clusters
+        print "$MFT Offset(Bytes): %i" % self.mft_base_offset
+        print "$MFT Offset(Clusters): %i" % (self.mft_base_offset / self.cluster_size)
+        print "Size of MFT Entries: %i" % MFT_ENTRY_SIZE
+         
 if __name__ == "__main__":
     try:
         import psyco
@@ -631,6 +690,12 @@ if __name__ == "__main__":
                             clusters.extend(parser.data[i].clusters)
                         ads_data = parser.data[i].ads_data
                     parser.print_data(parser.data[0], clusters, start_vcn, end_vcn)
+        elif sys.argv[2] == '-i':
+            parser.parse_mft()
+            parser.getFiletypeStats()
+        elif sys.argv[2] == '-f':
+            parser.parse_mft()
+            parser.print_fsdata(parser)
         else:
             if len(sys.argv) == 3:
                 parser.parse_mft(start=int(sys.argv[2]))

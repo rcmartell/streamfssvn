@@ -19,6 +19,7 @@ class Image_Reader():
         parser = MFT_Parser(imgfile)
         self.cluster_size = parser.get_cluster_size()
         self.img_size = parser.get_img_size()
+        print self.img_size
         self.entries = parser.main()
         self.mapping = [0] * int(self.img_size)
         parser = None
@@ -50,11 +51,13 @@ class Image_Reader():
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(len(self.mapping)):
             if self.mapping[idx] == 0:
-                ifh.seek(self.cluster_size, os.SEEK_CUR)
+                data = ifh.read(self.cluster_size)
+                ofh.write(data)
                 pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
             self.mapping[idx].add_queue(idx, data)
+            ofh.write(data)
             pbar.update(idx * self.cluster_size)
         pbar.finish()
         ifh.close()
@@ -67,9 +70,9 @@ def main():
     irdr.image_drive()
 
 if __name__ == "__main__":
-    try:
-        import psyco
-        psyco.full()
-    except:
-        pass
+    #try:
+     #   import psyco
+    #    psyco.full()
+   # except:
+  #      pass
     main()

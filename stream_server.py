@@ -105,6 +105,6 @@ def main():
     daemon.requestLoop()
 
 if __name__ == "__main__":
-    import psyco
-    psyco.full()
+    #import psyco
+    #psyco.full()
     main()
