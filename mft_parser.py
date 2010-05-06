@@ -577,7 +577,13 @@ class MFT_Parser():
         print "html     : %i" % len(filestats['html'])
         print "system   : %i" % len(filestats['system'])
         print "other    : %i" % len(filestats['other'])     
-    
+        if sys.argv[3] != None:
+            if sys.argv[3] in filestats:
+                print
+                print "********** List files of type: %s **********" % sys.argv[3]
+                files = filestats[sys.argv[3]]
+                for f in files:
+                    print f
     
     
     def print_header(self, parser):
