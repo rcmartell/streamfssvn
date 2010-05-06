@@ -31,7 +31,7 @@ class File_Magic():
             'text'          :   ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office',
                                 'Unicode', 'CDF V2 Document', 'TXT', 'XML', 'CHM',
                                 'CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD'],
-            'html'          :   ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML'],
+            'html'          :   ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM'],
             'system'        :   ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
         }
         for val in self.dirs.values():

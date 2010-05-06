@@ -547,7 +547,7 @@ class MFT_Parser():
         audio = ['MP3', 'M4A', 'M4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG']
         binaries = ['data', 'executable', 'ELF', 'PE32', 'BIN', 'EXE', 'APP']
         text = ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office', 'Unicode', 'CDF V2 Document', 'TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD']
-        html = ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML']
+        html = ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM']
         system = ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
         filetypes = video, pdf, image, audio, binaries, text, html, system
         types = ['video', 'pdf', 'image', 'audio', 'binaries', 'text', 'html', 'system']
