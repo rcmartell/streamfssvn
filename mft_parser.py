@@ -540,20 +540,23 @@ class MFT_Parser():
         return None
     
     def getFiletypeStats(self):
-        filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'pdf' : [], 'html' : [], 'system' : [], 'other' : []}
+        filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'pdf' : [], 'html' : [], 'system' : [], 'compressed' : [], 'other' : []}
         video = ['AVI', 'MPEG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV', 'NTSC', 'PAL']
         pdf = ['PDF']
         image = ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX']
         audio = ['MP3', 'M4A', 'M4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG']
         binaries = ['data', 'executable', 'ELF', 'PE32', 'BIN', 'EXE', 'APP']
-        text = ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office', 'Unicode', 'CDF V2 Document', 'TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD']
+        text = ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office', 'Unicode', 'CDF V2 Document', 
+                'TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'JS', 'JAVA', 
+                'C', 'H', 'PY', 'PL', 'CPP', 'XAML', 'VB', 'HLP']
         html = ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM']
         system = ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
-        filetypes = video, pdf, image, audio, binaries, text, html, system
-        types = ['video', 'pdf', 'image', 'audio', 'binaries', 'text', 'html', 'system']
+        compressed = ['GZ', 'ZIP', 'BZ', '7Z', 'ACE', 'RAR']
+        filetypes = video, pdf, image, audio, binaries, text, html, system, compressed
+        types = ['video', 'pdf', 'image', 'audio', 'binaries', 'text', 'html', 'system', 'compressed']
         for entry in self.entries:
             try:
-                name, ext = entry.name.split('.')
+                ext = entry.name.split('.')[-1]
             except:
                 filestats['other'].append(entry.name)
                 continue
@@ -563,19 +566,20 @@ class MFT_Parser():
                     filestats[types[i]].append(entry.name)
                     break
                 i += 1
-            if i == 8:
+            if i == 9:
                 filestats['other'].append(entry.name)
         print "Finished analysing files.\n"
         print "Number of entries: %i" % len(self.entries)
-        print "video    : %i" % len(filestats['video'])
-        print "pdf      : %i" % len(filestats['pdf'])
-        print "images   : %i" % len(filestats['image'])
-        print "audio    : %i" % len(filestats['audio'])
-        print "binaries : %i" % len(filestats['binaries'])
-        print "text     : %i" % len(filestats['text'])
-        print "html     : %i" % len(filestats['html'])
-        print "system   : %i" % len(filestats['system'])
-        print "other    : %i" % len(filestats['other'])
+        print "video      : %i" % len(filestats['video'])
+        print "pdf        : %i" % len(filestats['pdf'])
+        print "images     : %i" % len(filestats['image'])
+        print "audio      : %i" % len(filestats['audio'])
+        print "binaries   : %i" % len(filestats['binaries'])
+        print "text       : %i" % len(filestats['text'])
+        print "html       : %i" % len(filestats['html'])
+        print "compressed : %i" % len(filestats['compressed'])
+        print "system     : %i" % len(filestats['system'])
+        print "other      : %i" % len(filestats['other'])
         if len(sys.argv) >= 4:
             ftype = sys.argv[3].lower()
             if ftype in filestats:
