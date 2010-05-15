@@ -1,14 +1,13 @@
 #!/usr/bin/python
 import Pyro.core, Pyro.naming, Pyro.util
 import sys, os, shutil, time
-import threading, socket
+import threading, socket, resource
 from file_magic import File_Magic
-from threading import Lock
-import Pyrex
 
-class Stream_Server(Pyro.core.ObjBase):
+resource.setrlimit(resource.RLIMIT_NOFILE, (1024,-1))
+
+class Stream_Server():
     def __init__(self):
-        Pyro.core.ObjBase.__init__(self)
         self.cluster_size = 0
         self.files = {}
         self.file_progress = {}
@@ -73,16 +72,20 @@ class Stream_Server(Pyro.core.ObjBase):
         return
     
     def add_queue(self, cluster, data):
-        self.queue.append((int(cluster), data))
+        self.queue.extend(zip(cluster, data))
     
     def write_data(self):
         while True:
             while len(self.queue) == 0:
-                time.sleep(1)
+                time.sleep(0.00005)
             cluster, data = self.queue.pop()
             file = self.clustermap[cluster]
+            if len(self.handles) == 1024:
+                for handle in self.handles:
+                    self.handles[handle].close()
+                self.handles = {}
             if file not in self.handles:
-                self.handles[file] = open(file, 'wb')
+                    self.handles[file] = open(file, 'wb')
             self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
             if (self.handles[file].tell() + self.cluster_size) > int(self.files[file][0]):
                 left = int(self.files[file][0]) - self.handles[file].tell()
@@ -96,15 +99,18 @@ class Stream_Server(Pyro.core.ObjBase):
                 self.magic.process_file(file)
 
 def main():
-    Pyro.core.initServer()
-    ns = Pyro.naming.NameServerLocator().getNS()
     daemon = Pyro.core.Daemon()
-    daemon.useNameServer(ns)
-    uri = daemon.connect(Stream_Server(), sys.argv[1])
-    print uri
+    uri = daemon.register(Stream_Server())
+    print "Host: %s\t\tPort: %i\t\tName: %s" % (socket.gethostname(), uri.port, sys.argv[1])
+    ns=Pyro.naming.locateNS()
+    ns.register(sys.argv[1], uri)
     daemon.requestLoop()
 
 if __name__ == "__main__":
-    #import psyco
-    #psyco.full()
+    try:
+        import psyco
+        psyco.full()
+    except:
+        print "Psyco failed"
+        pass
     main()

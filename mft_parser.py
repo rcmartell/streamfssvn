@@ -67,6 +67,7 @@ class MFT_Parser():
             import psyco
             psyco.full()
         except:
+            print "Psyco failed"
             pass
         self.setup_mft_data()
         self.parse_mft()
@@ -114,7 +115,6 @@ class MFT_Parser():
 
 
     def parse_mft(self, start=0, end=9999999999):
-        print len(self.mft_data)
         count = start
         inode = start
         self.pos = [0.0, 0.25, 0.50, 0.75]
@@ -138,7 +138,7 @@ class MFT_Parser():
                 name, flags, parent, real_size, data_size = None, None, None, None, None
                 if self.entry[0:4] == MFT_ENTRY_SIG:
                     """ Beginning of MFT Entry """
-                    print "Entry: %i" % inode
+                    #print "Entry: %i" % inode
                     self.header = self.parse_header()
                     if self.header.mft_base != 0:
                     # Part of a multi-entry data attribute, not a unique File Entry.
