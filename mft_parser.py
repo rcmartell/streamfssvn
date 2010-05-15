@@ -49,10 +49,12 @@ class MFT_Parser():
         self.img = open(img, 'rb')
         self.entries = []
         self.mft_data = None
+        # Verify that this is actually a NTFS volume by checking the 2 byte signature at offset 0x200
         if int(unpack("<H", self.img.read(0x200)[-2:])[0]) != NTFS_SIG:
             print "No valid NTFS signature found."
             sys.exit(1)
         self.img.seek(0)
+        """ Grab FS data from the MBR """
         self.sector_size = unpack('<H', self.img.read(0x0D)[-2:])[0]
         self.cluster_size = int(b2a_hex(unpack("<c", self.img.read(1))[0]),16) * self.sector_size
         self.num_sectors = unpack('<Q', self.img.read(0x22)[-8:])[0]
@@ -80,6 +82,10 @@ class MFT_Parser():
         return self.entries
 
     def setup_mft_data(self):
+        """ The $MFT file (MFT entry 0) stores information about all allocated MFT entries in its data section. This information is used
+        to bootstrap the parser. While slightly more complex than just linearly reading each file entry, this method is able to handle
+        the case where the MFT is fragmented and or an entry falls on a bad cluster. """
+        
         self.offset = self.mft_base_offset
         self.img.seek(self.offset, os.SEEK_SET)
         self.entry = self.img.read(MFT_ENTRY_SIZE)
@@ -138,13 +144,11 @@ class MFT_Parser():
                 self.offset = 0
                 self.data = []
                 clusters = []
-                self.name_entries = {}
                 self.std_info, self.filename, ads_data = None, None, None
                 ctime, mtime, atime = None, None, None
                 name, flags, parent, real_size, data_size = None, None, None, None, None
                 if self.entry[0:4] == MFT_ENTRY_SIG:
                     """ Beginning of MFT Entry """
-                    #print "Entry: %i" % inode
                     self.header = self.parse_header()
                     if self.header.mft_base != 0:
                     # Part of a multi-entry data attribute, not a unique File Entry.
@@ -178,7 +182,6 @@ class MFT_Parser():
                             self.object_id = self.parse_object_id(self.offset)
 
                         elif self.entry[self.offset:self.offset+4] == SECURITY_DESC_SIG:
-
                             self.sec_desc = self.parse_sec_desc(self.offset)
 
                         elif self.entry[self.offset:self.offset+4] == VOLUME_NAME_SIG:
@@ -418,8 +421,8 @@ class MFT_Parser():
         return None
 
     def parse_idx_root(self, offset):
-        self.entry_len = unpack("<I", self.entry[offset+4:offset+8])[0]
-        self.offset += self.entry_len
+        """ Not interested in directory info but the space the metadata occupies needs to be accounted for in the offsets to keep everything aligned. """
+        self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
         return None
         # idx_root = self.entry[offset+32:offset+self.entry_len]
         # attr_type = idx_root[0:4]
@@ -436,8 +439,8 @@ class MFT_Parser():
         # return IDX_ROOT(attr_type=attr_type, entry_len=self.entry_len, flags=flags, idx_entry=idx_entry)
 
     def parse_idx_alloc(self, offset):
-        idx_alloc_len = unpack("<I", self.entry[offset+4:offset+8])[0]
-        self.offset += idx_alloc_len
+        """ Not interested in directory info but the space the metadata occupies needs to be accounted for in the offsets to keep everything aligned. """
+        self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
         return None
         # idx_header = self.entry[offset+4:offset+28]
         # sig = idx_header[0:4]
@@ -659,18 +662,19 @@ class MFT_Parser():
     def print_fsdata(self, parser):
         print "******************FS INFO******************"
         print "Volume Type: NTFS"
+        print "Volume Serial Number: %s" % str(self.serial_num)[2:-1].upper()
         print "Volume Size: %i" % self.num_bytes
         print "Sector Size: %i" % self.sector_size
         print "Cluster Size: %i" % self.cluster_size
         print "Number of Sectors: %i" % (self.num_bytes / self.sector_size)
         print "Number of Clusters: %i" % self.num_clusters
+        print "MFT Entry Size(Bytes): %i" % MFT_ENTRY_SIZE
         print "$MFT Offset(Bytes): %i" % self.mft_base_offset
         print "$MFT Offset(Clusters): %i" % (self.mft_base_offset / self.cluster_size)
         print "$MFTMIR Offset(Bytes): %i" % self.mft_mir_base_offset
         print "$MFTMIR Offset(Clusters): %i" % (self.mft_mir_base_offset / self.cluster_size)
-        print "Size of MFT Entries: %i" % MFT_ENTRY_SIZE
-        print "Volume Serial Number: %s" % str(self.serial_num)[2:-1].upper()
-         
+        print "Number of files on volume: %i" % len(self.entries)
+        
 if __name__ == "__main__":
     try:
         import psyco

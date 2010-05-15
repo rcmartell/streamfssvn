@@ -57,14 +57,14 @@ class Stream_Server():
             file = intern(file)
             self.file_progress[file] = len(self.files[file][1])
 
-    def list_clusters(self):
-        self.clusters = []
-        for k,v in self.files.iteritems():
-            try:
-                self.clusters.extend(v[1])
-            except:
-                self.clusters.append(v[1])
-        return self.clusters
+    #def list_clusters(self):
+    #    self.clusters = []
+    #    for k,v in self.files.iteritems():
+    #        try:
+    #            self.clusters.extend(v[1])
+    #        except:
+    #            self.clusters.append(v[1])
+    #    return self.clusters
     
     def queue_writes(self):
         self.thread = threading.Thread(target=self.write_data)
