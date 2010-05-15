@@ -22,7 +22,7 @@ class File_Magic():
             'other'         : '../Complete/other//'
         }
         self.filters = {
-            'video'         :   ['AVI', 'MPEG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV',
+            'video'         :   ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV',
                                 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV', 'NTSC', 'PAL'],
             'pdf'           :   ['PDF'],
             'image'         :   ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX'],

@@ -5,7 +5,7 @@ import os, sys, time, math
 from struct import unpack, pack
 from binascii import b2a_hex
 
-
+NTFS_SIG =             0xaa55
 MFT_ENTRY_SIZE =       0x400
 MFT_HEADER_LEN =       0x38
 MFT_ENTRY_SIG =       '\x46\x49\x4C\x45'
@@ -49,12 +49,18 @@ class MFT_Parser():
         self.img = open(img, 'rb')
         self.entries = []
         self.mft_data = None
+        if int(unpack("<H", self.img.read(0x200)[-2:])[0]) != NTFS_SIG:
+            print "No valid NTFS signature found."
+            sys.exit(1)
+        self.img.seek(0)
         self.sector_size = unpack('<H', self.img.read(0x0D)[-2:])[0]
         self.cluster_size = int(b2a_hex(unpack("<c", self.img.read(1))[0]),16) * self.sector_size
         self.num_sectors = unpack('<Q', self.img.read(0x22)[-8:])[0]
         self.num_bytes = (self.num_sectors + 1) * self.sector_size
         self.num_clusters = int(math.ceil(self.num_bytes / self.cluster_size))
         self.mft_base_offset = unpack("<Q", self.img.read(8))[0] * self.cluster_size
+        self.mft_mir_base_offset = unpack("<Q", self.img.read(8))[0] * self.cluster_size
+        self.serial_num = hex(unpack("<Q", self.img.read(16)[-8:])[0])
 
     def get_cluster_size(self):
         return self.cluster_size
@@ -541,14 +547,12 @@ class MFT_Parser():
     
     def getFiletypeStats(self):
         filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'pdf' : [], 'html' : [], 'system' : [], 'compressed' : [], 'other' : []}
-        video = ['AVI', 'MPEG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV', 'NTSC', 'PAL']
+        video = ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV']
         pdf = ['PDF']
         image = ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX']
         audio = ['MP3', 'M4A', 'M4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG']
-        binaries = ['data', 'executable', 'ELF', 'PE32', 'BIN', 'EXE', 'APP']
-        text = ['ASCII', 'Little-endian UTF-16 Unicode text', 'Microsoft Office', 'Unicode', 'CDF V2 Document', 
-                'TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'JS', 'JAVA', 
-                'C', 'H', 'PY', 'PL', 'CPP', 'XAML', 'VB', 'HLP']
+        binaries = ['BIN', 'EXE', 'APP']
+        text = ['TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'JS', 'JAVA', 'C', 'H', 'PY', 'PL', 'CPP', 'XAML', 'VB', 'HLP', 'SH']
         html = ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM']
         system = ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
         compressed = ['GZ', 'ZIP', 'BZ', '7Z', 'ACE', 'RAR']
@@ -662,7 +666,10 @@ class MFT_Parser():
         print "Number of Clusters: %i" % self.num_clusters
         print "$MFT Offset(Bytes): %i" % self.mft_base_offset
         print "$MFT Offset(Clusters): %i" % (self.mft_base_offset / self.cluster_size)
+        print "$MFTMIR Offset(Bytes): %i" % self.mft_mir_base_offset
+        print "$MFTMIR Offset(Clusters): %i" % (self.mft_mir_base_offset / self.cluster_size)
         print "Size of MFT Entries: %i" % MFT_ENTRY_SIZE
+        print "Volume Serial Number: %s" % str(self.serial_num)[2:-1].upper()
          
 if __name__ == "__main__":
     try:
