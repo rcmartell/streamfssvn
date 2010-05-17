@@ -3,7 +3,7 @@ from mft_parser import MFT_Parser
 from time import time, ctime
 from progressbar import *
 from stream_server import Stream_Server
-import Pyro.core, Pyro.util, threading, os
+import Pyro.core, Pyro.util, threading
 
 class Image_Reader():
     def __init__(self, src=None, dest=None):
