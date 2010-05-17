@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import Pyro.core, Pyro.naming, Pyro.util
-import sys, os, shutil, time
+import sys, os, time
 import threading, socket, resource
 from file_magic import File_Magic
 
