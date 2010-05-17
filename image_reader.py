@@ -13,7 +13,6 @@ class Image_Reader():
         self.entries = None
         self.widgets = ['Progress: ', Percentage(), ' ', Bar(),' ', ETA(), ' ', FileTransferSpeed()]
         
-        
     def init_fs_metadata(self, imgfile):
         print 'Parsing filesystem metadata'
         parser = MFT_Parser(imgfile)
@@ -69,12 +68,13 @@ class Image_Reader():
                 for stream in self.streams:
                     stream_queue[stream] = []
                 queue_count = 0
+                print activity
             data = ifh.read(self.cluster_size)
             queue_count += 1
             #self.mapping[idx].add_queue(idx, data)
-            server = self.mapping[idx]
-            stream_queue[server].append((idx, data))
-            activity[server] += 1
+            srvr = self.mapping[idx]
+            stream_queue[srvr].append((idx, data))
+            activity[srvr] += 1
             #ofh.write(data)
             pbar.update(idx * self.cluster_size)
         pbar.finish()

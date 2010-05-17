@@ -83,8 +83,8 @@ class MFT_Parser():
 
     def setup_mft_data(self):
         """ The $MFT file (MFT entry 0) stores information about all allocated MFT entries in its data section. This information is used
-        to bootstrap the parser. While slightly more complex than just linearly reading each file entry, this method is able to handle
-        the case where the MFT is fragmented and or an entry falls on a bad cluster. """
+            to bootstrap the parser. While slightly more complex than just linearly reading each file entry, this method is able to handle
+            the case where the MFT is fragmented and or an entry falls on a bad cluster. """
         
         self.offset = self.mft_base_offset
         self.img.seek(self.offset, os.SEEK_SET)
