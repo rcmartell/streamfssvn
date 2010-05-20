@@ -1,11 +1,14 @@
 #!/usr/bin/python
 import Pyro.core, Pyro.naming, Pyro.util
 import sys, os, time
-import threading, socket, resource
+import threading, socket, collections
 from file_magic import File_Magic
 
-resource.setrlimit(resource.RLIMIT_NOFILE, (1024,-1))
-
+try:
+    import resource
+    resource.setrlimit(resource.RLIMIT_NOFILE, (1024,-1))
+except:
+       pass
 class Stream_Server():
     def __init__(self):
         self.cluster_size = 0
@@ -24,7 +27,7 @@ class Stream_Server():
         os.chdir('Incomplete')
         self.magic = File_Magic()
         self.handles = {}
-        self.queue = []
+        self.queue = collections.deque()
 
     def set_cluster_size(self, size):
         self.cluster_size = int(size)
@@ -32,7 +35,7 @@ class Stream_Server():
     def set_num_clusters(self, num):
         self.num_clusters = int(num)
         self.clustermap = [0] * int(num)
-    
+
     def process_entries(self, entries):
         for entry in entries:
             try:
@@ -51,20 +54,20 @@ class Stream_Server():
         for k,v in self.files.iteritems():
             for c in v[1]:
                 self.clustermap[int(c)] = k
-    
+
     def setup_file_progress(self):
         for file in self.files:
             file = intern(file)
             self.file_progress[file] = len(self.files[file][1])
 
-    #def list_clusters(self):
-    #    self.clusters = []
-    #    for k,v in self.files.iteritems():
-    #        try:
-    #            self.clusters.extend(v[1])
-    #        except:
-    #            self.clusters.append(v[1])
-    #    return self.clusters
+    def list_clusters(self):
+        self.clusters = []
+        for k,v in self.files.iteritems():
+            try:
+                self.clusters.extend(v[1])
+            except:
+                self.clusters.append(v[1])
+        return self.clusters
     
     def queue_writes(self):
         self.thread = threading.Thread(target=self.write_data)
@@ -73,17 +76,17 @@ class Stream_Server():
     
     def add_queue(self, cluster, data):
         self.queue.extend(zip(cluster, data))
-    
+
     def write_data(self):
         while True:
             while len(self.queue) == 0:
                 time.sleep(0.00005)
-            cluster, data = self.queue.pop()
+            cluster, data = self.queue.popleft()
             file = self.clustermap[cluster]
-            if len(self.handles) == 1024:
-                for handle in self.handles:
-                    self.handles[handle].close()
-                self.handles = {}
+            #if len(self.handles) == 2048:
+            #    for handle in self.handles:
+            #        self.handles[handle].close()
+            #    self.handles = {}
             if file not in self.handles:
                     self.handles[file] = open(file, 'wb')
             self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
