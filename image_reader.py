@@ -47,11 +47,9 @@ class Image_Reader():
             s.setup_file_progress()
             s.queue_writes()
         stream_queue = {}
-        activity = {}
         queue_count = 0
         for stream in self.streams:
             stream_queue[stream] = []
-            activity[stream] = 0
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(len(self.mapping)):
@@ -68,13 +66,10 @@ class Image_Reader():
                 for stream in self.streams:
                     stream_queue[stream] = []
                 queue_count = 0
-                print activity
             data = ifh.read(self.cluster_size)
             queue_count += 1
             #self.mapping[idx].add_queue(idx, data)
-            srvr = self.mapping[idx]
-            stream_queue[srvr].append((idx, data))
-            activity[srvr] += 1
+            stream_queue[self.mapping[idx]].append((idx, data))
             #ofh.write(data)
             pbar.update(idx * self.cluster_size)
         pbar.finish()
