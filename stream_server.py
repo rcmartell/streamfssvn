@@ -7,8 +7,10 @@ from file_magic import File_Magic
 try:
     import resource
     resource.setrlimit(resource.RLIMIT_NOFILE, (1024,-1))
+    MAX_OFHANDLES = 1024
 except:
-       pass
+    MAX_OFHANDLES = 9999
+    
 class Stream_Server():
     def __init__(self):
         self.cluster_size = 0
@@ -83,10 +85,10 @@ class Stream_Server():
                 time.sleep(0.00005)
             cluster, data = self.queue.popleft()
             file = self.clustermap[cluster]
-            #if len(self.handles) == 2048:
-            #    for handle in self.handles:
-            #        self.handles[handle].close()
-            #    self.handles = {}
+            if len(self.handles) == 2048:
+                for handle in self.handles:
+                    self.handles[handle].close()
+                self.handles = {}
             if file not in self.handles:
                     self.handles[file] = open(file, 'wb')
             self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
@@ -115,5 +117,4 @@ if __name__ == "__main__":
         psyco.full()
     except:
         print "Psyco failed"
-        pass
     main()
