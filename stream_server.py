@@ -1,15 +1,15 @@
 #!/usr/bin/python
 import Pyro.core, Pyro.naming, Pyro.util
 import sys, os, time
-import threading, socket, collections
+import threading, socket, collections, cProfile
 from file_magic import File_Magic
 
 try:
     import resource
     resource.setrlimit(resource.RLIMIT_NOFILE, (1024,-1))
-    MAX_OFHANDLES = 1024
+    MAX_HANDLES = 1024
 except:
-    MAX_OFHANDLES = 9999
+    MAX_HANDLES = 9999
     
 class Stream_Server():
     def __init__(self):
@@ -80,28 +80,34 @@ class Stream_Server():
         self.queue.extend(zip(cluster, data))
 
     def write_data(self):
-        while True:
-            while len(self.queue) == 0:
-                time.sleep(0.00005)
-            cluster, data = self.queue.popleft()
-            file = self.clustermap[cluster]
-            if len(self.handles) == 2048:
-                for handle in self.handles:
-                    self.handles[handle].close()
-                self.handles = {}
-            if file not in self.handles:
-                    self.handles[file] = open(file, 'wb')
-            self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
-            if (self.handles[file].tell() + self.cluster_size) > int(self.files[file][0]):
-                left = int(self.files[file][0]) - self.handles[file].tell()
-                self.handles[file].write(data[:left])
-            else:
-                self.handles[file].write(data)
-            self.file_progress[file] -= 1
-            if not self.file_progress[file]:
-                self.handles[file].close()
-                del self.handles[file]
-                self.magic.process_file(file)
+        try:
+            while True:
+                if len(self.file_progress) == 0:
+                    break
+                while len(self.queue) == 0:
+                    time.sleep(0.00005)
+                cluster, data = self.queue.popleft()
+                file = self.clustermap[cluster]
+                if len(self.handles) == MAX_HANDLES:
+                    for handle in self.handles:
+                        self.handles[handle].close()
+                    self.handles = {}
+                if file not in self.handles:
+                        self.handles[file] = open(file, 'wb')
+                self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
+                if (self.handles[file].tell() + self.cluster_size) > int(self.files[file][0]):
+                    left = int(self.files[file][0]) - self.handles[file].tell()
+                    self.handles[file].write(data[:left])
+                else:
+                    self.handles[file].write(data)
+                self.file_progress[file] -= 1
+                if not self.file_progress[file]:
+                    self.handles[file].close()
+                    del self.handles[file]
+                    del self.file_progress[file]
+                    self.magic.process_file(file)
+        except KeyboardInterrupt:
+            print 'User cancelled execution...'
 
 def main():
     daemon = Pyro.core.Daemon()
@@ -109,12 +115,15 @@ def main():
     print "Host: %s\t\tPort: %i\t\tName: %s" % (socket.gethostname(), uri.port, sys.argv[1])
     ns=Pyro.naming.locateNS()
     ns.register(sys.argv[1], uri)
-    daemon.requestLoop()
-
+    try:
+        daemon.requestLoop()
+    except KeyboardInterrupt:
+        print 'User aborted'
+        
 if __name__ == "__main__":
     try:
         import psyco
         psyco.full()
     except:
         print "Psyco failed"
-    main()
+    cProfile.run('main()')
