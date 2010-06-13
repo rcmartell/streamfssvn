@@ -37,13 +37,13 @@ class File_Magic():
                 os.mkdir(val)
             except:
                 pass
-    
+
     def process_file(self, file):
         thread = threading.Thread(target=self.sort_file, args=(file,))
         thread.start()
         return
-    
-    
+
+
     def sort_file(self, file):
         self.filemagic = magic.file(file)
         category = self.filemagic.split('/')[0]
