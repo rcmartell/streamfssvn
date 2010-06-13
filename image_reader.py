@@ -25,18 +25,30 @@ class Image_Reader():
     def setup_stream_listeners(self, servers):
         print 'Setting up stream servers'
         self.streams = []
-        for idx in range(len(servers)):
-            files = [entry for entry in self.entries[idx: len(self.entries): len(servers)]]
-            self.streams.append(Pyro.core.Proxy("PYRONAME:%s" % servers[idx]))
-            self.streams[-1]._pyroBind()
-            self.streams[-1].set_cluster_size(self.cluster_size)
-            self.streams[-1].set_num_clusters(self.img_size)
-            self.streams[-1].process_entries(files)
-            clusters = self.streams[-1].list_clusters()
-            for cluster in clusters:
-                self.mapping[cluster] = self.streams[-1]
+        self.streams.append(Pyro.core.Proxy("PYRONAME:%s" % servers[0]))
+        self.streams[-1]._pyroBind()
+        self.streams[-1].set_cluster_size(self.cluster_size)
+        self.streams[-1].set_num_clusters(self.img_size)
+        self.streams[-1].process_entries(self.entries)
+        clusters = self.streams[-1].list_clusters()
+        for cluster in clusters:
+            self.mapping[cluster] = self.streams[-1]
         self.entries = []
         files = []
+
+
+       # for idx in range(len(servers)):
+        #    files = [entry for entry in self.entries[idx: len(self.entries): len(servers)]]
+        #    self.streams.append(Pyro.core.Proxy("PYRONAME:%s" % servers[idx]))
+         #   self.streams[-1]._pyroBind()
+          #  self.streams[-1].set_cluster_size(self.cluster_size)
+          #  self.streams[-1].set_num_clusters(self.img_size)
+          #  self.streams[-1].process_entries(files)
+          #  clusters = self.streams[-1].list_clusters()
+          #  for cluster in clusters:
+          #      self.mapping[cluster] = self.streams[-1]
+        #self.entries = []
+        #files = []
 
     def image_drive(self):
         self.count = int(self.img_size)
@@ -45,7 +57,7 @@ class Image_Reader():
         for s in self.streams:
             s.setup_clustermap()
             s.setup_file_progress()
-            s.queue_writes()
+            s.init_file_handler()
         stream_queue = {}
         queue_count = 0
         for stream in self.streams:
@@ -87,6 +99,6 @@ if __name__ == "__main__":
         import psyco
         psyco.full()
     except:
-        print "Psyco failed"
+        #print "Psyco failed"
         pass
     main()

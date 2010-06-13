@@ -674,6 +674,19 @@ class MFT_Parser():
         print "$MFTMIR Offset(Bytes): %i" % self.mft_mir_base_offset
         print "$MFTMIR Offset(Clusters): %i" % (self.mft_mir_base_offset / self.cluster_size)
         print "Number of files on volume: %i" % len(self.entries)
+ 
+    def cluster_to_file(self, parser, clusters):
+        for cluster in clusters:
+            allocated = 0
+            cluster = int(cluster)
+            for entry in self.entries:
+                if cluster in entry.clusters:
+                    print("Cluster: %s maps to file: %s" % (cluster, entry.name))
+                    allocated = 1
+                    break
+            if not allocated:
+                print("Cluster %s unallocated" % cluster)
+
         
 if __name__ == "__main__":
     try:
@@ -718,6 +731,10 @@ if __name__ == "__main__":
         elif sys.argv[2] == '-f':
             parser.parse_mft()
             parser.print_fsdata(parser)
+        elif sys.argv[2] == '-c':
+            parser.parse_mft()
+            parser.cluster_to_file(parser, sys.argv[3:])
+
         else:
             if len(sys.argv) == 3:
                 parser.parse_mft(start=int(sys.argv[2]))

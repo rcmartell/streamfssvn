@@ -2,6 +2,8 @@
 import Pyro.core, Pyro.naming, Pyro.util
 import sys, os, time
 import threading, socket, collections, cProfile
+import array
+from array import array
 from file_magic import File_Magic
 
 try:
@@ -28,8 +30,9 @@ class Stream_Server():
             pass
         os.chdir('Incomplete')
         self.magic = File_Magic()
-        self.handles = {}
         self.queue = collections.deque()
+        self.other = []
+        self.filenames = []
 
     def set_cluster_size(self, size):
         self.cluster_size = int(size)
@@ -51,6 +54,7 @@ class Stream_Server():
                     self.files[intern(entry.name)] = [len(entry.clusters) * self.cluster_size, entry.clusters]
             else:
                 self.files[intern(entry.name)] = [entry.real_size, entry.clusters]
+            self.filenames.append(entry.name)
 
     def setup_clustermap(self):
         for k,v in self.files.iteritems():
@@ -71,14 +75,79 @@ class Stream_Server():
                 self.clusters.append(v[1])
         return self.clusters
     
-    def queue_writes(self):
-        self.thread = threading.Thread(target=self.write_data)
-        self.thread.start()
-        return
     
     def add_queue(self, cluster, data):
         self.queue.extend(zip(cluster, data))
 
+    def queue_writes(self):
+        self.thread = threading.Thread(target=self.write_data)
+        self.thread.start()
+        return
+
+
+    def init_file_handler(self):
+        self.thread = threading.Thread(target=self.setup_file_buffers)
+        self.thread.start()
+        return
+
+    def setup_file_buffers(self):
+        print 'Setup file buffers'
+        count = 0
+        while len(self.filenames) > 0:
+            print 'Filenames left: %i' % len(self.filenames)
+            self.fbuffer = {}
+            for file in self.filenames[:50]:
+                count += 1
+                if file not in self.files:
+                    print "WTF?!?"
+                    sys.exit(1)
+                try:
+                    self.fbuffer[file] = array('c', 'O' * int(self.files[file][0]))
+                except:
+                    continue
+            for data in self.other:
+                file = self.clustermap[item[0]]
+                if file in self.fbuffer:
+                    start = self.cluster_size * self.files[file][1].index(data[0])
+                    end = start + self.cluster_size
+                    self.fbuffer[file][start:end] = array('c', data[1])
+                    self.file_progress[file] -= 1
+            self.write_to_buffers()
+            del self.filenames[:50]
+
+    def write_to_buffers(self):
+        print 'Write to buffers'
+        threads = []
+        while True:
+            if len(self.file_progress) == 0:
+                break
+            while len(self.queue) == 0:
+                time.sleep(0.0005)
+            cluster, data = self.queue.popleft()
+            file = self.clustermap[cluster]
+            if file not in self.fbuffer:
+                self.other.append((cluster, data))
+                continue
+            start = self.cluster_size * self.files[file][1].index(cluster)
+            end = start + self.cluster_size
+            self.fbuffer[file][start:end] = array('c', data)
+            self.file_progress[file] -= 1
+            if not self.file_progress[file]:
+                del self.file_progress[file]
+                threads.append(threading.Thread(target=self.write_to_disk, args=(file,)))
+                threads[-1].start()
+        for thread in threads:
+            print "%s waiting on join" % thread
+            thread.join()
+            print "%s joined" % thread
+                                
+    def write_to_disk(self, file):
+        print 'Writing %s to disk' % file
+        fh = open(file, 'wb')
+        self.fbuffer[file].tofile(fh)
+        self.magic.process_file(file)
+        return
+    
     def write_data(self):
         try:
             while True:
@@ -109,6 +178,7 @@ class Stream_Server():
         except KeyboardInterrupt:
             print 'User cancelled execution...'
 
+
 def main():
     daemon = Pyro.core.Daemon()
     uri = daemon.register(Stream_Server())
@@ -119,11 +189,14 @@ def main():
         daemon.requestLoop()
     except KeyboardInterrupt:
         print 'User aborted'
-        
+        ns.remove(name=sys.argv[1])
+        daemon.shutdown()
+
 if __name__ == "__main__":
     try:
         import psyco
         psyco.full()
     except:
-        print "Psyco failed"
-    cProfile.run('main()')
+        pass
+        #print "Psyco failed"
+    main()
