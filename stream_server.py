@@ -98,9 +98,6 @@ class Stream_Server():
             self.fbuffer = {}
             for file in self.filenames[:50]:
                 count += 1
-                if file not in self.files:
-                    print "WTF?!?"
-                    sys.exit(1)
                 try:
                     self.fbuffer[file] = array('c', 'O' * int(self.files[file][0]))
                 except:
