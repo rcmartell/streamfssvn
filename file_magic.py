@@ -39,8 +39,8 @@ class File_Magic():
                 pass
 
     def process_file(self, file):
-        thread = threading.Thread(target=self.sort_file, args=(file,))
-        thread.start()
+        self.thread = threading.Thread(target=self.sort_file, args=(file,))
+        self.thread.start()
         return
 
 
@@ -68,4 +68,4 @@ class File_Magic():
             except:
                 os.remove(self.dirs['other'] + file)
                 shutil.move(file, self.dirs['other'])
-
+        return
