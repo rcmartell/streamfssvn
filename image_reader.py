@@ -12,7 +12,7 @@ class Image_Reader():
         self.dest = dest
         self.entries = None
         self.widgets = ['Progress: ', Percentage(), ' ', Bar(),' ', ETA(), ' ', FileTransferSpeed()]
-        
+
     def init_fs_metadata(self, imgfile):
         print 'Parsing filesystem metadata'
         parser = MFT_Parser(imgfile)
@@ -57,11 +57,13 @@ class Image_Reader():
         for s in self.streams:
             s.setup_clustermap()
             s.setup_file_progress()
-            s.init_file_handler()
-        stream_queue = {}
+            s.queue_writes()
+        cluster_queue = {}
+        data_queue = {}
         queue_count = 0
         for stream in self.streams:
-            stream_queue[stream] = []
+            cluster_queue[stream] = []
+            data_queue[stream] = []
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(len(self.mapping)):
@@ -71,17 +73,20 @@ class Image_Reader():
                 pbar.update(idx * self.cluster_size)
                 continue
             if queue_count == 1000:
-                for server in stream_queue:
-                    i, d = [], []
-                    [(i.append(stream_queue[server][c][0]), d.append(stream_queue[server][c][1])) for c in range(len(stream_queue[server]))]
-                    server.add_queue(i, d)
+                #for server in stream_queue:
+                    #i, d = [], []
+                    #[(i.append(stream_queue[server][c][0]), d.append(stream_queue[server][c][1])) for c in range(len(stream_queue[server]))]
+                [server.add_queue(cluster_queue[server], data_queue[server]) for server in self.streams]
                 for stream in self.streams:
-                    stream_queue[stream] = []
+                    cluster_queue[stream] = []
+                    data_queue[stream] = []
                 queue_count = 0
             data = ifh.read(self.cluster_size)
             queue_count += 1
             #self.mapping[idx].add_queue(idx, data)
-            stream_queue[self.mapping[idx]].append((idx, data))
+            cluster_queue[self.mapping[idx]].append(idx)
+            data_queue[self.mapping[idx]].append(data)
+            #stream_queue[self.mapping[idx]].append((idx, data))
             #ofh.write(data)
             pbar.update(idx * self.cluster_size)
         pbar.finish()
