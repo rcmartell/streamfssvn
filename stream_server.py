@@ -12,7 +12,7 @@ try:
     MAX_HANDLES = 1024
 except:
     MAX_HANDLES = 9999
-    
+
 class Stream_Server():
     def __init__(self):
         self.cluster_size = 0
@@ -32,6 +32,7 @@ class Stream_Server():
         self.magic = File_Magic()
         self.queue = collections.deque()
         self.other = []
+        self.handles = {}
         self.filenames = []
 
     def set_cluster_size(self, size):
@@ -74,8 +75,8 @@ class Stream_Server():
             except:
                 self.clusters.append(v[1])
         return self.clusters
-    
-    
+
+
     def add_queue(self, cluster, data):
         self.queue.extend(zip(cluster, data))
 
@@ -83,7 +84,6 @@ class Stream_Server():
         self.thread = threading.Thread(target=self.write_data)
         self.thread.start()
         return
-
 
     def init_file_handler(self):
         self.thread = threading.Thread(target=self.setup_file_buffers)
@@ -118,6 +118,7 @@ class Stream_Server():
     def write_to_buffers(self):
         print 'Write to buffers'
         threads = []
+        file_buffer = []
         while True:
             if len(self.file_progress) == 0:
                 break
@@ -125,6 +126,7 @@ class Stream_Server():
                 time.sleep(0.0005)
             cluster, data = self.queue.popleft()
             file = self.clustermap[cluster]
+
             if file not in self.fbuffer:
                 self.other.append((cluster, data))
                 continue
@@ -140,43 +142,92 @@ class Stream_Server():
             print "%s waiting on join" % thread
             thread.join()
             print "%s joined" % thread
-                                
+
     def write_to_disk(self, file):
         print 'Writing %s to disk' % file
         fh = open(file, 'wb')
         self.fbuffer[file].tofile(fh)
         self.magic.process_file(file)
         return
-    
+
     def write_data(self):
         try:
             while True:
                 if len(self.file_progress) == 0:
                     break
                 while len(self.queue) == 0:
-                    time.sleep(0.00005)
-                cluster, data = self.queue.popleft()
-                file = self.clustermap[cluster]
-                if len(self.handles) == MAX_HANDLES:
-                    for handle in self.handles:
-                        self.handles[handle].close()
-                    self.handles = {}
-                if file not in self.handles:
-                        self.handles[file] = open(file, 'wb')
-                self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
-                if (self.handles[file].tell() + self.cluster_size) > int(self.files[file][0]):
-                    left = int(self.files[file][0]) - self.handles[file].tell()
-                    self.handles[file].write(data[:left])
-                else:
-                    self.handles[file].write(data)
-                self.file_progress[file] -= 1
-                if not self.file_progress[file]:
-                    self.handles[file].close()
-                    del self.handles[file]
-                    del self.file_progress[file]
-                    self.magic.process_file(file)
+                    time.sleep(0.005)
+                files = {}
+                for idx in range(1000):
+                    cluster, data = self.queue.popleft()
+                    try:
+                        files[self.clustermap[cluster]].append((cluster, data))
+                    except:
+                        files[self.clustermap[cluster]] = [(cluster, data)]
+                for file in files:
+                    try:
+                        fh = open(file, 'r+b')
+                    except:
+                        fh = open(file, 'wb')
+                    buff = []
+                    clusters, data = zip(*files[file])
+                    idx = 0
+                    while idx < len(clusters):
+                        seek = clusters[idx]
+                        buff.append(data[idx])
+                        try:
+                            while clusters[idx+1] == clusters[idx] + 1:
+                                buff.append(data[idx+1])
+                                idx += 1
+                        except:
+                            pass
+                        fh.seek(self.files[file][1].index(seek) * self.cluster_size, os.SEEK_SET)
+                        if fh.tell() + len("".join(buff)) > int(self.files[file][0]):
+                            left = int(self.files[file][0] - fh.tell())
+                            out = "".join(buff)
+                            fh.write(out[:left])
+                            fh.flush()
+                        else:
+                            fh.write("".join(buff))
+                            fh.flush()
+                        self.file_progress[file] -= len(buff)
+                        buff = []
+                        idx += 1
+                    fh.close()
+                    if not self.file_progress[file]:
+                        del self.files[file]
+                        del self.file_progress[file]
+                        self.magic.process_file(file)
         except KeyboardInterrupt:
             print 'User cancelled execution...'
+
+
+
+                #cluster, data = self.queue.popleft()
+                #file = self.clustermap[cluster]
+                #if len(self.handles) == MAX_HANDLES:
+                #    for handle in self.handles:
+                #        self.handles[handle].close()
+                #    self.handles = {}
+                #if file not in self.handles:
+                #        self.handles[file] = open(file, 'wb')
+                #self.handles[file].seek(self.cluster_size * self.files[file][1].index(cluster), os.SEEK_SET)
+                #if (self.handles[file].tell() + self.cluster_size) > int(self.files[file][0]):
+
+
+
+#                    left = int(self.files[file][0]) - self.handles[file].tell()
+#                    self.handles[file].write(data[:left])
+#                else:
+#                    self.handles[file].write(data)
+#                self.file_progress[file] -= 1
+#                if not self.file_progress[file]:
+#                    self.handles[file].close()
+#                    del self.handles[file]
+#                    del self.file_progress[file]
+#                    self.magic.process_file(file)
+#        except KeyboardInterrupt:
+#            print 'User cancelled execution...'
 
 
 def main():
