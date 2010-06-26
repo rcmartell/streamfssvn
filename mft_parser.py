@@ -105,23 +105,26 @@ class MFT_Parser():
                 if tmp[0] == '0' or tmp[1] == '0':
                     break
                 data = data[run_off+1:]
-                data_run_len = unpack("<Q", data[0:data_run_bytes] + ('\x00' * (8-data_run_bytes)))[0]
-                data = data[data_run_bytes:]
-                data_run_offset = unpack("<Q", data[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
-                data = data[data_run_offset_bytes:]
-                if file_fragmented:
-                    if max_sign[data_run_offset_bytes] > data_run_offset:
-                        data_run_offset += prev_data_run_offset
-                    else:
-                        data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
-                                                                (data_run_offset - max_sign[data_run_offset_bytes]))
-                self.mft_data.extend(range(data_run_offset, data_run_offset + data_run_len))
-                if data[0] == DATA_RUN_END:
-                    break
-                else:
-                    file_fragmented = True
-                    run_off = 0
-                    prev_data_run_offset = data_run_offset
+		try:
+		    data_run_len = unpack("<Q", data[0:data_run_bytes] + ('\x00' * (8-data_run_bytes)))[0]
+		    data = data[data_run_bytes:]
+		    data_run_offset = unpack("<Q", data[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
+		    data = data[data_run_offset_bytes:]
+		    if file_fragmented:
+			if max_sign[data_run_offset_bytes] > data_run_offset:
+			    data_run_offset += prev_data_run_offset
+			else:
+			    data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
+				                                    (data_run_offset - max_sign[data_run_offset_bytes]))
+		    self.mft_data.extend(range(data_run_offset, data_run_offset + data_run_len))
+		    if data[0] == DATA_RUN_END:
+			break
+		    else:
+			file_fragmented = True
+			run_off = 0
+			prev_data_run_offset = data_run_offset
+		except:
+		    pass
             except:
                 print 'Warning, error occurred while processing $MFT data, incomplete image perhaps?'
 
@@ -278,14 +281,14 @@ class MFT_Parser():
         sec_end = self.sector_size-2
         # Python strings are immutable...
         self.entry = list(self.entry)
-        # For each sector in this entry, replace the fixup values with the original ones.
+	# For each sector in this entry, replace the fixup values with the original ones.
         for i in range(0, fix_arr_len, 2):
             self.entry[sec_end] = self.entry[fix_arr_off+i]
             self.entry[sec_end+1] = self.entry[fix_arr_off+i+1]
-            sec_end += self.sector_size
-        # Pack the list back into binary
+	    sec_end += self.sector_size
+	# Pack the list back into binary
         self.entry = pack("<1024c", *self.entry)
-        lsn = unpack("<Q", self.entry[8:16])[0]
+	lsn = unpack("<Q", self.entry[8:16])[0]
         seq_num = unpack("<H", self.entry[16:18])[0]
         # Number of references to file
         lnk_cnt = unpack("<H", self.entry[18:20])[0]
@@ -503,30 +506,33 @@ class MFT_Parser():
             real_size = unpack("<Q", data[48:56])[0]
             while True:
                 tmp = b2a_hex(unpack("<c", data[run_off])[0])
-                data_run_offset_bytes = int(tmp[0], 16)
+		data_run_offset_bytes = int(tmp[0], 16)
                 data_run_bytes = int(tmp[1], 16)
                 if tmp[0] == '0' or tmp[1] == '0':
                     break
                 data = data[run_off+1:]
-                data_run_len = unpack("<Q", data[0:data_run_bytes] + ('\x00' * (8-data_run_bytes)))[0]
-                data = data[data_run_bytes:]
-                data_run_offset = unpack("<Q", data[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
-                data = data[data_run_offset_bytes:]
-                if file_fragmented:
-                    if max_sign[data_run_offset_bytes] > data_run_offset:
-                        data_run_offset += prev_data_run_offset
-                    else:
-                        data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
+		try:
+                	data_run_len = unpack("<Q", data[0:data_run_bytes] + ('\x00' * (8-data_run_bytes)))[0]
+			data = data[data_run_bytes:] 
+			data_run_offset = unpack("<Q", data[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
+                	data = data[data_run_offset_bytes:]
+                	if file_fragmented:
+                    		if max_sign[data_run_offset_bytes] > data_run_offset:
+                        		data_run_offset += prev_data_run_offset
+                    		else:
+                        		data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
                                                                (data_run_offset - max_sign[data_run_offset_bytes]))
-                clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
-                if data[0] == DATA_RUN_END:
-                    break
-                else:
-                    file_fragmented = True
-                    run_off = 0
-                    prev_data_run_offset = data_run_offset
-                    continue
-        else:
+                	clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
+                	if data[0] == DATA_RUN_END:
+                    		break
+                	else:
+                    		file_fragmented = True
+                    		run_off = 0
+                    		prev_data_run_offset = data_run_offset
+                    		continue
+        	except:
+		    pass
+	else:
             name_len = int(b2a_hex(unpack("<c", data[9])[0]), 16)
             name_off = unpack("<H", data[10:12])[0]
             real_size = unpack("<I", data[16:20])[0]
