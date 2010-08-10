@@ -49,12 +49,12 @@ class Stream_Server():
             except:
                 pass
             if entry.real_size == 0:
-                if entry.data_size != 0:
-                    self.files[intern(entry.name)] = [entry.data_size, entry.clusters]
+                if entry.data_size != 0 and entry.data_size != None:
+                    self.files[entry.name] = [entry.data_size, entry.clusters]
                 else:
-                    self.files[intern(entry.name)] = [len(entry.clusters) * self.cluster_size, entry.clusters]
+                    self.files[entry.name] = [len(entry.clusters) * self.cluster_size, entry.clusters]
             else:
-                self.files[intern(entry.name)] = [entry.real_size, entry.clusters]
+                self.files[entry.name] = [entry.real_size, entry.clusters]
             self.filenames.append(entry.name)
 
     def setup_clustermap(self):
@@ -85,77 +85,17 @@ class Stream_Server():
         self.thread.start()
         return
 
-    def init_file_handler(self):
-        self.thread = threading.Thread(target=self.setup_file_buffers)
-        self.thread.start()
-        return
-
-    def setup_file_buffers(self):
-        print 'Setup file buffers'
-        count = 0
-        while len(self.filenames) > 0:
-            print 'Filenames left: %i' % len(self.filenames)
-            self.fbuffer = {}
-            for file in self.filenames[:50]:
-                count += 1
-                try:
-                    self.fbuffer[file] = array('c', 'O' * int(self.files[file][0]))
-                except:
-                    continue
-            for data in self.other:
-                file = self.clustermap[item[0]]
-                if file in self.fbuffer:
-                    start = self.cluster_size * self.files[file][1].index(data[0])
-                    end = start + self.cluster_size
-                    self.fbuffer[file][start:end] = array('c', data[1])
-                    self.file_progress[file] -= 1
-            self.write_to_buffers()
-            del self.filenames[:50]
-
-    def write_to_buffers(self):
-        print 'Write to buffers'
-        threads = []
-        file_buffer = []
-        while True:
-            if len(self.file_progress) == 0:
-                break
-            while len(self.queue) == 0:
-                time.sleep(0.0005)
-            cluster, data = self.queue.popleft()
-            file = self.clustermap[cluster]
-
-            if file not in self.fbuffer:
-                self.other.append((cluster, data))
-                continue
-            start = self.cluster_size * self.files[file][1].index(cluster)
-            end = start + self.cluster_size
-            self.fbuffer[file][start:end] = array('c', data)
-            self.file_progress[file] -= 1
-            if not self.file_progress[file]:
-                del self.file_progress[file]
-                threads.append(threading.Thread(target=self.write_to_disk, args=(file,)))
-                threads[-1].start()
-        for thread in threads:
-            print "%s waiting on join" % thread
-            thread.join()
-            print "%s joined" % thread
-
-    def write_to_disk(self, file):
-        print 'Writing %s to disk' % file
-        fh = open(file, 'wb')
-        self.fbuffer[file].tofile(fh)
-        self.magic.process_file(file)
-        return
-
     def write_data(self):
         try:
             while True:
-                if len(self.file_progress) == 0:
+                if len(self.file_progress) == 0 and len(self.queue) == 0:
                     break
                 while len(self.queue) == 0:
                     time.sleep(0.005)
                 files = {}
                 for idx in range(1000):
+                    if len(self.queue) == 0:
+                        break
                     cluster, data = self.queue.popleft()
                     try:
                         files[self.clustermap[cluster]].append((cluster, data))

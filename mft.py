@@ -68,46 +68,46 @@ class FILENAME():
         self.namespace = namespace
 
 class OBJECT_ID():
-	def __init__(self, object_id=None):
-		self.object_id = object_id
+    def __init__(self, object_id=None):
+        self.object_id = object_id
 
 class IDX_ROOT():
-	def __init__(self, attr_type=None, entry_len=None, flags=None, idx_entry=None):
-		self.attr_type = attr_type
-		self.entry_len = entry_len
-		self.flags = flags
-		self.idx_entry = idx_entry
+    def __init__(self, attr_type=None, entry_len=None, flags=None, idx_entry=None):
+        self.attr_type = attr_type
+        self.entry_len = entry_len
+        self.flags = flags
+        self.idx_entry = idx_entry
 
 class IDX_ALLOC():
-	def __init__(self, sig=None, lsn=None, vcn=None, flags=None, idx_entries=None):
-		self.sig = sig
-		self.lsn = lsn
-		self.vcn = vcn
-		self.flags = flags
-		self.idx_entries = idx_entries
+    def __init__(self, sig=None, lsn=None, vcn=None, flags=None, idx_entries=None):
+        self.sig = sig
+        self.lsn = lsn
+        self.vcn = vcn
+        self.flags = flags
+        self.idx_entries = idx_entries
 
 class IDX_ENTRY():
-	def __init__(self, entry_len=None, content_len=None, flags=None, content=None, vcn=None):
-		self.entry_len = entry_len
-		self.content_len = content_len
-		self.flags = flags
-		self.content = content
-		self.vcn = vcn
+    def __init__(self, entry_len=None, content_len=None, flags=None, content=None, vcn=None):
+        self.entry_len = entry_len
+        self.content_len = content_len
+        self.flags = flags
+        self.content = content
+        self.vcn = vcn
 
 class SECURE_FILE():
-	def __init__(self, sii=None, sdh=None, sds=None):
-		self.sii = sii
-		self.sdh = sdh
-		self.sds = sds
+    def __init__(self, sii=None, sdh=None, sds=None):
+        self.sii = sii
+        self.sdh = sdh
+        self.sds = sds
 
 class ATTR_LIST():
-	def __init__(self, attr_type=None, entry_len=None, entry_name_len=None, start_vcn=None, mft_entry=None, attr_id=None):
-		self.attr_type = attr_type
-		self.entry_len = entry_len
-		self.entry_name_len = entry_name_len
-		self.start_vcn = start_vcn
-		self.mft_entry = mft_entry
-		self.attr_id = attr_id
+    def __init__(self, attr_type=None, entry_len=None, entry_name_len=None, start_vcn=None, mft_entry=None, attr_id=None):
+        self.attr_type = attr_type
+        self.entry_len = entry_len
+        self.entry_name_len = entry_name_len
+        self.start_vcn = start_vcn
+        self.mft_entry = mft_entry
+        self.attr_id = attr_id
 
 class DATA():
     def __init__(self, attr_type=None, nonresident=None, flags=None, attr_id=None, start_vcn=None, end_vcn=None,
@@ -124,6 +124,11 @@ class DATA():
         self.file_fragmented = file_fragmented
         self.ads_data = ads_data
         self.name = name
+
+class PDATA():
+    def __init__(self, data_size=None, clusters=None):
+        self.data_size = data_size
+        self.clusters = clusters
 
 class BITMAP():
     def __init__(self, bmap=None):

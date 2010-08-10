@@ -25,30 +25,17 @@ class Image_Reader():
     def setup_stream_listeners(self, servers):
         print 'Setting up stream servers'
         self.streams = []
-        self.streams.append(Pyro.core.Proxy("PYRONAME:%s" % servers[0]))
-        self.streams[-1]._pyroBind()
-        self.streams[-1].set_cluster_size(self.cluster_size)
-        self.streams[-1].set_num_clusters(self.img_size)
-        self.streams[-1].process_entries(self.entries)
-        clusters = self.streams[-1].list_clusters()
-        for cluster in clusters:
-            self.mapping[cluster] = self.streams[-1]
+        for server in servers:
+            self.streams.append(Pyro.core.Proxy("PYRONAME:%s" % server))
+            self.streams[-1]._pyroBind()
+            self.streams[-1].set_cluster_size(self.cluster_size)
+            self.streams[-1].set_num_clusters(self.img_size)
+            self.streams[-1].process_entries(self.entries)
+            clusters = self.streams[-1].list_clusters()
+            for cluster in clusters:
+                self.mapping[cluster] = self.streams[-1]
         self.entries = []
         files = []
-
-
-       # for idx in range(len(servers)):
-        #    files = [entry for entry in self.entries[idx: len(self.entries): len(servers)]]
-        #    self.streams.append(Pyro.core.Proxy("PYRONAME:%s" % servers[idx]))
-         #   self.streams[-1]._pyroBind()
-          #  self.streams[-1].set_cluster_size(self.cluster_size)
-          #  self.streams[-1].set_num_clusters(self.img_size)
-          #  self.streams[-1].process_entries(files)
-          #  clusters = self.streams[-1].list_clusters()
-          #  for cluster in clusters:
-          #      self.mapping[cluster] = self.streams[-1]
-        #self.entries = []
-        #files = []
 
     def image_drive(self):
         self.count = int(self.img_size)
