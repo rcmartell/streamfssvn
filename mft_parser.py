@@ -72,8 +72,6 @@ class MFT_Parser():
     def get_img_size(self):
         return self.num_clusters
 
-
-
     def setup_mft_data(self):
         """ 
         The $MFT file (MFT entry 0) stores information about all allocated MFT entries in its data section. This information is used
@@ -138,7 +136,7 @@ class MFT_Parser():
                 self.offset = 0
                 self.data = []
                 clusters = []
-                self.std_info, self.filename, ads_data = None, None, None
+                self.std_info, self.filename, res_data = None, None, None
                 ctime, mtime, atime = None, None, None
                 name, flags, parent, real_size, data_size = None, None, None, None, None
                 if self.entry[0:4] == MFT_ENTRY_SIG:
@@ -233,21 +231,21 @@ class MFT_Parser():
                     for data in self.data:
                         if hasattr(data, 'clusters') and len(data.clusters):
                             clusters.extend(data.clusters)
-                        if hasattr(data, 'ads_data'):
-                            ads_data = data.ads_data
+                        if hasattr(data, 'res_data'):
+                            res_data = data.res_data
                         else:
-                            ads_data = None
+                            res_data = None
                         if hasattr(data, 'real_size'):
                             data_size = data.real_size
                         else:
                             data_size = None
 
                     # We're not interested in MFT specific files nor deleted ones...
-                    if name != None and name[0] != '$' and self.header.flags != 0:
+                    if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
                         # FILE_RECORDs represent each file's metadata
                         #self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
-                                                    #real_size=real_size, data_size=data_size, clusters=clusters, ads_data=ads_data))
-                        self.entries.append(FILE_RECORD(name=name, parent=parent, real_size=real_size, data_size=data_size, clusters=clusters))
+                                                    #real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
+                        self.entries.append(FILE_RECORD(name=name, parent=parent, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
                     inode += 1
                     count += 1
 
@@ -476,7 +474,7 @@ class MFT_Parser():
 
     def parse_data(self, offset, fullParse=False):
         clusters = []
-        ads_data = None
+        res_data = None
         name = None
         start_vcn = None
         end_vcn = None
@@ -526,14 +524,14 @@ class MFT_Parser():
             alloc_size = unpack("<I", data[16:20])[0]
             content_off = unpack("<H", data[20:22])[0]
             name = data[name_off:name_off + name_len]
-            ads_data = data[content_off:]
+            res_data = data[content_off:]
         self.offset += data_len
         if fullParse == True:
             return DATA(nonresident=nonresident, flags=flags, attr_id=attr_id, start_vcn=start_vcn,
                         end_vcn=end_vcn, alloc_size=alloc_size, real_size=real_size, clusters=clusters,
-                        file_fragmented=file_fragmented, ads_data=ads_data, name=name)
+                        file_fragmented=file_fragmented, res_data=res_data, name=name)
         else:
-            return PDATA(data_size=real_size, clusters=clusters)
+            return PDATA(data_size=real_size, clusters=clusters, res_data=res_data)
 
     def parse_bitmap_attr(self, offset):
         self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
@@ -649,9 +647,9 @@ class MFT_Parser():
         if data.clusters != None:
             print "Data Clusters: "
             print clusters
-        if data.ads_data != None:
+        if data.res_data != None:
             print "ADS Data: "
-            print data.ads_data
+            print data.res_data
         print ''
         
     def print_fsdata(self, parser):
@@ -730,7 +728,7 @@ if __name__ == "__main__":
                                 end_vcn = parser.data[i].end_vcn
                             if hasattr(parser.data[i], 'clusters'):
                                 clusters.extend(parser.data[i].clusters)
-                            ads_data = parser.data[i].ads_data
+                            res_data = parser.data[i].res_data
                         parser.print_data(parser.data[0], clusters, start_vcn, end_vcn)
             elif sys.argv[2] == '-i':
                 parser.parse_mft(fullParse=False)

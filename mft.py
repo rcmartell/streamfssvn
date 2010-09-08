@@ -15,7 +15,7 @@ class MFT_ENTRY():
 
 #class FILE_RECORD(object):
 #    """Object representing the necessary metadata we need to model a file entry"""
-#    def __init__(self, name=None, ctime=None, mtime=None, atime=None, parent=None, real_size=None, data_size=None, clusters=None, ads_data=None):
+#    def __init__(self, name=None, ctime=None, mtime=None, atime=None, parent=None, real_size=None, data_size=None, clusters=None, res_data=None):
 #        self.name = name
 #        self.ctime = ctime
 #        self.mtime = mtime
@@ -24,14 +24,15 @@ class MFT_ENTRY():
 #        self.real_size = real_size
 #        self.data_size = data_size
 #        self.clusters = clusters
-#        self.ads_data = ads_data
+#        self.res_data = res_data
 class FILE_RECORD(object):
-    def __init__(self, name=None, parent=None, real_size=None, data_size=None, clusters=None):
+    def __init__(self, name=None, parent=None, real_size=None, data_size=None, clusters=None, res_data=None):
         self.name = name
         self.parent = parent
         self.real_size = real_size
         self.data_size = data_size
         self.clusters = clusters
+        self.res_data = res_data
 
 class MFT_STANDARD_HEADER():
     """Standard MFT Entry header. All entries should start with one...Should..."""
@@ -111,7 +112,7 @@ class ATTR_LIST():
 
 class DATA():
     def __init__(self, attr_type=None, nonresident=None, flags=None, attr_id=None, start_vcn=None, end_vcn=None,
-                 alloc_size=None, real_size=None, clusters=None, file_fragmented=False, ads_data=None, name=None):
+                 alloc_size=None, real_size=None, clusters=None, file_fragmented=False, res_data=None, name=None):
         self.attr_type = attr_type
         self.nonresident = nonresident
         self.flags = flags
@@ -122,13 +123,14 @@ class DATA():
         self.real_size = real_size
         self.clusters = clusters
         self.file_fragmented = file_fragmented
-        self.ads_data = ads_data
+        self.res_data = res_data
         self.name = name
 
 class PDATA():
-    def __init__(self, data_size=None, clusters=None):
+    def __init__(self, data_size=None, clusters=None, res_data=None):
         self.data_size = data_size
         self.clusters = clusters
+        self.res_data = res_data
 
 class BITMAP():
     def __init__(self, bmap=None):

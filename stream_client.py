@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import Pyro.core, Pyro.naming, Pyro.util
-import sys, os, time
+import sys, os, time, shutil
 import threading, socket, collections, cProfile
 import array
 from array import array
@@ -19,9 +19,9 @@ class Stream_Client():
         self.files = {}
         self.file_progress = {}
         if os.path.isdir('Incomplete'):
-            os.rmdir('Incomplete')
+            shutil.rmtree('Incomplete')
         if os.path.isdir('Complete'):
-            os.rmdir('Complete')
+            shutil.rmtree('Complete')
         os.mkdir('Incomplete')
         os.mkdir('Complete')
         os.chdir('Incomplete')
@@ -30,6 +30,7 @@ class Stream_Client():
         self.other = []
         self.handles = {}
         self.filenames = []
+        self.residentfiles = {}
 
     """
     Set by Image Server
@@ -48,12 +49,11 @@ class Stream_Client():
     Setup necessary data structures to process entries received from Image Server.
     """
     def process_entries(self, entries):
+        count = 0
         for entry in entries:
             # To try and prevent name collisions
-            try:
-                entry.name = "[" + entry.parent + "]" + entry.name
-            except:
-                pass
+            entry.name = "[" + str(count) + "]" + entry.name
+            count += 1
             # NTFS is not consistent about where it stores a file's data size...
             if entry.real_size == 0:
                 if entry.data_size != 0 and entry.data_size != None:
@@ -62,11 +62,12 @@ class Stream_Client():
                     # If no size data is present, resort to num of clusters * cluster size
                     # This is not the most reliable method, as it's common for the final cluster
                     # to be only partially filled.
-                    self.files[entry.name] = [len(entry.clusters) * self.cluster_size, entry.clusters]
+                    if len(entry.clusters):
+                        self.files[entry.name] = [len(entry.clusters) * self.cluster_size, entry.clusters]
+                    else:
+                        self.residentfiles[entry.name] = entry.res_data
             else:
                 self.files[entry.name] = [entry.real_size, entry.clusters]
-            # List of all files that will be received from Image Server and their clusters numbers.
-            self.filenames.append(entry.name)
 
     """
     Create a mapping of clusters to their respective files.
@@ -81,7 +82,6 @@ class Stream_Client():
     """
     def setup_file_progress(self):
         for file in self.files:
-            file = intern(file)
             self.file_progress[file] = len(self.files[file][1])
 
     """
@@ -116,53 +116,28 @@ class Stream_Client():
     """
     def write_data(self):
         try:
-            while True:
-                # The queue is emtpy and all remaining files have been written to disk.
-                if len(self.file_progress) == 0 and len(self.queue) == 0:
-                    break
-                # Waiting for server to fill queue.
+            while len(self.file_progress):
                 while len(self.queue) == 0:
                     time.sleep(0.005)
-                # The filedb dictionary is a database which holds the mappings of the cluster/data
-                # pairs pulled from the queue to their respective files. The dictionary shoulds a
-                # limited number of file entries (the number of queue items we work on at one time) in
-                # order to prevent excessive memory-overhead.
                 filedb = {}
-                # Work on 1000 entries at a time.
                 for idx in range(1000):
-                    # Queues empty again. This check is necessary since we can't always
-                    # wait for a specific number of queue entries, as that may leave us
-                    # with a partially filled queue at the end of the imaging process.
                     if len(self.queue) == 0:
                         break
-                    # Grab the entry's cluster number and data
                     cluster, data = self.queue.popleft()
                     try:
-                        # If the file exists in our dict, append the entry
                         filedb[self.clustermap[cluster]].append((cluster, data))
                     except:
-                        # Else create a new entry.
                         filedb[self.clustermap[cluster]] = [(cluster, data)]
-                # In order to minimize random-writes/seeks, we attempt to write all data entries of
-                # a file obtained from the queue before moving on to another file. Due to file-system
-                # fragmentation this can be tricky since not all of a file's clusters will be sequential
-                # or even in ascending order.
                 for file in filedb:
-                    # Try opening the file in-case we have already written data to it. Otherwise create it.
                     try:
                         fh = open(file, 'r+b')
                     except:
                         fh = open(file, 'wb')
                     buff = []
-                    # Create individual lists for clusters and data, but maintain their original indices to
-                    # preserve the mappings between them.
-                    clusters, data = zip(*files[file])
+                    clusters, data = zip(*filedb[file])
                     idx = 0
-                    # Iterate through the list of clusters belonging to the current file.
                     while idx < len(clusters):
-                        # Offset into file where the first data entry of the sequence belongs
                         seek = clusters[idx]
-                        # Create a buffer of sequential data entries for the file.
                         buff.append(data[idx])
                         try:
                             while clusters[idx+1] == clusters[idx] + 1:
@@ -170,11 +145,8 @@ class Stream_Client():
                                 idx += 1
                         except:
                             pass
-                        # Seek to the offset where the initial data entry should be written.
                         fh.seek(self.files[file][1].index(seek) * self.cluster_size, os.SEEK_SET)
-                        # Check to see if the last cluster is padded or not.
                         if fh.tell() + len("".join(buff)) > int(self.files[file][0]):
-                            # If so, truncate the write to the correct length.
                             left = int(self.files[file][0] - fh.tell())
                             out = "".join(buff)
                             fh.write(out[:left])
@@ -182,21 +154,25 @@ class Stream_Client():
                         else:
                             fh.write("".join(buff))
                             fh.flush()
-                        # Subtract the number of clusters written to the file from its total.
                         self.file_progress[file] -= len(buff)
                         buff = []
                         idx += 1
-                    # All clusters pulled from the queue belonging to the current file have been written to disk.
                     fh.close()
-                    # If the file's entry in self.file_progress is 0, then all clusters have been written to disk
-                    # and the file is complete.
                     if not self.file_progress[file]:
                         del self.files[file]
                         del self.file_progress[file]
                         self.magic.process_file(file)
+            for file in self.residentfiles:
+                fh = open(file, 'wb')
+                fh.write(self.residentfiles[file])
+                fh.close()
+                self.magic.process_file(file)
+            ns.remove(name=sys.argv[1])
+            daemon.shutdown()
         except KeyboardInterrupt:
             print 'User cancelled execution...'
-
+            ns.remove(name=sys.argv[1])
+            daemon.shutdown()
 
 
                 #cluster, data = self.queue.popleft()
