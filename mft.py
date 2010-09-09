@@ -13,18 +13,6 @@ class MFT_ENTRY():
         self.data = data
         self.bitmap = bitmap
 
-#class FILE_RECORD(object):
-#    """Object representing the necessary metadata we need to model a file entry"""
-#    def __init__(self, name=None, ctime=None, mtime=None, atime=None, parent=None, real_size=None, data_size=None, clusters=None, res_data=None):
-#        self.name = name
-#        self.ctime = ctime
-#        self.mtime = mtime
-#        self.atime = atime
-#        self.parent = parent
-#        self.real_size = real_size
-#        self.data_size = data_size
-#        self.clusters = clusters
-#        self.res_data = res_data
 class FILE_RECORD(object):
     def __init__(self, name=None, parent=None, real_size=None, data_size=None, clusters=None, res_data=None):
         self.name = name

@@ -5,7 +5,6 @@ import os, sys, time, math
 from struct import unpack, pack
 from binascii import b2a_hex
 
-NTFS_SIG =             0xaa55
 MFT_ENTRY_SIZE =       0x400
 MFT_HEADER_LEN =       0x38
 MFT_ENTRY_SIG =       '\x46\x49\x4C\x45'
@@ -43,17 +42,23 @@ ATTRIBUTES = {
 }
 
 NTFS_EPOCH = 0x19DB1DED53E8000
+NTFS_OEM_ID = 0x4E54465320202020
 
 class MFT_Parser():
     def __init__(self, img=None):
         self.img = open(img, 'rb')
         self.entries = []
         self.mft_data = None
-        # Verify that this is actually a NTFS volume by checking the 2 byte signature at offset 0x200
-        if int(unpack("<H", self.img.read(0x200)[-2:])[0]) != NTFS_SIG:
-            print "No valid NTFS signature found."
-            sys.exit(1)
-        self.img.seek(0)
+        self.poffset = None
+        # Is the target a partition or an entire disk
+        if unpack(">Q", self.img.read(0xB)[3:])[0] == NTFS_OEM_ID:
+            # Partition
+            self.poffset = 0
+        else:
+            # Raw Disk:
+            # Read starting sector for first partition from MBR
+            self.poffset = unpack("I", self.img.read(0x1BF)[-4:])[0] * 512
+        self.img.seek(self.poffset)
         """ 
         Grab FS data from the MBR
         """
@@ -78,7 +83,7 @@ class MFT_Parser():
         to bootstrap the parser. While slightly more complex than just linearly reading each file entry, this method is able to handle
         the case where the MFT is fragmented and or an entry falls on a bad cluster. 
         """
-        self.offset = self.mft_base_offset
+        self.offset = self.mft_base_offset + self.poffset
         self.img.seek(self.offset, os.SEEK_SET)
         self.entry = self.img.read(MFT_ENTRY_SIZE)
         self.offset = self.entry.find(DATA_SIG)
@@ -130,7 +135,7 @@ class MFT_Parser():
                 if int(vcn) >= len(self.mft_data) or inode > end:
                     break
                 lcn = self.mft_data[int(vcn)]
-                address = (lcn * self.cluster_size) + (idx * MFT_ENTRY_SIZE)
+                address = (lcn * self.cluster_size) + (idx * MFT_ENTRY_SIZE) + self.poffset
                 self.img.seek(address, os.SEEK_SET)
                 self.entry = self.img.read(MFT_ENTRY_SIZE)
                 self.offset = 0
@@ -330,7 +335,7 @@ class MFT_Parser():
                     idx, vcn = math.modf((attr.mft_entry * MFT_ENTRY_SIZE) / self.cluster_size)
                     idx = self.pos.index(idx)
                     lcn = self.mft_data[int(vcn)]
-                    address = (lcn * self.cluster_size) + (idx * MFT_ENTRY_SIZE)
+                    address = (lcn * self.cluster_size) + (idx * MFT_ENTRY_SIZE) + self.poffset
                     self.img.seek(address, os.SEEK_SET)
                     self.entry = self.img.read(MFT_ENTRY_SIZE)
                     offset = entry_off[attr.mft_entry]
@@ -569,7 +574,7 @@ class MFT_Parser():
             if i == 9:
                 filestats['other'].append(entry.name)
         print "Finished analysing files.\n"
-        print "Number of entries: %i" % len(self.entries)
+        print "Number of files: %i" % len(self.entries)
         print "video      : %i" % len(filestats['video'])
         print "pdf        : %i" % len(filestats['pdf'])
         print "images     : %i" % len(filestats['image'])
@@ -685,13 +690,17 @@ class MFT_Parser():
             import psyco
             psyco.full()
         except:
-            print "Psyco failed"
             pass
         self.setup_mft_data()
         self.parse_mft()
         return self.entries
 
-        
+def usage():
+    print "Usage: mft_parser.py <image> <flags> [entry number] where flags are one of:"
+    print "\t-f : Get summary of filetypes and their numbers present on the image"
+    print "\t-s : Get basic filesystem information (Including number of files on system)"
+    print "\t-c : Maps a cluster number back to the file that it is a part of"
+
 if __name__ == "__main__":
     try:
         import psyco
@@ -730,24 +739,16 @@ if __name__ == "__main__":
                                 clusters.extend(parser.data[i].clusters)
                             res_data = parser.data[i].res_data
                         parser.print_data(parser.data[0], clusters, start_vcn, end_vcn)
-            elif sys.argv[2] == '-i':
+            elif sys.argv[2] == '-f':
                 parser.parse_mft(fullParse=False)
                 parser.getFiletypeStats()
-            elif sys.argv[2] == '-f':
+            elif sys.argv[2] == '-s':
                 parser.parse_mft(fullParse=False)
                 parser.print_fsdata(parser)
             elif sys.argv[2] == '-c':
                 parser.parse_mft()
                 parser.cluster_to_file(parser, sys.argv[3:])
-            else:
-                if len(sys.argv) == 3:
-                    parser.parse_mft(start=int(sys.argv[2]))
-                if len(sys.argv) >= 4:
-	                parser.parse_mft(start=int(sys.argv[2]), end=int(sys.argv[3]))
         else:
-            parser.parse_mft()
+            usage()
     except:
-        print "Usage: mft_parser.py <image> <flags> [entry number] where flags are one of:"
-        print "\t-i : Get summary of filetypes and their numbers present on the image"
-        print "\t-f : Get basic filesystem information (Including number of files on system)"
-        print "\t-c : Maps a cluster number back to the file that it is a part of"
+        usage()

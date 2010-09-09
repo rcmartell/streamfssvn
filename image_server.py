@@ -101,6 +101,5 @@ if __name__ == "__main__":
         import psyco
         psyco.full()
     except:
-        #print "Psyco failed"
         pass
     main()
