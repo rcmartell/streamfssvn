@@ -128,6 +128,7 @@ class MFT_Parser():
         inode = start
         self.pos = [0.0, 0.25, 0.50, 0.75]
         self.dirs = {}
+        self.fullParse = fullParse
         while True:
             try:
                 idx, vcn = math.modf((count * MFT_ENTRY_SIZE) / self.cluster_size)
@@ -417,64 +418,149 @@ class MFT_Parser():
         return None
 
     def parse_idx_root(self, offset):
-        """ Not interested in directory info but the space the metadata occupies needs to be accounted for in the offsets to keep everything aligned. """
-        self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
-        return None
-        # idx_root = self.entry[offset+32:offset+self.entry_len]
-        # attr_type = idx_root[0:4]
-        # coll_sort_rule = unpack("<I", idx_root[4:8])[0]
-        # entry_size = unpack("<I", idx_root[8:12])[0]
-        # node_header = idx_root[16:32]
-        # node_header_off = offset+48
-        # idx_list_off = unpack("<I", node_header[0:4])[0] + node_header_off
-        # idx_used_end = unpack("<I", node_header[4:8])[0] + node_header_off
-        # idx_alloc_end = unpack("<I", node_header[8:12])[0] + node_header_off
-        # flags = unpack("<I", node_header[12:16])[0]
-        #idx_entry = self.idx_entry(offset+64, idx_root[32:])
-        # idx_entry = None
-        # return IDX_ROOT(attr_type=attr_type, entry_len=self.entry_len, flags=flags, idx_entry=idx_entry)
+        entry_len = unpack("<I", self.entry[offset+4:offset+8])[0]
+        if not self.fullParse:
+            self.offset += entry_len
+            return
+        idx_root = self.entry[offset+32:offset+32+entry_len]
+        attr_type = idx_root[0:4]
+        coll_sort_rule = unpack("<I", idx_root[4:8])[0]
+        self.idx_alloc_entry_size = unpack("<I", idx_root[8:12])[0]
+        self.clusters_per_entry = int(b2a_hex(unpack("<c", idx_root[12])[0]),16)
+        idx_entry_list_off = unpack("<I", idx_root[16:20])[0]
+        end_entry_list_off = unpack("<I", idx_root[20:24])[0]
+        end_entry_alloc_off = unpack("<I", idx_root[24:28])[0]
+        idx_entry_flags = unpack("<I", idx_root[28:32])[0]
+        idx_entries=[]
+        idx_entry = idx_root[idx_entry_list_off+16:]
+        offset = 0
+        while True:
+            mft_ref = unpack("<Q", idx_entry[offset:offset+8])[0] & 0xFFFFFFFF
+            idx_entry_len = unpack("<H", idx_entry[offset+8:offset+10])[0]
+            filename_len = unpack("<H", idx_entry[offset+10:offset+12])[0]
+            flags = unpack("<I", idx_entry[offset+12:offset+16])[0]
+            if filename_len:
+                filename, namespace = self.parse_idx_entry_filename(idx_entry[offset+16:offset+16+filename_len], filename_len)
+                if namespace == 2:
+                    offset += idx_entry_len
+                    continue
+                else:
+                    idx_entries.append((filename, int(mft_ref)))
+            offset += idx_entry_len
+            if flags & 0x2 or offset >= end_entry_list_off:
+                break
+        self.offset += entry_len
+        return IDX_ROOT(attr_type=attr_type, idx_entries=idx_entries)
 
     def parse_idx_alloc(self, offset):
-        """ Not interested in directory info but the space the metadata occupies needs to be accounted for in the offsets to keep everything aligned. """
-        self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
-        return None
-        # idx_header = self.entry[offset+4:offset+28]
-        # sig = idx_header[0:4]
-        # fixup_arr_off = unpack("<H", idx_header[4:6])[0]
-        # fixup_arr_num = unpack("<H", idx_header[6:8])[0]
-        # lsn = unpack("<Q", idx_header[8:16])[0]
-        # vcn = unpack("<Q", idx_header[16:24])[0]
-        # node_header_off = offset+28
-        # node_header_end = node_header_off + 16
-        # node_header = self.entry[node_header_off:node_header_end]
-        # idx_list_off = unpack("<I", node_header[0:4])[0] + node_header_off
-        # idx_used_end = unpack("<I", node_header[4:8])[0] + node_header_off
-        # idx_alloc_end = unpack("<I", node_header[8:12])[0] + node_header_off
-        # flags = unpack("<I", node_header[12:16])[0]
-        # if fixup_arr_num > 0:
-            # if fixup_arr_off == idx_list_off:
-                # idx_list_off += fixup_arr_num * 2
-        # idx_entries = []
-        # num_entries = (idx_used_end - idx_list_off) / self.entry_len
-        # count = 0
-        # while count < num_entries:
-            # entry = self.entry[idx_list_offset+(count * self.entry_len):
-                            # idx_list_offset + (count * self.entry_len) + self.entry_len]
-            # idx_offset = idx_list_offset + (count * self.entry_len)
-            # child_vcn_off = (idx_offset + self.entry_len - 8) - ((idx_offset + self.entry_len - 8) % 8)
-            # child_vcn = unpack("<Q", self.entry[child_vcn_off:child_vcn_off+8])[0]
-            # idx_entries.append((self.idx_entry(idx_offset, entry), child_vcn))
-            # count += 1
+        idx_alloc_len = unpack("<I", self.entry[offset+4:offset+8])[0]
+        if not self.fullParse:
+            self.offset += idx_alloc_len
+            return
+        self.original_offset = self.img.tell()
+        idx_alloc = self.entry[offset+32:offset+32+idx_alloc_len]
+        idx_list_off = unpack("<I", idx_alloc[0:4])[0]
+        idx_end_used = unpack("<I", idx_alloc[4:8])[0]
+        idx_end_alloc = unpack("<I", idx_alloc[8:12])[0]
+        idx_entry_flags = unpack("<I", idx_alloc[12:16])[0]
+        data_run_len = idx_alloc_len - idx_list_off
+        data_run = idx_alloc[idx_list_off-32:]
+        entries = []
+        run_off = 0
+        prev_data_run_offset = 0
+        max_sign = [int(2**((8*x)-1)-1) for x in range(9)]
+        file_fragmented = False
+        while True:
+            tmp = b2a_hex(unpack("<c", data_run[run_off])[0])
+            data_run_offset_bytes = int(tmp[0], 16)
+            data_run_bytes = int(tmp[1], 16)
+            if tmp[0] == '0' or tmp[1] == '0':
+                break
+            data_run = data_run[run_off+1:]
+            data_run_len = unpack("<Q", data_run[0:data_run_bytes] + ('\x00' * (8-data_run_bytes)))[0]
+            data_run = data_run[data_run_bytes:]
+            data_run_offset = unpack("<Q", data_run[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
+            data_run = data_run[data_run_offset_bytes:]
+            if file_fragmented:
+                if max_sign[data_run_offset_bytes] > data_run_offset:
+                    data_run_offset += prev_data_run_offset
+                else:
+                    data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
+                                                              (data_run_offset - max_sign[data_run_offset_bytes]))
+            entries.extend(self.parse_idx_entry_nonresident(data_run_offset * self.cluster_size))
+            if data_run[0] == DATA_RUN_END:
+                break
+            else:
+                file_fragmented = True
+                run_off = 0
+                prev_data_run_offset = data_run_offset
+                continue
+        self.img.seek(self.original_offset, os.SEEK_SET)
+        self.offset += idx_alloc_len
+        return IDX_ALLOC(entries)
 
-        # return IDX_ALLOC(sig=sig, lsn=lsn, vcn=vcn, flags=flags, idx_entries=idx_entries)
 
-    # def parse_idx_entry(self, idx_offset, entry):
-        # mft_file_ref = unpack("<Q", entry[0:8])[0]
-        # entry_len = unpack("<H", entry[8:10])[0]
-        # filename_attr_len = unpack("<H", entry[10:12])[0]
-        # flags = unpack("<I", entry[12:16])[0]
-        # if filename_attr_len > 0:
-            # return self.parse_filename(idx_offset+16)
+    def parse_idx_entry_nonresident(self, lcn):
+        self.img.seek(lcn, os.SEEK_SET)
+        idx_entry = self.img.read(4096)
+        fixup_arr_off = unpack("<H", idx_entry[4:6])[0] + 2
+        fixup_arr_len = unpack("<H", idx_entry[6:8])[0] + 1
+        logfile_seq_num = unpack("<Q", idx_entry[8:16])[0]
+        idx_stream_vcn = unpack("<Q", idx_entry[16:24])[0]
+        sec_end = self.sector_size-2
+        idx_entry = list(idx_entry)
+        for i in range(0, fixup_arr_len, 2):
+            idx_entry[sec_end] = idx_entry[fixup_arr_off+i]
+            idx_entry[sec_end+1] = idx_entry[fixup_arr_off+i+1]
+            sec_end += self.sector_size
+        idx_entry = pack("<%dc" % self.idx_alloc_entry_size, *idx_entry)
+        idx_list_off = unpack("<I", idx_entry[24:28])[0] + 24
+        idx_end_used = unpack("<I", idx_entry[28:32])[0] + 24
+        idx_end_alloc = unpack("<I", idx_entry[32:36])[0] + 24
+        idx_entry_flags = unpack("<I", idx_entry[36:40])[0]
+        file_entries = []
+        entry = idx_entry[idx_list_off:]
+        offset = 0
+        while True:
+            mft_ref = unpack("<Q", entry[offset:offset+8])[0] & 0xFFFFFFFF
+            entry_len = unpack("<H", entry[offset+8:offset+10])[0]
+            filename_len = unpack("<H", entry[offset+10:offset+12])[0]
+            flags = unpack("<I", entry[offset+12:offset+16])[0]
+            if filename_len:
+                filename, namespace = self.parse_idx_entry_filename(entry[offset+16:offset+16+filename_len], filename_len)
+                if namespace == 2:
+                    offset += entry_len
+                    continue
+                else:
+                    file_entries.append((filename, int(mft_ref)))
+            offset += entry_len
+            if flags & 0x2 or offset >= idx_end_used:
+                break
+        return file_entries
+         
+    def parse_idx_entry_filename(self, entry, filename_len):
+        filename = entry[0:filename_len]
+        ## parent = unpack("<Q", filename[0:8])[0] & 0x00FFFFFF
+        ## try:
+        ##     ctime = time.ctime((unpack("<Q", filename[8:16])[0] - NTFS_EPOCH) / 10**(7))
+        ##     mtime = time.ctime((unpack("<Q", filename[16:24])[0] - NTFS_EPOCH) / 10**(7))
+        ##     #mft_mod_time = time.ctime((unpack("<Q", filename[24:32])[0] - NTFS_EPOCH) / 10**(7))
+        ##     atime = time.ctime((unpack("<Q", filename[32:40])[0] - NTFS_EPOCH) / 10**(7))
+        ## except:
+        ##     ctime = None
+        ##     mtime = None
+        ##     atime = None
+        ## alloc_size = unpack("<Q", filename[40:48])[0]
+        ## real_size = unpack("<Q", filename[48:56])[0]
+        ## flags = unpack("<I", filename[56:60])[0]
+        ## attrs = [key for key in ATTRIBUTES if flags & ATTRIBUTES[key]]
+        name_len = int(b2a_hex(unpack("<c", filename[64])[0]), 16)
+        namespace = int(b2a_hex(unpack("<c", filename[65])[0]), 16)
+        return (filename[66: 66 + (2 * name_len)].replace('\x00', ''), namespace)
+        #return FILENAME(parent=parent, ctime=ctime, mtime=mtime, atime=atime,
+        #         alloc_size=alloc_size, real_size=real_size, flags=attrs, name_len=name_len, name=name, namespace=namespace)
+
+
 
 
     def parse_data(self, offset, fullParse=False):
@@ -632,6 +718,18 @@ class MFT_Parser():
         print "Object ID: %s" % parser.object_id.object_id.upper()
         print ''
 
+    def print_idx_root(self, parser):
+        print "*****************INDEX ROOT**************"
+        print parser.idx_root.idx_entries
+        print ''
+    
+
+    def print_idx_alloc(self, parser):
+        print "*****************INDEX ALLOCATION**************"
+        print parser.idx_alloc.idx_entries
+        print ''
+
+
     def print_data(self, data, clusters, start_vcn, end_vcn):
         print "******************DATA INFO******************"
         print "Attribute ID:                    %i" % data.attr_id
@@ -696,10 +794,13 @@ class MFT_Parser():
         return self.entries
 
 def usage():
-    print "Usage: mft_parser.py <image> <flags> [entry number] where flags are one of:"
-    print "\t-f : Get summary of filetypes and their numbers present on the image"
-    print "\t-s : Get basic filesystem information (Including number of files on system)"
-    print "\t-c : Maps a cluster number back to the file that it is a part of"
+    print "Usage: mft_parser.py <image> <flags>"
+    print "\tWhere flags are one of:"
+    print "\t-f : Get summary of filetype statistics"
+    print "\t-s : Get basic filesystem information"
+    print "\t-c <cluster number>: Maps a given cluster number back to the file that owns it"
+    print "\t-p <entry number>: Print specified MFT entry metadata information"
+    print "\t-d <entry number>: Print specified MFT entry data run information"
 
 if __name__ == "__main__":
     try:
@@ -707,48 +808,52 @@ if __name__ == "__main__":
         psyco.full()
     except:
         pass
+   # try:
     parser = MFT_Parser(sys.argv[1])
     parser.setup_mft_data()
     clusters = []
     end_vcn = 0
-    try:
-        if len(sys.argv) >= 3:
-            if sys.argv[2] == '-p' or sys.argv[2] == '-d':
-                parser.parse_mft(start=int(sys.argv[3]), end=int(sys.argv[3]), fullParse=True)
-                if sys.argv[2] == '-p':
-                    if hasattr(parser, 'header'):
-                        if parser.header != None:
-                            parser.print_header(parser)
-                    if hasattr(parser, 'std_info'):
-                        if parser.std_info != None:
-                            parser.print_std_info(parser)
-                    if hasattr(parser, 'filename'):
-                        if parser.filename != None:
-                            parser.print_filename(parser)
-                    if hasattr(parser, 'object_id'):
-                        parser.print_object_id(parser)
-                if sys.argv[2] == '-d':
-                    if len(parser.data):
-                        start_vcn = parser.data[0].start_vcn
-                        for i in range(len(parser.data)):
-                            if parser.data[i].start_vcn != None and parser.data[i].start_vcn < start_vcn:
-                                start_vcn = parser.data[i].start_vcn
-                            if parser.data[i].end_vcn > end_vcn:
-                                end_vcn = parser.data[i].end_vcn
-                            if hasattr(parser.data[i], 'clusters'):
-                                clusters.extend(parser.data[i].clusters)
-                            res_data = parser.data[i].res_data
-                        parser.print_data(parser.data[0], clusters, start_vcn, end_vcn)
-            elif sys.argv[2] == '-f':
-                parser.parse_mft(fullParse=False)
-                parser.getFiletypeStats()
-            elif sys.argv[2] == '-s':
-                parser.parse_mft(fullParse=False)
-                parser.print_fsdata(parser)
-            elif sys.argv[2] == '-c':
-                parser.parse_mft()
-                parser.cluster_to_file(parser, sys.argv[3:])
-        else:
+    if len(sys.argv) >= 3:
+        if sys.argv[2] == '-p' or sys.argv[2] == '-d':
+            parser.parse_mft(start=int(sys.argv[3]), end=int(sys.argv[3]), fullParse=True)
+            if sys.argv[2] == '-p':
+                if hasattr(parser, 'header'):
+                    if parser.header != None:
+                        parser.print_header(parser)
+                if hasattr(parser, 'std_info'):
+                    if parser.std_info != None:
+                        parser.print_std_info(parser)
+                if hasattr(parser, 'filename'):
+                    if parser.filename != None:
+                        parser.print_filename(parser)
+                if hasattr(parser, 'object_id'):
+                    parser.print_object_id(parser)
+                if hasattr(parser, 'idx_root'):
+                    parser.print_idx_root(parser)
+                if hasattr(parser, 'idx_alloc'):
+                    parser.print_idx_alloc(parser)
+            if sys.argv[2] == '-d':
+                if len(parser.data):
+                    start_vcn = parser.data[0].start_vcn
+                    for i in range(len(parser.data)):
+                        if parser.data[i].start_vcn != None and parser.data[i].start_vcn < start_vcn:
+                            start_vcn = parser.data[i].start_vcn
+                        if parser.data[i].end_vcn > end_vcn:
+                            end_vcn = parser.data[i].end_vcn
+                        if hasattr(parser.data[i], 'clusters'):
+                            clusters.extend(parser.data[i].clusters)
+                        res_data = parser.data[i].res_data
+                    parser.print_data(parser.data[0], clusters, start_vcn, end_vcn)
+        elif sys.argv[2] == '-f':
+            parser.parse_mft(fullParse=False)
+            parser.getFiletypeStats()
+        elif sys.argv[2] == '-s':
+            parser.parse_mft(fullParse=False)
+            parser.print_fsdata(parser)
+        elif sys.argv[2] == '-c':
+            parser.parse_mft()
+            parser.cluster_to_file(parser, sys.argv[3:])
+    else:
             usage()
-    except:
-        usage()
+    #except:
+       # usage()

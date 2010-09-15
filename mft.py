@@ -61,18 +61,12 @@ class OBJECT_ID():
         self.object_id = object_id
 
 class IDX_ROOT():
-    def __init__(self, attr_type=None, entry_len=None, flags=None, idx_entry=None):
+    def __init__(self, attr_type=None, idx_entries=None):
         self.attr_type = attr_type
-        self.entry_len = entry_len
-        self.flags = flags
-        self.idx_entry = idx_entry
+        self.idx_entries = idx_entries
 
 class IDX_ALLOC():
-    def __init__(self, sig=None, lsn=None, vcn=None, flags=None, idx_entries=None):
-        self.sig = sig
-        self.lsn = lsn
-        self.vcn = vcn
-        self.flags = flags
+    def __init__(self, idx_entries=None):
         self.idx_entries = idx_entries
 
 class IDX_ENTRY():
