@@ -808,52 +808,52 @@ if __name__ == "__main__":
         psyco.full()
     except:
         pass
-   # try:
-    parser = MFT_Parser(sys.argv[1])
-    parser.setup_mft_data()
-    clusters = []
-    end_vcn = 0
-    if len(sys.argv) >= 3:
-        if sys.argv[2] == '-p' or sys.argv[2] == '-d':
-            parser.parse_mft(start=int(sys.argv[3]), end=int(sys.argv[3]), fullParse=True)
-            if sys.argv[2] == '-p':
-                if hasattr(parser, 'header'):
-                    if parser.header != None:
-                        parser.print_header(parser)
-                if hasattr(parser, 'std_info'):
-                    if parser.std_info != None:
-                        parser.print_std_info(parser)
-                if hasattr(parser, 'filename'):
-                    if parser.filename != None:
-                        parser.print_filename(parser)
-                if hasattr(parser, 'object_id'):
-                    parser.print_object_id(parser)
-                if hasattr(parser, 'idx_root'):
-                    parser.print_idx_root(parser)
-                if hasattr(parser, 'idx_alloc'):
-                    parser.print_idx_alloc(parser)
-            if sys.argv[2] == '-d':
-                if len(parser.data):
-                    start_vcn = parser.data[0].start_vcn
-                    for i in range(len(parser.data)):
-                        if parser.data[i].start_vcn != None and parser.data[i].start_vcn < start_vcn:
-                            start_vcn = parser.data[i].start_vcn
-                        if parser.data[i].end_vcn > end_vcn:
-                            end_vcn = parser.data[i].end_vcn
-                        if hasattr(parser.data[i], 'clusters'):
-                            clusters.extend(parser.data[i].clusters)
-                        res_data = parser.data[i].res_data
-                    parser.print_data(parser.data[0], clusters, start_vcn, end_vcn)
-        elif sys.argv[2] == '-f':
-            parser.parse_mft(fullParse=False)
-            parser.getFiletypeStats()
-        elif sys.argv[2] == '-s':
-            parser.parse_mft(fullParse=False)
-            parser.print_fsdata(parser)
-        elif sys.argv[2] == '-c':
-            parser.parse_mft()
-            parser.cluster_to_file(parser, sys.argv[3:])
-    else:
+    try:
+        parser = MFT_Parser(sys.argv[1])
+        parser.setup_mft_data()
+        clusters = []
+        end_vcn = 0
+        if len(sys.argv) >= 3:
+            if sys.argv[2] == '-p' or sys.argv[2] == '-d':
+                parser.parse_mft(start=int(sys.argv[3]), end=int(sys.argv[3]), fullParse=True)
+                if sys.argv[2] == '-p':
+                    if hasattr(parser, 'header'):
+                        if parser.header != None:
+                            parser.print_header(parser)
+                    if hasattr(parser, 'std_info'):
+                        if parser.std_info != None:
+                            parser.print_std_info(parser)
+                    if hasattr(parser, 'filename'):
+                        if parser.filename != None:
+                            parser.print_filename(parser)
+                    if hasattr(parser, 'object_id'):
+                        parser.print_object_id(parser)
+                    if hasattr(parser, 'idx_root'):
+                        parser.print_idx_root(parser)
+                    if hasattr(parser, 'idx_alloc'):
+                        parser.print_idx_alloc(parser)
+                if sys.argv[2] == '-d':
+                    if len(parser.data):
+                        start_vcn = parser.data[0].start_vcn
+                        for i in range(len(parser.data)):
+                            if parser.data[i].start_vcn != None and parser.data[i].start_vcn < start_vcn:
+                                start_vcn = parser.data[i].start_vcn
+                            if parser.data[i].end_vcn > end_vcn:
+                                end_vcn = parser.data[i].end_vcn
+                            if hasattr(parser.data[i], 'clusters'):
+                                clusters.extend(parser.data[i].clusters)
+                            res_data = parser.data[i].res_data
+                        parser.print_data(parser.data[0], clusters, start_vcn, end_vcn)
+            elif sys.argv[2] == '-f':
+                parser.parse_mft(fullParse=False)
+                parser.getFiletypeStats()
+            elif sys.argv[2] == '-s':
+                parser.parse_mft(fullParse=False)
+                parser.print_fsdata(parser)
+            elif sys.argv[2] == '-c':
+                parser.parse_mft()
+                parser.cluster_to_file(parser, sys.argv[3:])
+        else:
             usage()
-    #except:
-       # usage()
+    except:
+        usage()
