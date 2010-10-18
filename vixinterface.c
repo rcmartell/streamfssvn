@@ -110,7 +110,8 @@ void RunProgramInGuest(VixHandle hostHandle, char* path, char* user,
         Vix_ReleaseHandle(vmHandle);
         VixHost_Disconnect(hostHandle);
         exit(-1);
-} 
+}
+
 
 int main(int argc, char* argv[])
 {
