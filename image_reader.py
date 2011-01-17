@@ -68,6 +68,7 @@ class Image_Reader():
                     cluster_queue[stream] = []
                     data_queue[stream] = []
                 queue_count = 0
+                pbar.update(idx * self.cluster_size)
             data = ifh.read(self.cluster_size)
             queue_count += 1
             #self.mapping[idx].add_queue(idx, data)
@@ -75,7 +76,6 @@ class Image_Reader():
             data_queue[self.mapping[idx]].append(data)
             #stream_queue[self.mapping[idx]].append((idx, data))
             #ofh.write(data)
-            pbar.update(idx * self.cluster_size)
         pbar.finish()
         ifh.close()
         ofh.close()
