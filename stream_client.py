@@ -6,12 +6,7 @@ import array
 from array import array
 from file_magic import File_Magic
 
-try:
-    import resource
-    resource.setrlimit(resource.RLIMIT_NOFILE, (1024,-1))
-    MAX_HANDLES = 1024
-except:
-    MAX_HANDLES = 9999
+QUEUE_SIZE = 1000
 
 class Stream_Client():
     def __init__(self):
@@ -52,8 +47,9 @@ class Stream_Client():
         count = 0
         for entry in entries:
             # To try and prevent name collisions
-            entry.name = "[" + str(count) + "]" + entry.name
-            count += 1
+            if entry.name in self.files or entry.name in self.residentfiles:
+                entry.name = "[" + str(count) + "]" + entry.name
+                count += 1
             # NTFS is not consistent about where it stores a file's data size...
             if entry.real_size == 0:
                 if entry.data_size != 0 and entry.data_size != None:
@@ -79,6 +75,8 @@ class Stream_Client():
 
     """
     Create a dictionary containing the number of clusters each file is composed of.
+    
+    This will be used to determine if a file has been completely written to disk.
     """
     def setup_file_progress(self):
         for file in self.files:
@@ -113,60 +111,94 @@ class Stream_Client():
 
     """
     Writes file data to disk.
+    
+    The algorithm this function uses is an attempt to minimize random writes. This isn't all that straight-forward
+    due to file-fragmentation and not having all of the data beforehand. I'm sure more efficient ones exist, but
+    this does the job reasonably well.
     """
     def write_data(self):
         try:
+            # While incomplete files remain...
             while len(self.file_progress):
+                # Sleep while the queue is empty.
                 while len(self.queue) == 0:
                     time.sleep(0.005)
                 filedb = {}
-                for idx in range(1000):
+                # 1000 is an arbitrary queue size to work on at one time.
+                # This value can be adjusted for better performance.
+                for idx in range(QUEUE_SIZE):
+                    # This breaks us out of the loop if we weren't able to grab 
+                    # 1000 entries in one go.
                     if len(self.queue) == 0:
                         break
+                    # Grab the front cluster/data set from the queue
                     cluster, data = self.queue.popleft()
+                    # Create an in-memory db of mappings between files and their
+                    # clusters/data that we've pulled off the queue.
                     try:
                         filedb[self.clustermap[cluster]].append((cluster, data))
                     except:
                         filedb[self.clustermap[cluster]] = [(cluster, data)]
+                # For every file this iteration has data for...
                 for file in filedb:
+                    # Try to open the file if it exists, otherwise create it.
                     try:
                         fh = open(file, 'r+b')
                     except:
                         fh = open(file, 'wb')
                     buff = []
+                    # Create individual lists of the file's clusters and data we've obtained from the qeueue.
                     clusters, data = zip(*filedb[file])
                     idx = 0
+                    # For every cluster for this file we've received...
                     while idx < len(clusters):
+                        # Create an initial offset using the current index into the cluster array.
                         seek = clusters[idx]
+                        # Add the data at the index into the "to be written buffer".
                         buff.append(data[idx])
                         try:
+                            # If the next value in the cluster array is one more than the value at the index, 
+                            # include this in our buffer and increment the index. Continue doing so until
+                            # we encounter a value that is not one more than the previous. This helps to
+                            # maximize linear writes.
                             while clusters[idx+1] == clusters[idx] + 1:
                                 buff.append(data[idx+1])
                                 idx += 1
                         except:
                             pass
+                        # Seek to the initial offset
                         fh.seek(self.files[file][1].index(seek) * self.cluster_size, os.SEEK_SET)
+                        # Check to see if (initial offset + data length) > size of the file. This 
+                        # normally occurs because the file's size is not an exact multiple of the 
+                        # cluster size and thus the final cluster is zero padded. If this is so, 
+                        # trim off the padding.
                         if fh.tell() + len("".join(buff)) > int(self.files[file][0]):
                             left = int(self.files[file][0] - fh.tell())
                             out = "".join(buff)
                             fh.write(out[:left])
                             fh.flush()
+                        # Otherwise just append the data.
                         else:
                             fh.write("".join(buff))
                             fh.flush()
+                        # Subtract the number of clusters written from the file's remaining clusters list.
                         self.file_progress[file] -= len(buff)
                         buff = []
                         idx += 1
                     fh.close()
+                    # If the file's file_progress list is empty, then the entire file has been written to disk.
                     if not self.file_progress[file]:
                         del self.files[file]
                         del self.file_progress[file]
+                        # Move file to appropriate folder based on its extension/magic number.
                         self.magic.process_file(file)
+            # Write resident files to disk.
             for file in self.residentfiles:
                 fh = open(file, 'wb')
                 fh.write(self.residentfiles[file])
                 fh.close()
                 self.magic.process_file(file)
+            # Finished. Do cleanup.
             ns.remove(name=sys.argv[1])
             daemon.shutdown()
         except KeyboardInterrupt:
