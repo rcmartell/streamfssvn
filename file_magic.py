@@ -21,6 +21,15 @@ class File_Magic():
             'HTML'          : '../Complete/HTML//',
             'Other'         : '../Complete/Other//'
         }
+
+        for val in self.dirs.values():
+            try:
+                os.mkdir(val)
+            except:
+                pass
+        self.setup_filters()
+
+    def setup_filters(self):
         self.filters = {
             'Video'         :   ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV',
                                 'MOV', 'H.264', 'XVID', 'DIVX', 'MKV'],
