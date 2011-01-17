@@ -801,6 +801,7 @@ def usage():
     print "\t-c <cluster number>: Maps a given cluster number back to the file that owns it"
     print "\t-p <entry number>: Print specified MFT entry metadata information"
     print "\t-d <entry number>: Print specified MFT entry data run information"
+    sys.exit(1)
 
 if __name__ == "__main__":
     try:
@@ -813,8 +814,10 @@ if __name__ == "__main__":
         parser.setup_mft_data()
         clusters = []
         end_vcn = 0
-        if len(sys.argv) >= 3:
+        if len(sys.argv) >= 3 and sys.argv[2] in ['-f', '-s', '-c', '-p', '-d']:
             if sys.argv[2] == '-p' or sys.argv[2] == '-d':
+                if len(sys.argv) != 4:
+                    usage()              
                 parser.parse_mft(start=int(sys.argv[3]), end=int(sys.argv[3]), fullParse=True)
                 if sys.argv[2] == '-p':
                     if hasattr(parser, 'header'):
@@ -855,5 +858,6 @@ if __name__ == "__main__":
                 parser.cluster_to_file(parser, sys.argv[3:])
         else:
             usage()
-    except:
-        usage()
+    except Exception as e:
+        print e
+        
