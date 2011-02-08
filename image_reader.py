@@ -25,15 +25,15 @@ class Image_Reader():
     def setup_stream_listeners(self, servers):
         print 'Setting up stream servers'
         self.streams = []
-        for server in servers:
+        for idx in range(len(servers)):
             self.streams.append(Pyro.core.Proxy("PYRONAME:%s" % server))
-            self.streams[-1]._pyroBind()
-            self.streams[-1].set_cluster_size(self.cluster_size)
-            self.streams[-1].set_num_clusters(self.img_size)
-            self.streams[-1].process_entries(self.entries)
-            clusters = self.streams[-1].list_clusters()
+            self.streams[idx]._pyroBind()
+            self.streams[idx].set_cluster_size(self.cluster_size)
+            self.streams[idx].set_num_clusters(self.img_size)
+            self.streams[idx].process_entries(self.entries[idx::len(servers)])
+            clusters = self.streams[idx].list_clusters()
             for cluster in clusters:
-                self.mapping[cluster] = self.streams[-1]
+                self.mapping[cluster] = self.streams[idx]
         self.entries = []
         files = []
 
