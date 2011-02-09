@@ -1,4 +1,4 @@
-import sys, os, server_stats
+import sys, os
 import magic, threading
 import shutil, Pyro.core, Pyro.util
 
@@ -46,7 +46,6 @@ class File_Magic():
                 os.mkdir(val)
             except:
                 pass
-        self.server_stats = server_stats.Server_Stats()
 
     def process_file(self, file):
         self.thread = threading.Thread(target=self.sort_file, args=(file,))
@@ -63,7 +62,6 @@ class File_Magic():
             except:
                 os.remove(self.dirs[category] + file)
                 shutil.move(file, self.dirs[category])
-            self.server_stats.addFile(category, size)
         else:
             for filter in self.filters:
                 if os.path.splitext(file)[1][1:].upper() in self.filters[filter]:
@@ -72,12 +70,10 @@ class File_Magic():
                     except:
                         os.remove(self.dirs[filter] + file)
                         shutil.move(file, self.dirs[filter])
-                    self.server_stats.addFile(filter, size)
                     return
             try:
                 shutil.move(file, self.dirs['Other'])
             except:
                 os.remove(self.dirs['Other'] + file)
                 shutil.move(file, self.dirs['Other'])
-            self.server_stats.addFile("Other", size)
         return
