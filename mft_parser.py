@@ -2,7 +2,6 @@
 from __future__ import division
 from mft import *
 import os, sys, time, math
-from numpy import array, append
 from struct import unpack, pack
 from binascii import b2a_hex
 
@@ -142,7 +141,7 @@ class MFT_Parser():
                 self.entry = self.img.read(MFT_ENTRY_SIZE)
                 self.offset = 0
                 self.data = []
-                clusters = array([])
+                clusters = []
                 self.std_info, self.filename, res_data = None, None, None
                 ctime, mtime, atime = None, None, None
                 name, flags, parent, real_size, data_size = None, None, None, None, None
@@ -221,19 +220,18 @@ class MFT_Parser():
                     # Likewise for filename attributes
                     if hasattr(self.filename, 'name'):
                         name = self.filename.name
-                    if hasattr(self.filename, 'flags'):
-                        flags = self.filename.flags
-                        if 'DIRECTORY' in flags:
-                           if name == '.':
-                              name = 'RootDir'
-                           self.dirs[inode] = name
+                    #if hasattr(self.filename, 'flags'):
+                    #    flags = self.filename.flags
+                    #    if 'DIRECTORY' in flags:
+                    #       if name == '.':
+                    #          name = 'RootDir'
+                    #       self.dirs[inode] = name
                     if hasattr(self.filename, 'real_size'):
                         real_size = self.filename.real_size
                     # And of course, for data attributes
                     for data in self.data:
                         if hasattr(data, 'clusters') and len(data.clusters):
-                            #clusters.extend(data.clusters)
-                            clusters = append(clusters, data.clusters)
+                            clusters.extend(data.clusters)
                         if hasattr(data, 'res_data'):
                             res_data = data.res_data
                         else:
@@ -336,12 +334,13 @@ class MFT_Parser():
                     address = (lcn * self.cluster_size) + (idx * MFT_ENTRY_SIZE) + self.poffset
                     self.img.seek(address, os.SEEK_SET)
                     self.entry = self.img.read(MFT_ENTRY_SIZE)
+                    self.parse_header()
                     offset = entry_off[attr.mft_entry]
                     if self.entry[offset:offset+4] == FILENAME_SIG:
                         self.filename = self.parse_filename(offset)
                         entry_off[attr.mft_entry] = self.offset
                     elif self.entry[offset:offset+4] == DATA_SIG:
-                        self.data.append(self.parse_data(offset))
+                        self.data.append(self.parse_data(offset, True))
                         entry_off[attr.mft_entry] = self.offset
         self.img.seek(img_off, os.SEEK_SET)
         self.offset = old_offset
@@ -557,11 +556,8 @@ class MFT_Parser():
         #return FILENAME(parent=parent, ctime=ctime, mtime=mtime, atime=atime,
         #         alloc_size=alloc_size, real_size=real_size, flags=attrs, name_len=name_len, name=name, namespace=namespace)
 
-
-
-    
     def parse_data(self, offset, fullParse=False):
-        clusters = array([])
+        clusters = []
         res_data = None
         name = None
         start_vcn = None
@@ -597,8 +593,7 @@ class MFT_Parser():
                     else:
                         data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
                                                                (data_run_offset - max_sign[data_run_offset_bytes]))
-                #clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
-                clusters = append(clusters, range(data_run_offset, data_run_offset + data_run_len))
+                clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
                 if data[0] == DATA_RUN_END:
                     break
                 else:
@@ -782,11 +777,11 @@ class MFT_Parser():
                 print("Cluster %s unallocated" % cluster)
     
     def main(self):
-        try:
-            import psyco
-            psyco.full()
-        except:
-            pass
+        #try:
+        #    import psyco
+        #    psyco.full()
+        #except:
+        #    pass
         self.setup_mft_data()
         self.parse_mft()
         return self.entries
@@ -802,11 +797,11 @@ def usage():
     sys.exit(1)
 
 if __name__ == "__main__":
-    try:
-        import psyco
-        psyco.full()
-    except:
-        pass
+    #try:
+    #    import psyco
+    #    psyco.full()
+    #except:
+    #    pass
     try:
         parser = MFT_Parser(sys.argv[1])
         parser.setup_mft_data()
