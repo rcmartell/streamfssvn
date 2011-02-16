@@ -43,11 +43,11 @@ class Stream_Server():
         self.clustermap = [0] * int(num)
 
     def process_entries(self, entries):
+        count = 0
         for entry in entries:
-            try:
-                entry.name = "[" + entry.parent + "]" + entry.name
-            except:
-                pass
+            if entry.name in self.files:
+                entry.name = "[" + count + "]" + entry.name
+                count += 1
             if entry.real_size == 0:
                 if entry.data_size != 0 and entry.data_size != None:
                     self.files[entry.name] = [entry.data_size, entry.clusters]
