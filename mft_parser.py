@@ -225,7 +225,7 @@ class MFT_Parser():
                             atime = self.std_info.atime
                         # Likewise for filename attributes
                         if hasattr(self.filename, 'name'):
-                            self.name = self.filename.name
+                            name = self.filename.name
                         if hasattr(self.filename, 'flags'):
                             flags = self.filename.flags
                         if hasattr(self.filename, 'real_size'):
@@ -244,11 +244,11 @@ class MFT_Parser():
                                 data_size = None
 
                         # We're not interested in MFT specific files nor deleted ones...
-                        if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
+                        #if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
                             # FILE_RECORDs represent each file's metadata
                             #self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
                                                         #real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
-                            self.entries.append(FILE_RECORD(name=name, parent=parent, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
+                        self.entries.append(FILE_RECORD(name=name, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
                         inode += 1
                         count += 1
                     
@@ -781,7 +781,7 @@ class MFT_Parser():
         for cluster in clusters:
             allocated = 0
             cluster = int(cluster)
-            for entry in self.entries:
+            for entry in parser.entries:
                 if cluster in entry.clusters:
                     print("Cluster: %s maps to file: %s" % (cluster, entry.name))
                     allocated = 1
@@ -880,13 +880,13 @@ if __name__ == "__main__":
                 except:
                     print "Argument to %s is not a valid cluster number, skipping..." % clusternum
                     continue
-                if cluster > self.num_clusters:
+                if cluster > parser.num_clusters:
                     print "Invalid cluster number. Valid range: 0-%d. Skipping..." % self.num_clusters
                     continue
                 cluster_list.append(cluster)
-            parser.setup_mft_data()
-            parser.parse_mft()
-            parser.cluster_to_file(parser, clusterlist)
+            if len(cluster_list):
+                parser.parse_mft()
+                parser.cluster_to_file(parser, cluster_list)
     else:
         usage()
     #except Exception e:
