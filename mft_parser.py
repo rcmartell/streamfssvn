@@ -122,7 +122,6 @@ class MFT_Parser():
             except:
                 print 'Warning, error occurred while processing $MFT data, incomplete image perhaps?'
 
-    
     def parse_mft(self, start=0, end=9999999999, fullParse=False, quickstat=False):
         count = start
         inode = start
@@ -244,11 +243,11 @@ class MFT_Parser():
                                 data_size = None
 
                         # We're not interested in MFT specific files nor deleted ones...
-                        #if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
+                        if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
                             # FILE_RECORDs represent each file's metadata
                             #self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
                                                         #real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
-                        self.entries.append(FILE_RECORD(name=name, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
+                            self.entries.append(FILE_RECORD(name=name, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
                         inode += 1
                         count += 1
                     
