@@ -40,14 +40,14 @@ class StreamClient():
     """
     def set_cluster_size(self, size):
         self.cluster_size = int(size)
-    
+
     """
     Set by Image Server
     """
     def set_num_clusters(self, num):
         self.num_clusters = int(num)
         self.clustermap = [0] * int(num)
-    
+
     """
     Setup necessary data structures to process entries received from Image Server.
     """
@@ -90,12 +90,12 @@ class StreamClient():
                 else:
                     self.residentfiles[entry.name] = entry.res_data
 
-        
+
     """
     Create a mapping of clusters to their respective files.
     """
     def setup_clustermap(self):
-        for k,v in self.files.iteritems():
+        for k, v in self.files.iteritems():
             for c in v[1]:
                 self.clustermap[int(c)] = k
 
@@ -114,20 +114,20 @@ class StreamClient():
     """
     def list_clusters(self):
         self.clusters = []
-        for k,v in self.files.iteritems():
+        for k, v in self.files.iteritems():
             try:
                 self.clusters.extend(v[1])
             except:
                 self.clusters.append(v[1])
         return self.clusters
-    
+
     """    
     Free up memory as this list is no longer necessary.
     """
     def clear_clusters(self):
         self.clusters = []
         gc.collect()
-    
+
     """
     Method used by Image Server to transfer cluster/data to client.
     """
@@ -142,7 +142,7 @@ class StreamClient():
         self.thread.start()
         return
 
-    
+
     def queue_showStatus(self):
         self.statusThread = threading.Thread(target=self.showStatus)
         self.statusThread.start()
@@ -156,8 +156,6 @@ class StreamClient():
     this does the job reasonably well.
     """
     def write_data(self):
-        
-        num_files = len(self.files) + len(self.residentfiles)
         self.console.text(0, 0, "Writing files to disk...")
         try:
             # While incomplete files remain...
@@ -207,8 +205,8 @@ class StreamClient():
                             # include this in our buffer and increment the index. Continue doing so until
                             # we encounter a value that is not one more than the previous. This helps to
                             # maximize linear writes.
-                            while clusters[idx+1] == clusters[idx] + 1:
-                                buff.append(data[idx+1])
+                            while clusters[idx + 1] == clusters[idx] + 1:
+                                buff.append(data[idx + 1])
                                 idx += 1
                         except:
                             pass
@@ -252,20 +250,22 @@ class StreamClient():
             ns.remove(name=sys.argv[1])
             daemon.shutdown()
 
-    
+
     def showStatus(self):
+        num_files = len(self.files)
         while True:
             time.sleep(2)
             self.console.text(0, 2, "%d of %d files remaining" % (len(self.file_progress), num_files))
-            self.console.text(0, 4, "Current CPU usage: %d" % self.process.get_cpu_percent())
-            self.console.text(0, 6, "Using %d MB of %d MB physical memory | %d MB physical memory free" % 
+            self.console.text(0, 4, "Current CPU usage: %d " % self.process.get_cpu_percent())
+            self.console.text(0, 6, "Using %d MB of %d MB physical memory | %d MB physical memory free" %
                               ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
-    
+            self.console.text(0, 8, "Total bytes written to disk(MB): %d " % (self.process.get_io_counters()[3] / MB))
+
 def main():
     daemon = Pyro4.core.Daemon()
     uri = daemon.register(StreamClient(path=sys.argv[2]))
     #print "Host: %s\t\tPort: %i\t\tName: %s" % (socket.gethostname(), uri.port, sys.argv[1])
-    ns=Pyro4.naming.locateNS()
+    ns = Pyro4.naming.locateNS()
     ns.register(sys.argv[1], uri)
     try:
         daemon.requestLoop()
