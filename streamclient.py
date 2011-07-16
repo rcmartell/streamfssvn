@@ -32,6 +32,7 @@ class StreamClient():
         self.console = Console.getconsole()
         self.console.page()
         self.console.title("Running Stream Listener")
+        self.console.text(0, 0, "Waiting for server...")
         self.process = psutil.Process(os.getpid())
         self.totalmem = psutil.TOTAL_PHYMEM
 
@@ -254,9 +255,9 @@ class StreamClient():
     def showStatus(self):
         num_files = len(self.files)
         while True:
-            time.sleep(2)
+            time.sleep(1)
             self.console.text(0, 2, "%d of %d files remaining" % (len(self.file_progress), num_files))
-            self.console.text(0, 4, "Current CPU usage: %d " % self.process.get_cpu_percent())
+            self.console.text(0, 4, "Client CPU usage: %d " % self.process.get_cpu_percent())
             self.console.text(0, 6, "Using %d MB of %d MB physical memory | %d MB physical memory free" %
                               ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
             self.console.text(0, 8, "Total bytes written to disk(MB): %d " % (self.process.get_io_counters()[3] / MB))
@@ -275,9 +276,9 @@ def main():
         daemon.shutdown()
 
 if __name__ == "__main__":
-    try:
-        import psyco
-        psyco.full()
-    except:
-        pass
+    #try:
+    #    import psyco
+    #    psyco.full()
+    #except:
+    #    pass
     main()
