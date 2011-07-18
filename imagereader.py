@@ -16,7 +16,7 @@ class ImageReader():
         self.src = src
         self.dest = dest
         self.entries = None
-        self.widgets = ['Progress: ', Percentage(), ' ', Bar(),' ', ETA(), ' ', FileTransferSpeed()]
+        self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
 
     def init_fs_metadata(self, fstype='ntfs'):
         print 'Parsing filesystem metadata'
@@ -43,13 +43,13 @@ class ImageReader():
             self.streams[idx].clear_clusters()
         del(self.entries)
         gc.collect()
-        
+
     def image_drive(self):
         self.lock = [threading.Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
         ofh = open(self.dest, 'wb+')
         self.finished = False
-        self.thread_queue = [[[],[]] for idx in range(len(self.streams))]
+        self.thread_queue = [[[], []] for idx in range(len(self.streams))]
         threads = [Thread(target=self.threaded_queue, args=(idx,)) for idx in range(len(self.streams))]
         for stream in self.streams:
             stream.setup_clustermap()
@@ -58,9 +58,11 @@ class ImageReader():
             stream.queue_showStatus()
         for thread in threads:
             thread.start()
-        #cluster_queue = dict([(server, []) for server in self.streams])
-        #data_queue = dict([(server, []) for server in self.streams])
-        #queue_count = 0
+        """
+        cluster_queue = dict([(server, []) for server in self.streams])
+        data_queue = dict([(server, []) for server in self.streams])
+        queue_count = 0
+        """
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(len(self.mapping)):
@@ -70,29 +72,32 @@ class ImageReader():
                 #ofh.write(data)
                 pbar.update(idx * self.cluster_size)
                 continue
-            #if queue_count == QUEUE_SIZE:
-            #    [server.add_queue(cluster_queue[server], data_queue[server]) for server in self.streams]
-            #    del(cluster_queue)
-            #    del(data_queue)
-            #    cluster_queue = dict([(server, []) for server in self.streams])
-            #    data_queue = dict([(server, []) for server in self.streams])
-            #    queue_count = 0
+            """
+            if queue_count == QUEUE_SIZE:
+                [server.add_queue(cluster_queue[server], data_queue[server]) for server in self.streams]
+                del(cluster_queue)
+                del(data_queue)
+                cluster_queue = dict([(server, []) for server in self.streams])
+                data_queue = dict([(server, []) for server in self.streams])
+                queue_count = 0
+            """
             data = ifh.read(self.cluster_size)
             self.lock[target].acquire()
             self.thread_queue[target][0].append(idx)
             self.thread_queue[target][1].append(data)
             self.lock[target].release()
-            #pbar.update(idx * self.cluster_size)
             pbar.update(idx * self.cluster_size)
-            #cluster_queue[target].append(idx)
-            #data_queue[target].append(data)
-            #queue_count += 1
-            #ofh.write(data)
+            """
+            cluster_queue[target].append(idx)
+            data_queue[target].append(data)
+            queue_count += 1
+            ofh.write(data)
+            """
         self.finished = True
         pbar.finish()
         ifh.close()
         ofh.close()
-        
+
     def threaded_queue(self, idx):
         tid = idx
         while True:
@@ -109,11 +114,11 @@ class ImageReader():
             data = self.thread_queue[tid][1]
             self.streams[tid].add_queue(clusters, data)
             del(self.thread_queue[tid][:])
-            self.thread_queue[tid] = [[],[]]
+            self.thread_queue[tid] = [[], []]
             #gc.collect()
             ###
             self.lock[tid].release()
-    
+
 
 def main():
     print "Starting Time: %s" % str(time.ctime())
@@ -123,9 +128,9 @@ def main():
     irdr.image_drive()
     print "End Time: %s" % str(time.ctime())
 if __name__ == "__main__":
-    try:
-        import psyco
-        psyco.full()
-    except:
-        pass
+    #try:
+    #    import psyco
+    #    psyco.full()
+    #except:
+    #    pass
     main()
