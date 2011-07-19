@@ -50,7 +50,6 @@ class FileMagic():
     def sort_file(self, file):
         self.filemagic = magic.file(file)
         category = self.filemagic.split('/')[0]
-        size = os.stat(file).st_size
         if category in self.dirs:
             try:
                 shutil.move(file, self.dirs[category])
