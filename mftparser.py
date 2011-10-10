@@ -216,7 +216,7 @@ class MFTParser():
                                 self.idx_alloc = self.parse_idx_alloc(self.offset)
                             
                             elif self.entry[self.offset:self.offset+4] == LOG_UTIL_STREAM_SIG:
-                               self.log_util = self.parse_data(self.offset)
+                                self.log_util = self.parse_data(self.offset)
                             
                             elif self.entry[self.offset:self.offset+4] == END_OF_ENTRY_SIG:
                                 break
