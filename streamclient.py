@@ -208,9 +208,9 @@ class StreamClient():
                     clusters, data = zip(*filedb[file])
                     idx = 0
                     num_clusters = len(clusters)
+                    buff = []
                     # For every cluster for this file we've received...
                     while idx < num_clusters:
-                        buff = []
                         # Create an initial offset using the current index into the cluster array.
                         seek = clusters[idx]
                         # Add the data at the index into the "to be written buffer".
@@ -242,8 +242,8 @@ class StreamClient():
                             fh.flush()
                         # Subtract the number of clusters written from the file's remaining clusters list.
                         self.file_progress[file] -= len(buff)
-                        del(buff)
                         idx += 1
+                        buff = []
                     fh.close()
                     # If the file's file_progress list is empty, then the entire file has been written to disk.
                     if not self.file_progress[file]:
