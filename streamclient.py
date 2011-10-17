@@ -17,9 +17,10 @@ MB = 1024 * 1024
 
 class StreamClient():
     def __init__(self, path, ns, daemon):
-        self.path = path
-        if not self.path.endswith("\\") or not self.path.endswith("/"):
-            self.path += "/"
+        if not path.endswith os.path.sep:
+            self.path = path + os.path.sep
+        else:
+            self.path = path
         self.ns = ns
         self.daemon = daemon
         self.cluster_size = 0
