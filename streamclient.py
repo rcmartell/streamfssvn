@@ -17,7 +17,7 @@ MB = 1024 * 1024
 
 class StreamClient():
     def __init__(self, path, ns, daemon):
-        if not path.endswith os.path.sep:
+        if not path.endswith(os.path.sep):
             self.path = path + os.path.sep
         else:
             self.path = path
