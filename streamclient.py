@@ -54,7 +54,7 @@ class StreamClient():
             self.win.refresh()
         self.process = psutil.Process(os.getpid())
         self.totalmem = psutil.TOTAL_PHYMEM
-        self.showStatus = True
+        self.showCurrentStatus = True
 
     """
     Set by Image Server
@@ -259,11 +259,14 @@ class StreamClient():
                 fh.close()
                 self.magic.process_file(file)
             # Finished. Do cleanup.
-            self.showStatus = False
+            self.showCurrentStatus = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
         except KeyboardInterrupt:
             print 'User cancelled execution...'
+            self.showCurrentStatus = False
+            curses.nocbreak(); self.win.keypad(0); curses.echo()
+            curses.endwin()
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
 
@@ -272,7 +275,7 @@ class StreamClient():
         num_files = len(self.files)
         starttime = int(time.time())
         if sys.platform == "win32":
-            while self.showStatus:
+            while self.showCurrentStatus:
                 time.sleep(1)
                 self.console.text(0, 4, "%d of %d files remaining" % (len(self.file_progress), num_files))
                 self.console.text(0, 6, "Client CPU usage: %d  " % self.process.get_cpu_percent())
@@ -284,7 +287,7 @@ class StreamClient():
                 self.console.text(0, 12, "Average write rate: %d MB/s" % (cur_write_rate / duration))
                 self.console.text(0, 14, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), (duration/60), (duration % 60)))
         else:
-            while self.showStatus:
+            while self.showCurrentStatus:
                 time.sleep(1)
                 self.win.addstr(1, 0, "%d of %d files remaining              " % (len(self.file_progress), num_files))
                 self.win.addstr(2, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
