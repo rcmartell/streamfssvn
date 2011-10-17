@@ -12,7 +12,7 @@ else:
     import curses
 
 
-QUEUE_SIZE = 1000
+QUEUE_SIZE = 10000
 MB = 1024 * 1024
 
 class StreamClient():
@@ -251,7 +251,6 @@ class StreamClient():
                         del self.file_progress[file]
                         # Move file to appropriate folder based on its extension/magic number.
                         self.magic.process_file(file)
-                        gc.collect()
             # Write resident files to disk.
             for file in self.residentfiles:
                 fh = open(file, 'wb')
