@@ -216,7 +216,7 @@ class MFTParser():
                                 self.idx_alloc = self.parse_idx_alloc(self.offset)
                             
                             elif self.entry[self.offset:self.offset+4] == LOG_UTIL_STREAM_SIG:
-                                self.log_util = self.parse_data(self.offset)
+                               self.log_util = self.parse_data(self.offset)
                             
                             elif self.entry[self.offset:self.offset+4] == END_OF_ENTRY_SIG:
                                 break
@@ -668,18 +668,17 @@ class MFTParser():
         return None
     
     def getFiletypeStats(self):
-        filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'pdf' : [], 'html' : [], 'system' : [], 'compressed' : [], 'other' : []}
+        filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'system' : [], 'compressed' : [], 'other' : []}
         video = ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV']
-        pdf = ['PDF']
         image = ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX']
         audio = ['MP3', 'M4A', 'M4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG']
         binaries = ['BIN', 'EXE', 'APP', 'O']
-        text = ['TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'JS', 'JAVA', 'C', 'H', 'PY', 'PL', 'CPP', 'XAML', 'VB', 'HLP', 'SH']
-        html = ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM']
+        text = ['TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'JS', 'JAVA', 'C', 'H', 'PY', 
+                'PL', 'CPP', 'XAML', 'VB', 'HLP', 'SH', 'HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM', 'PDF']
         system = ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
         compressed = ['GZ', 'ZIP', 'BZ', '7Z', 'ACE', 'RAR', 'Z']
-        filetypes = video, pdf, image, audio, binaries, text, html, system, compressed
-        types = ['video', 'pdf', 'image', 'audio', 'binaries', 'text', 'html', 'system', 'compressed']
+        filetypes = video, image, audio, binaries, text, system, compressed
+        types = ['video', 'image', 'audio', 'binaries', 'text', 'system', 'compressed']
         for entry in self.entries:
             try:
                 ext = entry.name.split('.')[-1]
@@ -697,12 +696,10 @@ class MFTParser():
         print "Finished analysing files.\n"
         print "Number of files: %i" % len(self.entries)
         print "video      : %i" % len(filestats['video'])
-        print "pdf        : %i" % len(filestats['pdf'])
         print "images     : %i" % len(filestats['image'])
         print "audio      : %i" % len(filestats['audio'])
         print "binaries   : %i" % len(filestats['binaries'])
         print "text       : %i" % len(filestats['text'])
-        print "html       : %i" % len(filestats['html'])
         print "compressed : %i" % len(filestats['compressed'])
         print "system     : %i" % len(filestats['system'])
         print "other      : %i" % len(filestats['other'])
