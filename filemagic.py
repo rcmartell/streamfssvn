@@ -12,13 +12,11 @@ class FileMagic():
     def __init__(self, path):
         self.dirs = {
             'Image'         : '%s/Complete/Image/' % path,
-            'PDF'           : '%s/Complete/PDF/' % path,
             'Video'         : '%s/Complete/Video/' % path,
             'Application'   : '%s/Complete/Application/' % path,
             'System'        : '%s/Complete/System/' % path,
             'Audio'         : '%s/Complete/Audio/' % path,
             'Text'          : '%s/Complete/Text/' % path,
-            'HTML'          : '%s/Complete/HTML/' % path,
             'Other'         : '%s/Complete/Other/' % path
         }
         for val in self.dirs.values():
@@ -32,12 +30,10 @@ class FileMagic():
         self.filters = {
             'Video'         :   ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV',
                                 'MOV', 'H.264', 'XVID', 'DIVX', 'MKV'],
-            'PDF'           :   ['PDF'],
             'Image'         :   ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX'],
             'Audio'         :   ['MP3', 'M4A', 'M4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG'],
             'Application'   :   ['PE32', 'BIN', 'EXE', 'APP', 'O'],
-            'Text'          :   ['TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD'],
-            'HTML'          :   ['HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM'],
+            'Text'          :   ['TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM', 'PDF'],
             'System'        :   ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
         }
 
