@@ -39,7 +39,6 @@ class ImageReader():
             self.streams[idx].process_entries(self.entries[idx::len(servers)])
             for cluster in self.streams[idx].list_clusters():
                 self.mapping[cluster] = idx
-                #self.mapping[cluster] = self.streams[idx]
             self.streams[idx].clear_clusters()
         del(self.entries)
         gc.collect()
@@ -65,34 +64,36 @@ class ImageReader():
         """
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
-        for idx in range(len(self.mapping)):
-            target = self.mapping[idx]
-            if target == -1:
-                ifh.read(self.cluster_size)
-                #ofh.write(data)
-                pbar.update(idx * self.cluster_size)
-                continue
-            """
-            if queue_count == QUEUE_SIZE:
-                [server.add_queue(cluster_queue[server], data_queue[server]) for server in self.streams]
-                del(cluster_queue)
-                del(data_queue)
-                cluster_queue = dict([(server, []) for server in self.streams])
-                data_queue = dict([(server, []) for server in self.streams])
-                queue_count = 0
-            """
-            data = ifh.read(self.cluster_size)
-            self.lock[target].acquire()
-            self.thread_queue[target][0].append(idx)
-            self.thread_queue[target][1].append(data)
-            self.lock[target].release()
-            pbar.update(idx * self.cluster_size)
-            """
-            cluster_queue[target].append(idx)
-            data_queue[target].append(data)
-            queue_count += 1
-            ofh.write(data)
-            """
+        for idx in range(0, len(self.mapping), 8192):
+            data = ifh.read(self.cluster_size * 8192)
+            for cnum in range(0, len(data), self.cluster_size):
+                target = self.mapping[idx+cnum]
+                if target == -1:
+                    #ifh.read(self.cluster_size)
+                    #ofh.write(data[cnum:cnum+self.cluster_size])
+                    pbar.update((idx + cnum) * self.cluster_size)
+                    continue
+                """
+                if queue_count == QUEUE_SIZE:
+                    [server.add_queue(cluster_queue[server], data_queue[server]) for server in self.streams]
+                    del(cluster_queue)
+                    del(data_queue)
+                    cluster_queue = dict([(server, []) for server in self.streams])
+                    data_queue = dict([(server, []) for server in self.streams])
+                    queue_count = 0
+                """
+                
+                self.lock[target].acquire()
+                self.thread_queue[target][0].append(idx+cnum)
+                self.thread_queue[target][1].append(data[cnum:cnum+self.cluster_size])
+                self.lock[target].release()
+                pbar.update((idx + cnum) * self.cluster_size)
+                """
+                cluster_queue[target].append(idx)
+                data_queue[target].append(data)
+                queue_count += 1
+                ofh.write(data)
+                """
         self.finished = True
         pbar.finish()
         ifh.close()
@@ -128,9 +129,4 @@ def main():
     irdr.image_drive()
     print "End Time: %s" % str(time.ctime())
 if __name__ == "__main__":
-    #try:
-    #    import psyco
-    #    psyco.full()
-    #except:
-    #    pass
     main()
