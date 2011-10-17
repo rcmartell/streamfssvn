@@ -62,8 +62,7 @@ class ImageReader():
         for idx in range(0, len(self.mapping), 8192):
             target = self.mapping[idx]
             if target == -1:
-                ifh.read(self.cluster_size)
-                ofh.write(data)
+                ofh.write(ifh.read(self.cluster_size))
                 pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
