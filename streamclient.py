@@ -70,7 +70,7 @@ class StreamClient():
         count = 0
         self.files = {}
         if sys.platform == "win32":
-            self.console.text(0, 0, "Processing file entries...")
+            self.console.text(0, 2, "Processing file entries...")
         else:
             self.win.clear()
             self.win.refresh()
@@ -83,10 +83,10 @@ class StreamClient():
             except:
                 continue
             if entry.name in self.files or entry.name in self.residentfiles:
-                entry.name = "[" + str(count) + "]" + "%s/Incomplete/%s" % (self.path, entry.name)
+                entry.name = "[" + str(count) + "]" + "%sIncomplete/%s" % (self.path, entry.name)
                 count += 1
             else:
-                entry.name = "%s/Incomplete/%s" % (self.path, entry.name)
+                entry.name = "%sIncomplete/%s" % (self.path, entry.name)
             # NTFS is not consistent about where it stores a file's data size...
             """
             if entry.real_size == 0:
@@ -178,7 +178,7 @@ class StreamClient():
     """
     def write_data(self):
         if sys.platform == "win32":
-                self.console.text(0, 0, "Writing files to disk...")
+                self.console.text(0, 2, "Writing files to disk...")
         else:
             self.win.clear()
             self.win.refresh()
@@ -212,10 +212,7 @@ class StreamClient():
                     try:
                         fh = open(file, 'r+b')
                     except:
-                        try:
-                            fh = open(file, 'wb')
-                        except:
-                            continue
+                        fh = open(file, 'wb')
                     buff = []
                     # Create individual lists of the file's clusters and data we've obtained from the qeueue.
                     clusters, data = zip(*filedb[file])
@@ -284,15 +281,15 @@ class StreamClient():
         if sys.platform == "win32":
             while True:
                 time.sleep(1)
-                self.console.text(0, 2, "%d of %d files remaining" % (len(self.file_progress), num_files))
-                self.console.text(0, 4, "Client CPU usage: %d " % self.process.get_cpu_percent())
-                self.console.text(0, 6, "Using %d MB of %d MB physical memory | %d MB physical memory free" %
+                self.console.text(0, 4, "%d of %d files remaining" % (len(self.file_progress), num_files))
+                self.console.text(0, 6, "Client CPU usage: %d " % self.process.get_cpu_percent())
+                self.console.text(0, 8, "Using %d MB of %d MB physical memory | %d MB physical memory free" %
                                   ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
                 cur_write_rate = (self.process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - starttime
-                self.console.text(0, 8, "Total bytes written to disk(MB): %d " % cur_write_rate)
-                self.console.text(0, 10, "Average write rate: %d MB/s" % (cur_write_rate / duration))
-                self.console.text(0, 12, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), (duration/60), (duration % 60)))
+                self.console.text(0, 10, "Total bytes written to disk(MB): %d " % cur_write_rate)
+                self.console.text(0, 12, "Average write rate: %d MB/s" % (cur_write_rate / duration))
+                self.console.text(0, 14, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), (duration/60), (duration % 60)))
         else:
             while True:
                 time.sleep(1)
