@@ -61,18 +61,18 @@ class ImageReader():
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(0, len(self.mapping), 8192):
             data = ifh.read(self.cluster_size * 8192)
-            for cnum in range(0, len(data), self.cluster_size):
-                target = self.mapping[idx+cnum]
+            for c in range(8192):
+                target = self.mapping[idx+c]
                 if target == -1:
                     #ifh.read(self.cluster_size)
-                    #ofh.write(data[cnum:cnum+self.cluster_size])
-                    pbar.update((idx + cnum) * self.cluster_size)
+                    #ofh.write(data[c*self.cluster_size:(c*self.cluster_size)+self.cluster_size])
+                    pbar.update((idx + c) * self.cluster_size)
                     continue
                 self.lock[target].acquire()
-                self.thread_queue[target][0].append(idx+cnum)
-                self.thread_queue[target][1].append(data[cnum:cnum+self.cluster_size])
+                self.thread_queue[target][0].append(idx+c)
+                self.thread_queue[target][1].append(data[c * self.cluster_size:(c * self.cluster_size) + self.cluster_size])
                 self.lock[target].release()
-                pbar.update((idx + cnum) * self.cluster_size)
+                pbar.update((idx + c) * self.cluster_size)
         self.finished = True
         pbar.finish()
         ifh.close()
