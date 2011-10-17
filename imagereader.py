@@ -73,6 +73,8 @@ class ImageReader():
             ofh.write(data)
             pbar.update(idx * self.cluster_size)
         self.finished = True
+        for thread in threads:
+            thread.join()
         pbar.finish()
         ifh.close()
         ofh.close()
