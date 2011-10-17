@@ -88,6 +88,7 @@ class ImageReader():
                     clusters = self.thread_queue[tid][0]
                     data = self.thread_queue[tid][1]
                     self.streams[tid].add_queue(clusters, data)
+                    print "Thread %i finished" % tid
                     return
             self.lock[tid].acquire()
             clusters = self.thread_queue[tid][0]
