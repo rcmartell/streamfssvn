@@ -273,7 +273,7 @@ class StreamClient():
             while True:
                 time.sleep(1)
                 self.console.text(0, 4, "%d of %d files remaining" % (len(self.file_progress), num_files))
-                self.console.text(0, 6, "Client CPU usage: %d " % self.process.get_cpu_percent())
+                self.console.text(0, 6, "Client CPU usage: %d  " % self.process.get_cpu_percent())
                 self.console.text(0, 8, "Using %d MB of %d MB physical memory | %d MB physical memory free" %
                                   ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
                 cur_write_rate = (self.process.get_io_counters()[3] / MB)
@@ -285,7 +285,7 @@ class StreamClient():
             while True:
                 time.sleep(1)
                 self.win.addstr(1, 0, "%d of %d files remaining" % (len(self.file_progress), num_files))
-                self.win.addstr(2, 0, "Client CPU usage: %d " % self.process.get_cpu_percent())
+                self.win.addstr(2, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
                 self.win.addstr(3, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free" %
                                       ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
                 cur_write_rate = (self.process.get_io_counters()[3] / MB)
