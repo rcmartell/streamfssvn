@@ -16,8 +16,10 @@ QUEUE_SIZE = 1000
 MB = 1024 * 1024
 
 class StreamClient():
-    def __init__(self, path):
+    def __init__(self, path, ns, daemon):
         self.path = path
+        self.ns = ns
+        self.daemon = daemon
         self.cluster_size = 0
         self.files = {}
         self.file_progress = {}
@@ -267,12 +269,12 @@ class StreamClient():
                 fh.close()
                 self.magic.process_file(file)
             # Finished. Do cleanup.
-            ns.remove(name=sys.argv[1])
-            daemon.shutdown()
+            self.ns.remove(name=sys.argv[1])
+            self.daemon.shutdown()
         except KeyboardInterrupt:
             print 'User cancelled execution...'
-            ns.remove(name=sys.argv[1])
-            daemon.shutdown()
+            self.ns.remove(name=sys.argv[1])
+            self.daemon.shutdown()
 
 
     def showStatus(self):
@@ -307,9 +309,9 @@ class StreamClient():
 
 def main():
     daemon = Pyro4.core.Daemon(sys.argv[1])
-    uri = daemon.register(StreamClient(path=sys.argv[3]))
-    print "Host: %s\t\tPort: %i\t\tName: %s" % (socket.gethostname(), uri.port, sys.argv[2])
     ns = Pyro4.naming.locateNS()
+    uri = daemon.register(StreamClient(path=sys.argv[3], ns=ns, daemon=daemon))
+    print "Host: %s\t\tPort: %i\t\tName: %s" % (socket.gethostname(), uri.port, sys.argv[2])
     ns.register(sys.argv[2], uri)
     try:
         daemon.requestLoop()
