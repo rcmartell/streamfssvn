@@ -57,11 +57,6 @@ class ImageReader():
             stream.queue_showStatus()
         for thread in threads:
             thread.start()
-        """
-        cluster_queue = dict([(server, []) for server in self.streams])
-        data_queue = dict([(server, []) for server in self.streams])
-        queue_count = 0
-        """
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(0, len(self.mapping), 8192):
@@ -73,27 +68,11 @@ class ImageReader():
                     #ofh.write(data[cnum:cnum+self.cluster_size])
                     pbar.update((idx + cnum) * self.cluster_size)
                     continue
-                """
-                if queue_count == QUEUE_SIZE:
-                    [server.add_queue(cluster_queue[server], data_queue[server]) for server in self.streams]
-                    del(cluster_queue)
-                    del(data_queue)
-                    cluster_queue = dict([(server, []) for server in self.streams])
-                    data_queue = dict([(server, []) for server in self.streams])
-                    queue_count = 0
-                """
-                
                 self.lock[target].acquire()
                 self.thread_queue[target][0].append(idx+cnum)
                 self.thread_queue[target][1].append(data[cnum:cnum+self.cluster_size])
                 self.lock[target].release()
                 pbar.update((idx + cnum) * self.cluster_size)
-                """
-                cluster_queue[target].append(idx)
-                data_queue[target].append(data)
-                queue_count += 1
-                ofh.write(data)
-                """
         self.finished = True
         pbar.finish()
         ifh.close()
@@ -110,14 +89,12 @@ class ImageReader():
                     self.streams[tid].add_queue(clusters, data)
                     return
             self.lock[tid].acquire()
-            ###
             clusters = self.thread_queue[tid][0]
             data = self.thread_queue[tid][1]
             self.streams[tid].add_queue(clusters, data)
             del(self.thread_queue[tid][:])
             self.thread_queue[tid] = [[], []]
-            #gc.collect()
-            ###
+            gc.collect()
             self.lock[tid].release()
 
 
