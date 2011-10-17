@@ -18,6 +18,8 @@ MB = 1024 * 1024
 class StreamClient():
     def __init__(self, path, ns, daemon):
         self.path = path
+        if not self.path.endswith("\\") or not self.path.endswith("/"):
+            self.path += "/"
         self.ns = ns
         self.daemon = daemon
         self.cluster_size = 0
@@ -149,6 +151,7 @@ class StreamClient():
     """
     def clear_clusters(self):
         self.clusters = []
+        del(self.clusters)
         gc.collect()
 
     """
