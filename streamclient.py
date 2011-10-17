@@ -93,21 +93,6 @@ class StreamClient():
             else:
                 entry.name = "%sIncomplete/%s" % (self.path, entry.name)
             # NTFS is not consistent about where it stores a file's data size...
-            """
-            if entry.real_size == 0:
-                if entry.data_size != 0:
-                    self.files[entry.name] = [entry.data_size, entry.clusters]
-                else:
-                    # If no size data is present, resort to num of clusters * cluster size
-                    # This is not the most reliable method, as it's common for the final cluster
-                    # to be only partially filled.
-                    if len(entry.clusters):
-                        self.files[entry.name] = [len(entry.clusters) * self.cluster_size, entry.clusters]
-                    else:
-                        self.residentfiles[entry.name] = entry.res_data
-            else:
-                self.files[entry.name] = [entry.real_size, entry.clusters]
-            """
             if entry.size != 0:
                 self.files[entry.name] = [entry.size, entry.clusters]
             else:
@@ -266,6 +251,7 @@ class StreamClient():
                         del self.file_progress[file]
                         # Move file to appropriate folder based on its extension/magic number.
                         self.magic.process_file(file)
+                        gc.collect()
             # Write resident files to disk.
             for file in self.residentfiles:
                 fh = open(file, 'wb')
