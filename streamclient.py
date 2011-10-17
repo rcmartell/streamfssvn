@@ -213,13 +213,13 @@ class StreamClient():
                         fh = open(file, 'r+b')
                     except:
                         fh = open(file, 'wb')
-                    buff = []
                     # Create individual lists of the file's clusters and data we've obtained from the qeueue.
                     clusters, data = zip(*filedb[file])
                     idx = 0
                     num_clusters = len(clusters)
                     # For every cluster for this file we've received...
                     while idx < num_clusters:
+                        buff = []
                         # Create an initial offset using the current index into the cluster array.
                         seek = clusters[idx]
                         # Add the data at the index into the "to be written buffer".
