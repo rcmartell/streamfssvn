@@ -11,7 +11,7 @@ if sys.platform == "win32":
 else:
     import curses
 
-QUEUE_SIZE = 2048
+QUEUE_SIZE = 1024
 MB = 1024 * 1024
 
 class StreamClient():
