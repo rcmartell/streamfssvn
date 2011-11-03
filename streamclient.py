@@ -54,6 +54,7 @@ class StreamClient():
         self.process = psutil.Process(os.getpid())
         self.totalmem = psutil.TOTAL_PHYMEM
         self.showCurrentStatus = True
+        self.finished = False
 
     """
     Set by Image Server
@@ -159,6 +160,9 @@ class StreamClient():
         self.statusThread = threading.Thread(target=self.showStatus)
         self.statusThread.start()
         return
+        
+    def check_status(self):
+        return self.finished
 
     """
     Writes file data to disk.
@@ -258,6 +262,7 @@ class StreamClient():
                 fh.close()
                 self.magic.process_file(file)
             # Finished. Do cleanup.
+            self.finished = True
             self.showCurrentStatus = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
