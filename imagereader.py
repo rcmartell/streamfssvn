@@ -8,7 +8,7 @@ import warnings, gc
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.util, threading
 
-QUEUE_SIZE = 1000
+QUEUE_SIZE = 2048
 
 class ImageReader():
     def __init__(self, src=None, dest=None):
@@ -83,11 +83,12 @@ class ImageReader():
         tid = idx
         while True:
             while len(self.thread_queue[tid][0]) < QUEUE_SIZE:
-                time.sleep(0.005)
                 if self.finished:
+                    self.lock[tid].acquire()
                     clusters = self.thread_queue[tid][0]
                     data = self.thread_queue[tid][1]
                     self.streams[tid].add_queue(clusters, data)
+                    self.lock[tid].release()
                     print "Thread %i finished" % tid
                     return
             self.lock[tid].acquire()
