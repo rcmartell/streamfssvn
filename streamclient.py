@@ -289,14 +289,15 @@ class StreamClient():
             while self.showCurrentStatus:
                 time.sleep(1)
                 self.win.addstr(1, 0, "%d of %d files remaining              " % (len(self.file_progress), num_files))
-                self.win.addstr(2, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
-                self.win.addstr(3, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
+                self.win.addstr(2, 0, "Clusters in queue: %d           " % len(self.queue))
+                self.win.addstr(3, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
+                self.win.addstr(4, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
                                       ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
                 cur_write_rate = (self.process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - starttime
-                self.win.addstr(4, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
-                self.win.addstr(5, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
-                self.win.addstr(6, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
+                self.win.addstr(5, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
+                self.win.addstr(6, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
+                self.win.addstr(7, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
                 self.win.refresh()
 
 
