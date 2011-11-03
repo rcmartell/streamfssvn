@@ -11,7 +11,7 @@ if sys.platform == "win32":
 else:
     import curses
 
-QUEUE_SIZE = 1024
+QUEUE_SIZE = 4096
 MB = 1024 * 1024
 
 class StreamClient():
@@ -192,7 +192,7 @@ class StreamClient():
                     # This breaks us out of the loop if we weren't able to grab
                     # QUEUE_SIZE entries in one go.
                     if len(self.queue) == 0:
-                        break
+                        continue
                     # Grab the front cluster/data set from the queue
                     cluster, data = self.queue.popleft()
                     # Create an in-memory db of mappings between files and their
