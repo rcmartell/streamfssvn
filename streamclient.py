@@ -12,7 +12,7 @@ else:
     import curses
 
 
-QUEUE_SIZE = 10000
+QUEUE_SIZE = 1000
 MB = 1024 * 1024
 
 class StreamClient():
@@ -297,7 +297,7 @@ class StreamClient():
                 duration = int(time.time()) - starttime
                 self.win.addstr(4, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
                 self.win.addstr(5, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
-                self.win.addstr(6, 0, "Duration: %0.2d:%0.2d:%0.2d         " % ((duration/3600), (duration/60), (duration % 60)))
+                self.win.addstr(6, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), (duration/60), (duration % 60)))
                 self.win.refresh()
 
 
