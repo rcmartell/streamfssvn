@@ -11,7 +11,6 @@ if sys.platform == "win32":
 else:
     import curses
 
-
 QUEUE_SIZE = 2048
 MB = 1024 * 1024
 
