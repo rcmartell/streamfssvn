@@ -76,6 +76,10 @@ class ImageReader():
         self.finished = True
         for thread in threads:
             thread.join()
+        for stream in self.streams:
+            while not stream.check_status():
+                time.sleep(0.005)
+            print "Client %s finished." % stream
         pbar.finish()
         ifh.close()
         ofh.close()
