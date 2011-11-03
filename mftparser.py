@@ -780,8 +780,15 @@ class MFTParser():
             print "Last Data VCN:                   %i" % end_vcn
         print "File fragmented:                 %s" % data.file_fragmented
         if data.clusters != None:
+            width = 0
             print "Data Clusters: "
-            print clusters
+            for cluster in clusters:
+                if width < 7:
+                    print "%s" % cluster,
+                    width += 1
+                else:
+                    print cluster
+                    width = 0
         if data.res_data != None:
             print "ADS Data: "
             print data.res_data
