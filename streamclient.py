@@ -284,7 +284,7 @@ class StreamClient():
                 duration = int(time.time()) - starttime
                 self.console.text(0, 10, "Total bytes written to disk(MB): %d " % cur_write_rate)
                 self.console.text(0, 12, "Average write rate: %d MB/s" % (cur_write_rate / duration))
-                self.console.text(0, 14, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), (duration/60), (duration % 60)))
+                self.console.text(0, 14, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/3600)/60), (duration % 60)))
         else:
             while self.showCurrentStatus:
                 time.sleep(1)
@@ -296,7 +296,7 @@ class StreamClient():
                 duration = int(time.time()) - starttime
                 self.win.addstr(4, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
                 self.win.addstr(5, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
-                self.win.addstr(6, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), (duration/60), (duration % 60)))
+                self.win.addstr(6, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/3600)/60), (duration % 60)))
                 self.win.refresh()
 
 
