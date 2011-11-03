@@ -20,7 +20,7 @@ class ImageReader():
         self.widgets = ['Progress: ', Percentage(), ' ', Bar(marker=RotatingMarker()), ' ', ETA(), ' ', FileTransferSpeed()]
 
     def init_fs_metadata(self, fstype='ntfs'):
-        print 'Parsing filesystem metadata'
+        print 'Parsing filesystem metadata...',
         if fstype.lower() == 'ntfs':
             parser = MFTParser(self.src)
             self.cluster_size = parser.get_cluster_size()
@@ -28,9 +28,10 @@ class ImageReader():
             self.entries = parser.main()
             self.mapping = [-1] * self.num_clusters
         del(parser)
+        print 'Done.'
 
     def setup_stream_listeners(self, servers):
-        print 'Setting up stream listeners'
+        print 'Setting up stream listeners...',
         self.streams = []
         for idx in range(len(servers)):
             self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % servers[idx]))
@@ -43,6 +44,7 @@ class ImageReader():
             self.streams[idx].clear_clusters()
         del(self.entries)
         gc.collect()
+        print 'Done.'
 
     def image_drive(self):
         self.lock = [threading.Lock() for idx in range(len(self.streams))]
