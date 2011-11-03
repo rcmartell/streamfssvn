@@ -1,3 +1,4 @@
+
 #!/usr/bin/python
 
 from __future__ import division
@@ -276,7 +277,6 @@ class MFTParser():
             except KeyboardInterrupt:
                 print "User aborted"
                 break
-        print "Processed %i MFT entries" % ((inode)-start)
         self.img.close()
         return self.entries
 
