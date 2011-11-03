@@ -10,6 +10,7 @@ import Pyro4.core, Pyro4.util, threading
 
 QUEUE_SIZE = 2048
 
+
 class ImageReader():
     def __init__(self, src=None, dest=None):
         self.cluster_size = 0
