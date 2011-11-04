@@ -27,11 +27,29 @@ class StreamClient():
         self.file_progress = {}
         os.chdir(self.path)
         if os.path.isdir('Incomplete'):
-            shutil.rmtree('Incomplete')
+            files = os.listdir('Incomplete')
+            for file in files:
+                try:
+                    os.rm(os.path.abspath(file))
+                except:
+                    pass
+        else:
+            try:
+                os.mkdir('Incomplete')
+            except:
+                pass
         if os.path.isdir('Complete'):
-            shutil.rmtree('Complete')
-        os.mkdir('Incomplete')
-        os.mkdir('Complete')
+            files = os.listdir('Complete')
+            for file in files:
+                try:
+                    os.rm(os.path.abspath(file))
+                except:
+                    pass
+        else:
+            try:
+                os.mkdir('Complete')
+            except:
+                pass
         os.chdir('Incomplete')
         self.magic = FileMagic(self.path)
         self.queue = collections.deque()
@@ -67,7 +85,7 @@ class StreamClient():
     """
     def set_num_clusters(self, num):
         self.num_clusters = int(num)
-        self.clustermap = [0] * int(num)
+        self.clustermap = [0] * self.num_clusters
 
     """
     Setup necessary data structures to process entries received from Image Server.
@@ -87,6 +105,7 @@ class StreamClient():
             try:
                 entry.name = str(entry.name)
             except:
+                print "Error in entryname: %s" % entry.name
                 continue
             if entry.name in self.files or entry.name in self.residentfiles:
                 entry.name = "[" + str(count) + "]" + "%sIncomplete/%s" % (self.path, entry.name)
@@ -281,15 +300,16 @@ class StreamClient():
         if sys.platform == "win32":
             while self.showCurrentStatus:
                 time.sleep(1)
-                self.console.text(0, 4, "%d of %d files remaining" % (len(self.file_progress), num_files))
-                self.console.text(0, 6, "Client CPU usage: %d  " % self.process.get_cpu_percent())
-                self.console.text(0, 8, "Using %d MB of %d MB physical memory | %d MB physical memory free      " %
+                self.console.text(0, 4, "%d of %d files remaining     " % (len(self.file_progress), num_files))
+                self.console.text(0, 6, "Clusters in queue: %d           " % len(self.queue))
+                self.console.text(0, 8, "Client CPU usage: %d  " % self.process.get_cpu_percent())
+                self.console.text(0, 10, "Using %d MB of %d MB physical memory | %d MB physical memory free      " %
                                   ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
                 cur_write_rate = (self.process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - starttime
-                self.console.text(0, 10, "Total bytes written to disk(MB): %d " % cur_write_rate)
-                self.console.text(0, 12, "Average write rate: %d MB/s" % (cur_write_rate / duration))
-                self.console.text(0, 14, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
+                self.console.text(0, 12, "Total bytes written to disk(MB): %d   " % cur_write_rate)
+                self.console.text(0, 14, "Average write rate: %d MB/s       " % (cur_write_rate / duration))
+                self.console.text(0, 16, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
         else:
             while self.showCurrentStatus:
                 time.sleep(1)
