@@ -107,7 +107,6 @@ class ImageReader():
             self.thread_queue[tid] = [[], []]
             self.lock[tid].release()
 
-
 def main():
     print "Starting Time: %s" % str(time.ctime())
     irdr = ImageReader(sys.argv[1], sys.argv[2])
