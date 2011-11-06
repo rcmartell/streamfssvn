@@ -149,131 +149,126 @@ class MFTParser():
                 lcn = self.mft_data[int(vcn)]
                 address = (lcn * self.cluster_size) + (idx * MFT_ENTRY_SIZE) + self.part_offset
                 self.img.seek(address, os.SEEK_SET)
-                extent = self.img.read(16384 * MFT_ENTRY_SIZE)
-                extsize = int(len(extent) / MFT_ENTRY_SIZE)
-                for entryidx in range(extsize):
-                    if end != None and inode > end:
-                        break
-                    self.entry = extent[entryidx * MFT_ENTRY_SIZE: (entryidx * MFT_ENTRY_SIZE) + MFT_ENTRY_SIZE]
-                    self.offset = 0
-                    self.data = []
-                    clusters = []
-                    self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
-                    ctime, mtime, atime = None, None, None
-                    name, flags, parent, real_size, data_size = None, None, None, None, None
-                    if self.entry[0:4] == MFT_ENTRY_SIG:
-                        """ Beginning of MFT Entry """
-                        self.header = self.parse_header()
-                        if self.header.mft_base != 0:
-                        # Part of a multi-entry data attribute, not a unique File Entry.
-                        # It will eventually be included in an Attribute List attribute
-                            count += 1
-                            inode += 1
-                            continue
-                        while True:
-                            # Trudge through the entry one attribute at a time using their
-                            # attribute id's (SIG) and entry lengths to identify attributes.
-                            # All entries SHOULD begin with a standard header and end with
-                            # the END_OF_ENTRY signature.
-                            if self.entry[self.offset:self.offset+4] == STANDARD_INFO_SIG:
-                                self.std_info = self.parse_std_info(self.offset)
-                            
-                            elif self.entry[self.offset:self.offset+4] == ATTR_LIST_SIG:
-                                self.attr_list = self.parse_attr_list(self.offset)
-                                self.parse_attr_list_entries(self.attr_list, inode)
-                            
-                            elif self.entry[self.offset:self.offset+4] == FILENAME_SIG:
-                                filename = self.parse_filename(self.offset)
-                                if self.filename != None:
-                                    if filename.namespace == 2:
-                                        continue
-                                    else:
-                                        self.filename = filename
+                self.entry = self.img.read(MFT_ENTRY_SIZE)
+                self.offset = 0
+                self.data = []
+                clusters = []
+                self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
+                ctime, mtime, atime = None, None, None
+                name, flags, parent, real_size, data_size = None, None, None, None, None
+                if self.entry[0:4] == MFT_ENTRY_SIG:
+                    """ Beginning of MFT Entry """
+                    self.header = self.parse_header()
+                    if self.header.mft_base != 0:
+                    # Part of a multi-entry data attribute, not a unique File Entry.
+                    # It will eventually be included in an Attribute List attribute
+                        count += 1
+                        inode += 1
+                        continue
+                    while True:
+                        # Trudge through the entry one attribute at a time using their
+                        # attribute id's (SIG) and entry lengths to identify attributes.
+                        # All entries SHOULD begin with a standard header and end with
+                        # the END_OF_ENTRY signature.
+                        if self.entry[self.offset:self.offset+4] == STANDARD_INFO_SIG:
+                            self.std_info = self.parse_std_info(self.offset)
+                        
+                        elif self.entry[self.offset:self.offset+4] == ATTR_LIST_SIG:
+                            self.attr_list = self.parse_attr_list(self.offset)
+                            self.parse_attr_list_entries(self.attr_list, inode)
+                        
+                        elif self.entry[self.offset:self.offset+4] == FILENAME_SIG:
+                            filename = self.parse_filename(self.offset)
+                            if self.filename != None:
+                                if filename.namespace == 2:
+                                    continue
                                 else:
                                     self.filename = filename
-                            
-                            elif self.entry[self.offset:self.offset+4] == OBJECT_ID_SIG:
-                                self.object_id = self.parse_object_id(self.offset)
-                            
-                            elif self.entry[self.offset:self.offset+4] == SECURITY_DESC_SIG:
-                                self.sec_desc = self.parse_sec_desc(self.offset)
-                            
-                            elif self.entry[self.offset:self.offset+4] == VOLUME_NAME_SIG:
-                                self.volume_name = self.parse_volume_name(self.offset)
-                            
-                            elif self.entry[self.offset:self.offset+4] == VOLUME_INFO_SIG:
-                                self.volume_info = self.parse_volume_info(self.offset)
-                            
-                            elif self.entry[self.offset:self.offset+4] == BITMAP_SIG:
-                                self.parse_bitmap_attr(self.offset)
-                            
-                            elif self.entry[self.offset:self.offset+4] == DATA_SIG:
-                                self.data.append(self.parse_data(self.offset, fullParse, quickstat))
-                            
-                            elif self.entry[self.offset:self.offset+4] == INDEX_ROOT_SIG:
-                                self.idx_root = self.parse_idx_root(self.offset)
-                            
-                            elif self.entry[self.offset:self.offset+4] == INDEX_ALLOC_SIG:
-                                self.idx_alloc = self.parse_idx_alloc(self.offset)
-                            
-                            elif self.entry[self.offset:self.offset+4] == LOG_UTIL_STREAM_SIG:
-                               self.log_util = self.parse_data(self.offset)
-                            
-                            elif self.entry[self.offset:self.offset+4] == END_OF_ENTRY_SIG:
-                                break
                             else:
-                                # Where the hell are we? Just go to the next entry...
-                                break
+                                self.filename = filename
                         
-                        # To Prevent NoneType Errors if a
-                        # standard info attribute is not present.
-                        if hasattr(self.std_info, 'ctime'):
-                            ctime = self.std_info.ctime
-                        if hasattr(self.std_info, 'mtime'):
-                            mtime = self.std_info.mtime
-                        if hasattr(self.std_info, 'atime'):
-                            atime = self.std_info.atime
-                        # Likewise for filename attributes
-                        if hasattr(self.filename, 'name'):
-                            name = self.filename.name
-                        if hasattr(self.filename, 'flags'):
-                            flags = self.filename.flags
-                        if hasattr(self.filename, 'real_size'):
-                            real_size = self.filename.real_size
-                        # And of course, for data attributes
-                        for data in self.data:
-                            if hasattr(data, 'clusters') and len(data.clusters):
-                                clusters.extend(data.clusters)
-                            if hasattr(data, 'res_data'):
-                                res_data = data.res_data
-                            else:
-                                res_data = None
-                            if hasattr(data, 'real_size'):
-                                data_size = data.real_size
-                            else:
-                                data_size = 0
+                        elif self.entry[self.offset:self.offset+4] == OBJECT_ID_SIG:
+                            self.object_id = self.parse_object_id(self.offset)
+                        
+                        elif self.entry[self.offset:self.offset+4] == SECURITY_DESC_SIG:
+                            self.sec_desc = self.parse_sec_desc(self.offset)
+                        
+                        elif self.entry[self.offset:self.offset+4] == VOLUME_NAME_SIG:
+                            self.volume_name = self.parse_volume_name(self.offset)
+                        
+                        elif self.entry[self.offset:self.offset+4] == VOLUME_INFO_SIG:
+                            self.volume_info = self.parse_volume_info(self.offset)
+                        
+                        elif self.entry[self.offset:self.offset+4] == BITMAP_SIG:
+                            self.parse_bitmap_attr(self.offset)
+                        
+                        elif self.entry[self.offset:self.offset+4] == DATA_SIG:
+                            self.data.append(self.parse_data(self.offset, fullParse, quickstat))
+                        
+                        elif self.entry[self.offset:self.offset+4] == INDEX_ROOT_SIG:
+                            self.idx_root = self.parse_idx_root(self.offset)
+                        
+                        elif self.entry[self.offset:self.offset+4] == INDEX_ALLOC_SIG:
+                            self.idx_alloc = self.parse_idx_alloc(self.offset)
+                        
+                        elif self.entry[self.offset:self.offset+4] == LOG_UTIL_STREAM_SIG:
+                           self.log_util = self.parse_data(self.offset)
+                        
+                        elif self.entry[self.offset:self.offset+4] == END_OF_ENTRY_SIG:
+                            break
+                        else:
+                            # Where the hell are we? Just go to the next entry...
+                            break
+                    
+                    # To Prevent NoneType Errors if a
+                    # standard info attribute is not present.
+                    if hasattr(self.std_info, 'ctime'):
+                        ctime = self.std_info.ctime
+                    if hasattr(self.std_info, 'mtime'):
+                        mtime = self.std_info.mtime
+                    if hasattr(self.std_info, 'atime'):
+                        atime = self.std_info.atime
+                    # Likewise for filename attributes
+                    if hasattr(self.filename, 'name'):
+                        name = self.filename.name
+                    if hasattr(self.filename, 'flags'):
+                        flags = self.filename.flags
+                    if hasattr(self.filename, 'real_size'):
+                        real_size = self.filename.real_size
+                    # And of course, for data attributes
+                    for data in self.data:
+                        if hasattr(data, 'clusters') and len(data.clusters):
+                            clusters.extend(data.clusters)
+                        if hasattr(data, 'res_data'):
+                            res_data = data.res_data
+                        else:
+                            res_data = None
+                        if hasattr(data, 'real_size'):
+                            data_size = data.real_size
+                        else:
+                            data_size = 0
 
-                        # We're not interested in MFT specific files nor deleted ones...
-                        if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
-                            # FILE_RECORDs represent each file's metadata
-                            #self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
-                                                        #real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
-                            #self.entries.append(FILE_RECORD(name=name, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
-                            size = 0
-                            if real_size != 0:
-                                size = real_size
-                            else:
-                                size = data_size
-                            self.entries.append(FILE_RECORD(name=name, size=size, clusters=clusters, res_data=res_data))
-                        inode += 1
-                        count += 1
-                        if self.cleanup:
-                            del(clusters)
-                            del(self.data)
-                            del(self.attr_list)
-                    else:
-                        # We're not in an MFT Entry, move along now
-                        count += 1
+                    # We're not interested in MFT specific files nor deleted ones...
+                    if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
+                        # FILE_RECORDs represent each file's metadata
+                        #self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
+                                                    #real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
+                        #self.entries.append(FILE_RECORD(name=name, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
+                        size = 0
+                        if real_size != 0:
+                            size = real_size
+                        else:
+                            size = data_size
+                        self.entries.append(FILE_RECORD(name=name, size=size, clusters=clusters, res_data=res_data))
+                    inode += 1
+                    count += 1
+                    if self.cleanup:
+                        del(clusters)
+                        del(self.data)
+                        del(self.attr_list)
+                else:
+                    # We're not in an MFT Entry, move along now
+                    count += 1
             except KeyboardInterrupt:
                 print "User aborted"
                 break
