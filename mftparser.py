@@ -239,10 +239,9 @@ class MFTParser():
                     for data in self.data:
                         if hasattr(data, 'clusters') and len(data.clusters):
                             clusters.extend(data.clusters)
-                        if hasattr(data, 'res_data') and len(data.res_data):
-                            res_data = data.res_data
-                        else:
-                            res_data = None
+                        if hasattr(data, 'res_data'):
+                            if len(data.res_data):
+                                res_data = data.res_data
                         if hasattr(data, 'nonresident'):
                             if data.nonresident:
                                 resident = False
