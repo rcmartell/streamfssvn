@@ -101,7 +101,7 @@ class StreamClient():
                 count += 1
             else:
                 entry.name = "%sIncomplete/%s" % (self.path, entry.name)
-            if len(entry.res_data):
+            if entry.res_data != None:
                 self.residentfiles[entry.name] = entry.res_data
             else:
                 self.files[entry.name] = [entry.size, entry.clusters]
