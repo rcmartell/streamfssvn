@@ -75,11 +75,11 @@ class ImageReader():
                     data_queue[idx] = [[], []]
                 count = 0
                 pbar.update(idx * self.cluster_size)
-            data = ifh.read(self.cluster_size)
-            count += 1
+                continue
             data_queue[self.mapping[idx]][0].append(idx)
             data_queue[self.mapping[idx]][1].append(data)
             ofh.write(data)
+            count += 1
         try:
             [self.streams[idx].add_queue(data_queue[idx][0], data_queue[idx][1]) for idx in range(len(self.streams))]
         except:
