@@ -228,9 +228,10 @@ class StreamClient():
                             self.win.refresh()
                             self.win.addstr(14, 0, "Error. Unable to write all files to disk. %d files left unwritten." % len(self.file_progress))
                             self.win.refresh()
-                        fh = open("ErrorLog", "wb")
+                        fh = open("%s-ErrorLog" % self.name, "wb")
                         for file in self.file_progress:
-                            fh.write(str(file))
+                            fh.write(str(file) + ": %d" % self.file_progress[file])
+                            fh.write("\n")
                         fh.flush()
                         fh.close()
                         break
