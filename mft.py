@@ -92,7 +92,7 @@ class ATTR_LIST():
 
 class DATA():
     def __init__(self, attr_type=None, nonresident=None, flags=None, attr_id=None, start_vcn=None, end_vcn=None,
-                 alloc_size=None, real_size=None, clusters=None, file_fragmented=False, res_data=None, name=None):
+                 alloc_size=None, data_size=None, clusters=None, file_fragmented=False, res_data=None, name=None):
         self.attr_type = attr_type
         self.nonresident = nonresident
         self.flags = flags
@@ -100,7 +100,7 @@ class DATA():
         self.start_vcn = start_vcn
         self.end_vcn = end_vcn
         self.alloc_size = alloc_size
-        self.real_size = real_size
+        self.data_size = data_size
         self.clusters = clusters
         self.file_fragmented = file_fragmented
         self.res_data = res_data
