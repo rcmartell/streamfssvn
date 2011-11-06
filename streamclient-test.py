@@ -104,8 +104,6 @@ class StreamClient():
             if entry.res_data != None:
                 self.residentfiles[entry.name] = entry.res_data
             else:
-                if entry.size == 0 or entry.size == None:
-                    print "ERROR: %s reported 0 file size!" % entry.name
                 self.files[entry.name] = [entry.size, entry.clusters]
 
     """
@@ -193,14 +191,7 @@ class StreamClient():
                 # Sleep while the queue is empty.
                 if len(self.queue) == 0:
                     if self.finished:
-                        if sys.platform == "win32":
-                            self.console.text(0, 30, "Error. Unable to write all files to disk. %d files left unwritten." % len(self.file_progress))
-                        else:
-                            self.win.clear()
-                            self.win.refresh()
-                            self.win.addstr(14, 0, "Error. Unable to write all files to disk. %d files left unwritten." % len(self.file_progress))
-                            self.win.refresh()
-                        fh = open("%s-ErrorLog" % self.name, "wb")
+                        fh = open("/home/rmartell/%s-ErrorLog" % self.name, "wb")
                         for file in self.file_progress:
                             fh.write(str(file) + ": %d" % self.file_progress[file])
                             fh.write("\n")
@@ -236,12 +227,7 @@ class StreamClient():
                     try:
                         fh = open(file, 'r+b')
                     except:
-                        try:
-                            fh = open(file, 'wb')
-                        except:
-                            if file in self.file_progress:
-                                del(self.file_progress[file])
-                            continue
+                        fh = open(file, 'wb')
                     # Create individual lists of the file's clusters and data we've obtained from the qeueue.
                     clusters, data = zip(*filedb[file])
                     idx = 0

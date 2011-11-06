@@ -754,7 +754,7 @@ class MFTParser():
         print "Attribute Name:                  %s" % data.name
         print "Flags:                           %i" % data.flags
         print "Allocated size:                  %i" % data.alloc_size
-        print "Actual size:                     %i" % data.real_size
+        print "Actual size:                     %i" % data.data_size
         print "Residence:                      ",
         if data.nonresident:
             print "Nonresident"
