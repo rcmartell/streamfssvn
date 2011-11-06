@@ -249,14 +249,10 @@ class MFTParser():
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
                         # FILE_RECORDs represent each file's metadata
-                        #self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
-                                                    #real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
-                        #self.entries.append(FILE_RECORD(name=name, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
-                        if not resident:
-                            if data_size == 0:
-                                size = real_size
-                            else:
-                                size = data_size
+                        if data_size == 0:
+                            size = real_size
+                        else:
+                            size = data_size
                         self.entries.append(FILE_RECORD(name=name, resident=resident, size=size, clusters=clusters, res_data=res_data))
                     inode += 1
                     count += 1
