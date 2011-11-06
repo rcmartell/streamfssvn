@@ -242,8 +242,8 @@ class MFTParser():
                             clusters.extend(data.clusters)
                         if hasattr(data, 'res_data'):
                             res_data = data.res_data
-                        if hasattr(data, 'real_size'):
-                            data_size = data.real_size
+                        if hasattr(data, 'data_size'):
+                            data_size = data.data_size
                             print "Data size: %d" % data_size
 
                     # We're not interested in MFT specific files nor deleted ones...
