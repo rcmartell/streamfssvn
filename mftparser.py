@@ -155,7 +155,7 @@ class MFTParser():
                 clusters = []
                 self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
                 ctime, mtime, atime = None, None, None
-                name, flags, parent, real_size, data_size, resident = None, None, None, None, None, None
+                name, flags, parent, real_size, data_size, resident, size = None, None, None, None, None, None, 0
                 if self.entry[0:4] == MFT_ENTRY_SIG:
                     """ Beginning of MFT Entry """
                     self.header = self.parse_header()
@@ -239,18 +239,12 @@ class MFTParser():
                     for data in self.data:
                         if hasattr(data, 'clusters') and len(data.clusters):
                             clusters.extend(data.clusters)
-                        if hasattr(data, 'res_data'):
-                            if data.res_data != None:
-                                res_data = data.res_data
-                        if hasattr(data, 'nonresident'):
-                            if data.nonresident:
-                                resident = False
-                            else:
-                                resident = True
+                        if hasattr(data, 'res_data') and data.res_data != None:
+                            res_data = data.res_data
+                        if hasattr(data, 'nonresident') and not data.resident:
+                            resident = True
                         if hasattr(data, 'real_size'):
                             data_size = data.real_size
-                        else:
-                            data_size = 0
 
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
@@ -258,14 +252,11 @@ class MFTParser():
                         #self.entries.append(FILE_RECORD(name=name, ctime=ctime, mtime=mtime,atime=atime, parent=parent,
                                                     #real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
                         #self.entries.append(FILE_RECORD(name=name, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
-                        size = 0
-                        if resident:
-                            size = real_size
-                        else:
-                            if data_size:
-                                size = data_size
-                            else:
+                        if not resident:
+                            if data_size == 0:
                                 size = real_size
+                            else:
+                                size = data_size
                         self.entries.append(FILE_RECORD(name=name, resident=resident, size=size, clusters=clusters, res_data=res_data))
                     inode += 1
                     count += 1
