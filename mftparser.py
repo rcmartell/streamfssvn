@@ -155,7 +155,7 @@ class MFTParser():
                 clusters = []
                 self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
                 ctime, mtime, atime = None, None, None
-                name, flags, parent, real_size, data_size = None, None, None, None, None
+                name, flags, parent, real_size, data_size, resident = None, None, None, None, None, None
                 if self.entry[0:4] == MFT_ENTRY_SIG:
                     """ Beginning of MFT Entry """
                     self.header = self.parse_header()
@@ -243,6 +243,11 @@ class MFTParser():
                             res_data = data.res_data
                         else:
                             res_data = None
+                        if hasattr(data, 'nonresident'):
+                            if data.nonresident:
+                                resident = False
+                            else:
+                                resident = True
                         if hasattr(data, 'real_size'):
                             data_size = data.real_size
                         else:
@@ -255,11 +260,11 @@ class MFTParser():
                                                     #real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
                         #self.entries.append(FILE_RECORD(name=name, real_size=real_size, data_size=data_size, clusters=clusters, res_data=res_data))
                         size = 0
-                        if data_size != 0:
-                            size = data_size
-                        else:
+                        if resident:
                             size = real_size
-                        self.entries.append(FILE_RECORD(name=name, size=size, clusters=clusters, res_data=res_data))
+                        else:
+                            size = data_size
+                        self.entries.append(FILE_RECORD(name=name, resident=resident, size=size, clusters=clusters, res_data=res_data))
                     inode += 1
                     count += 1
                     if self.cleanup:
