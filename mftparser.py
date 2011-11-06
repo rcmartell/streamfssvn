@@ -239,7 +239,7 @@ class MFTParser():
                     for data in self.data:
                         if hasattr(data, 'clusters') and len(data.clusters):
                             clusters.extend(data.clusters)
-                        if hasattr(data, 'res_data'):
+                        if hasattr(data, 'res_data') and len(data.res_data):
                             res_data = data.res_data
                         else:
                             res_data = None
@@ -263,7 +263,10 @@ class MFTParser():
                         if resident:
                             size = real_size
                         else:
-                            size = data_size
+                            if data_size:
+                                size = data_size
+                            else:
+                                size = real_size
                         self.entries.append(FILE_RECORD(name=name, resident=resident, size=size, clusters=clusters, res_data=res_data))
                     inode += 1
                     count += 1

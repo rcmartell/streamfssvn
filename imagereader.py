@@ -28,7 +28,6 @@ class ImageReader():
             self.mapping = [-1] * self.num_clusters
         del(parser)
         print 'Done.'
-        print "Number of clusters in image: %d" % len(self.mapping)
 
     def setup_stream_listeners(self, servers):
         print 'Setting up stream listeners...',

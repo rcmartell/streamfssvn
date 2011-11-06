@@ -104,6 +104,8 @@ class StreamClient():
             if entry.resident:
                 self.residentfiles[entry.name] = entry.res_data
             else:
+                if entry.size == 0:
+                    print "ERROR: %s reported 0 file size!" % entry.name
                 self.files[entry.name] = [entry.size, entry.clusters]
 
     """
