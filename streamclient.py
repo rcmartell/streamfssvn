@@ -74,23 +74,23 @@ class StreamClient():
         self.showCurrentStatus = True
         self.finished = False
 
-    """
-    Set by Image Server
-    """
     def set_cluster_size(self, size):
+        """
+        Set by Image Server
+        """
         self.cluster_size = int(size)
 
-    """
-    Set by Image Server
-    """
     def set_num_clusters(self, num):
+        """
+        Set by Image Server
+        """
         self.num_clusters = int(num)
         self.clustermap = [0] * self.num_clusters
 
-    """
-    Setup necessary data structures to process entries received from Image Server.
-    """
     def process_entries(self, entries):
+        """
+        Setup necessary data structures to process entries received from Image Server.
+        """
         count = 0
         self.files = {}
         if sys.platform == "win32":
@@ -121,29 +121,27 @@ class StreamClient():
             else:
                 self.files[entry.name] = [len(entry.clusters) * self.cluster_size, entry.clusters]
 
-
-    """
-    Create a mapping of clusters to their respective files.
-    """
     def setup_clustermap(self):
+        """
+        Create a mapping of clusters to their respective files.
+        """
         for k, v in self.files.iteritems():
             for c in v[1]:
                 self.clustermap[int(c)] = k
 
-    """
-    Create a dictionary containing the number of clusters each file is composed of.
-
-    This will be used to determine if a file has been completely written to disk.
-    """
     def setup_file_progress(self):
+        """
+        Create a dictionary containing the number of clusters each file is composed of.
+        This will be used to determine if a file has been completely written to disk.
+        """
         self.file_progress = {}
         for file in self.files:
             self.file_progress[file] = len(self.files[file][1])
 
-    """
-    Create a list of all the clusters this client will be receiving.
-    """
     def list_clusters(self):
+        """
+        Create a list of all the clusters this client will be receiving.
+        """
         self.clusters = []
         for k, v in self.files.iteritems():
             try:
@@ -152,24 +150,25 @@ class StreamClient():
                 self.clusters.append(v[1])
         return self.clusters
 
-    """
-    Free up memory as this list is no longer necessary.
-    """
     def clear_clusters(self):
+        """
+        Free up memory as this list is no longer necessary.
+        """
         self.clusters = []
         del(self.clusters)
         gc.collect()
 
-    """
-    Method used by Image Server to transfer cluster/data to client.
-    """
     def add_queue(self, cluster, data):
+        """
+        Method used by Image Server to transfer cluster/data to client.
+        """
         self.queue.extend(zip(cluster, data))
 
-    """
-    Helper method to spawn write_data in a seperate thread.
-    """
+
     def queue_writes(self):
+        """
+        Helper method to spawn write_data in a seperate thread.
+        """
         self.thread = threading.Thread(target=self.write_data)
         self.thread.start()
         return
@@ -182,27 +181,24 @@ class StreamClient():
     def set_finished(self):
         self.finished = True
 
-    """
-    Writes file data to disk.
 
-    The algorithm this function uses is an attempt to minimize random writes. This isn't all that straight-forward
-    due to file-fragmentation and not having all of the data beforehand. I'm sure more efficient ones exist, but
-    this does the job reasonably well.
-    """
     def write_data(self):
-        if sys.platform == "win32":
-                self.console.text(0, 2, "Writing files to disk...")
-        else:
-            self.win.clear()
-            self.win.refresh()
-            self.win.addstr(0, 0, "Writing files to disk...")
-            self.win.refresh()
+        """
+        Writes file data to disk.
+    
+        The algorithm this function uses is an attempt to minimize random writes. This isn't all that straight-forward
+        due to file-fragmentation and not having all of the data beforehand. I'm sure more efficient ones exist, but
+        this does the job reasonably well.
+        """
         try:
             # While incomplete files remain...
             while len(self.file_progress):
                 # Sleep while the queue is empty.
-                while len(self.queue) == 0:
-                    time.sleep(0.005)
+                if len(self.queue) == 0:
+                    if self.finished:
+                        break
+                    else:
+                        time.sleep(0.005)
                 filedb = {}
                 # 1000 is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
@@ -273,22 +269,32 @@ class StreamClient():
                         del self.file_progress[file]
                         # Move file to appropriate folder based on its extension/magic number.
                         self.magic.process_file(file)
+            if len(self.file_progress) and self.finished:
+                self.win.refresh()
+                self.showCurrentStatus = False
+                curses.nocbreak(); self.win.keypad(0); curses.echo()
+                curses.endwin()
+                print "Files left uncompleted:"
+                for file in self.file_progress:
+                    print file + ": " + self.file_progress[file]
             # Write resident files to disk.
             for file in self.residentfiles:
                 fh = open(file, 'wb')
                 fh.write(self.residentfiles[file])
                 fh.close()
                 self.magic.process_file(file)
-            # Finished. Do cleanup.
-            self.finished = True
             self.showCurrentStatus = False
+            if sys.platform != "win32":
+                curses.nocbreak(); self.win.keypad(0); curses.echo()
+                curses.endwin()
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.showCurrentStatus = False
-            curses.nocbreak(); self.win.keypad(0); curses.echo()
-            curses.endwin()
+            if sys.platform != "win32":
+                curses.nocbreak(); self.win.keypad(0); curses.echo()
+                curses.endwin()
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
 
