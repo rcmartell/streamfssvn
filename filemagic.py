@@ -2,12 +2,6 @@ import sys, os
 import magic, threading
 import shutil
 
-try:
-    import psyco
-    psyco.full()
-except:
-    pass
-
 class FileMagic():
     def __init__(self, path):
         self.dirs = {
@@ -44,16 +38,8 @@ class FileMagic():
         return
 
     def sort_file(self, file):
-        self.filemagic = magic.file(file)
-        category = self.filemagic.split('/')[0]
-        if category in self.dirs:
+        for filter in self.filters:
             try:
-                shutil.move(file, self.dirs[category])
-            except:
-                os.remove(self.dirs[category] + os.path.basename(file))
-                shutil.move(file, self.dirs[category])
-        else:
-            for filter in self.filters:
                 if os.path.splitext(file)[1][1:].upper() in self.filters[filter]:
                     try:
                         shutil.move(file, self.dirs[filter])
@@ -61,9 +47,16 @@ class FileMagic():
                         os.remove(self.dirs[filter] + os.path.basename(file))
                         shutil.move(file, self.dirs[filter])
                     return
-            try:
-                shutil.move(file, self.dirs['Other'])
             except:
-                os.remove(self.dirs['Other'] + os.path.basename(file))
-                shutil.move(file, self.dirs['Other'])
+                try:
+                    shutil.move(file, self.dirs['Other'])
+                except:
+                    os.remove(self.dirs['Other'] + os.path.basename(file))
+                    shutil.move(file, self.dirs['Other'])
+                return
+        try:
+            shutil.move(file, self.dirs['Other'])
+        except:
+            os.remove(self.dirs['Other'] + os.path.basename(file))
+            shutil.move(file, self.dirs['Other'])
         return
