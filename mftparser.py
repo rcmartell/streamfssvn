@@ -155,7 +155,7 @@ class MFTParser():
                 clusters = []
                 self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
                 ctime, mtime, atime = None, None, None
-                name, flags, parent, real_size, data_size, resident, size = None, None, None, None, None, None, 0
+                name, flags, parent, real_size, data_size, size = None, None, None, 0, 0, 0
                 if self.entry[0:4] == MFT_ENTRY_SIG:
                     """ Beginning of MFT Entry """
                     self.header = self.parse_header()
@@ -239,21 +239,20 @@ class MFTParser():
                     for data in self.data:
                         if hasattr(data, 'clusters') and len(data.clusters):
                             clusters.extend(data.clusters)
-                        if hasattr(data, 'res_data') and data.res_data != None:
+                        if hasattr(data, 'res_data'):
                             res_data = data.res_data
-                        if hasattr(data, 'nonresident') and not data.nonresident:
-                            resident = True
                         if hasattr(data, 'real_size'):
                             data_size = data.real_size
 
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
                         # FILE_RECORDs represent each file's metadata
-                        if data_size == 0 or data_size == None:
-                            size = real_size
-                        else:
+                        if real_size == 0:
                             size = data_size
-                        self.entries.append(FILE_RECORD(name=name, resident=resident, size=size, clusters=clusters, res_data=res_data))
+                        else:
+                            size = real_size
+                        print size
+                        self.entries.append(FILE_RECORD(name=name, size=size, clusters=clusters, res_data=res_data))
                     inode += 1
                     count += 1
                     if self.cleanup:
@@ -622,7 +621,6 @@ class MFTParser():
                         data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
                                                                (data_run_offset - max_sign[data_run_offset_bytes]))
                 clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
-                #clusters =append(clusters, range(data_run_offset, data_run_offset + data_run_len))
                 if data[0] == DATA_RUN_END:
                     break
                 else:
