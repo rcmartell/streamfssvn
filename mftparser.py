@@ -235,6 +235,7 @@ class MFTParser():
                         flags = self.filename.flags
                     if hasattr(self.filename, 'real_size'):
                         real_size = self.filename.real_size
+                        print "Real size: %d" % real_size
                     # And of course, for data attributes
                     for data in self.data:
                         if hasattr(data, 'clusters') and len(data.clusters):
@@ -243,6 +244,7 @@ class MFTParser():
                             res_data = data.res_data
                         if hasattr(data, 'real_size'):
                             data_size = data.real_size
+                            print "Data size: %d" % data_size
 
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
@@ -251,7 +253,6 @@ class MFTParser():
                             size = data_size
                         else:
                             size = real_size
-                        print str(inode) + ": " + str(size)
                         self.entries.append(FILE_RECORD(name=name, size=size, clusters=clusters, res_data=res_data))
                     inode += 1
                     count += 1
