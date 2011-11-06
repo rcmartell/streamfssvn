@@ -249,7 +249,7 @@ class MFTParser():
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in self.filename.flags:
                         # FILE_RECORDs represent each file's metadata
-                        if data_size == 0 or data_size == None:
+                        if data_size == 0 and data_size == None:
                             size = real_size
                         else:
                             size = data_size
