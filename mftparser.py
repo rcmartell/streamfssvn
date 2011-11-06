@@ -251,7 +251,7 @@ class MFTParser():
                             size = data_size
                         else:
                             size = real_size
-                        print inode + ": " + size
+                        print str(inode) + ": " + str(size)
                         self.entries.append(FILE_RECORD(name=name, size=size, clusters=clusters, res_data=res_data))
                     inode += 1
                     count += 1
