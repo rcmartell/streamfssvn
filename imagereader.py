@@ -3,7 +3,6 @@ from mftparser import MFTParser
 from time import time, ctime
 from progressbar import *
 from threading import *
-from collections import deque
 import warnings, gc
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.util, threading
@@ -29,6 +28,7 @@ class ImageReader():
             self.mapping = [-1] * self.num_clusters
         del(parser)
         print 'Done.'
+        print "Number of clusters in image: %d" % len(self.mapping)
 
     def setup_stream_listeners(self, servers):
         print 'Setting up stream listeners...',
@@ -78,10 +78,6 @@ class ImageReader():
         self.finished = True
         for thread in threads:
             thread.join()
-        for stream in self.streams:
-            while not stream.check_status():
-                time.sleep(0.005)
-            print "Client %s finished." % stream
         pbar.finish()
         ifh.close()
         ofh.close()
@@ -97,6 +93,7 @@ class ImageReader():
                     data = self.thread_queue[tid][1]
                     self.streams[tid].add_queue(clusters, data)
                     self.lock[tid].release()
+                    self.streams[tid].set_finished()
                     print "Thread %i finished" % tid
                     return
             self.lock[tid].acquire()
