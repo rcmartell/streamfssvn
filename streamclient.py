@@ -112,14 +112,14 @@ class StreamClient():
                 count += 1
             else:
                 entry.name = "%sIncomplete/%s" % (self.path, entry.name)
+            if entry.res_data != None:
+                self.residentfiles[entry.name] = entry.res_data
+                continue
             # NTFS is not consistent about where it stores a file's data size...
             if entry.size != 0:
                 self.files[entry.name] = [entry.size, entry.clusters]
             else:
-                if len(entry.clusters):
-                    self.files[entry.name] = [len(entry.clusters) * self.cluster_size, entry.clusters]
-                else:
-                    self.residentfiles[entry.name] = entry.res_data
+                self.files[entry.name] = [len(entry.clusters) * self.cluster_size, entry.clusters]
 
 
     """
@@ -174,14 +174,13 @@ class StreamClient():
         self.thread.start()
         return
 
-
     def queue_showStatus(self):
         self.statusThread = threading.Thread(target=self.showStatus)
         self.statusThread.start()
         return
-        
-    def check_status(self):
-        return self.finished
+
+    def set_finished(self):
+        self.finished = True
 
     """
     Writes file data to disk.
