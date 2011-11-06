@@ -101,7 +101,7 @@ class StreamClient():
                 count += 1
             else:
                 entry.name = "%sIncomplete/%s" % (self.path, entry.name)
-            if entry.resident:
+            if entry.res_data != None:
                 self.residentfiles[entry.name] = entry.res_data
             else:
                 if entry.size == 0 or entry.size == None:
