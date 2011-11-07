@@ -296,6 +296,10 @@ class StreamClient():
             self.showCurrentStatus = False
             self.ns.remove(name=self.name)
             self.daemon.shutdown()
+            try:
+                os.system('reset')
+            except:
+                pass
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             if sys.platform == "win32":
@@ -318,6 +322,7 @@ class StreamClient():
             curses.endwin()
             self.ns.remove(name=self.name)
             self.daemon.shutdown()
+            os.system('reset')
 
 
     def showStatus(self):
