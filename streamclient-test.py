@@ -68,6 +68,7 @@ class StreamClient():
             pass
         os.chdir("Incomplete")
         self.magic = FileMagic(self.path)
+        self.clustercount = 0
                 
 
     """
@@ -148,6 +149,7 @@ class StreamClient():
     Method used by Image Server to transfer cluster/data to client.
     """
     def add_queue(self, cluster, data):
+        self.clustercount += len(cluster)
         self.queue.extend(zip(cluster, data))
 
     """
@@ -179,7 +181,7 @@ class StreamClient():
     """
     def write_data(self):
         if sys.platform == "win32":
-                self.console.text(0, 0, "Writing files to disk...")
+            self.console.text(0, 0, "Writing files to disk...")
         else:
             self.win.clear()
             self.win.refresh()
@@ -350,14 +352,15 @@ class StreamClient():
                     time.sleep(1)
                     self.win.addstr(1, 0, "%d of %d files remaining              " % (len(self.file_progress), num_files))
                     self.win.addstr(2, 0, "Clusters in queue: %d           " % len(self.queue))
-                    self.win.addstr(3, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
-                    self.win.addstr(4, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
+                    self.win.addstr(3, 0, "Clusters received: %d | Total clusters: %d        " % (self.clustercount, self.num_clusters))
+                    self.win.addstr(4, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
+                    self.win.addstr(5, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
                                           ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
                     cur_write_rate = (self.process.get_io_counters()[3] / MB)
                     duration = int(time.time()) - starttime
-                    self.win.addstr(5, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
-                    self.win.addstr(6, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
-                    self.win.addstr(7, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
+                    self.win.addstr(6, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
+                    self.win.addstr(7, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
+                    self.win.addstr(8, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
                     self.win.refresh()
                 except:
                     pass
