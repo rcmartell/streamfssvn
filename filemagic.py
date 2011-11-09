@@ -44,19 +44,28 @@ class FileMagic():
                     try:
                         shutil.move(file, self.dirs[filter])
                     except:
-                        os.remove(self.dirs[filter] + os.path.basename(file))
-                        shutil.move(file, self.dirs[filter])
+                        try:
+                            os.remove(self.dirs[filter] + os.path.basename(file))
+                            shutil.move(file, self.dirs[filter])
+                        except:
+                            pass
                     return
             except:
                 try:
                     shutil.move(file, self.dirs['Other'])
                 except:
-                    os.remove(self.dirs['Other'] + os.path.basename(file))
-                    shutil.move(file, self.dirs['Other'])
+                    try:
+                        os.remove(self.dirs['Other'] + os.path.basename(file))
+                        shutil.move(file, self.dirs['Other'])
+                    except:
+                        pass
                 return
         try:
             shutil.move(file, self.dirs['Other'])
         except:
-            os.remove(self.dirs['Other'] + os.path.basename(file))
-            shutil.move(file, self.dirs['Other'])
+            try:
+                os.remove(self.dirs['Other'] + os.path.basename(file))
+                shutil.move(file, self.dirs['Other'])
+            except:
+                pass
         return

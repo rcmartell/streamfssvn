@@ -1,9 +1,9 @@
 from subprocess import *
 import os
 
-p1 = Popen("start /wait cmd /K python streamclient.py 127.0.0.1 s1 C:\\Users\\rob\\streamfs", shell=True)
-p2 = Popen("start /wait cmd /K python streamclient.py 127.0.0.1 s2 E:\\", shell=True)
-p3 = Popen("start /wait cmd /K python imagereader.py //./g: test.dd s1 s2", shell=True)
+p1 = Popen("start /wait cmd /K python streamclient-test.py s1 C:\\Users\\rob\\streamfs", shell=True)
+p2 = Popen("start /wait cmd /K python streamclient-test.py s2 E:\\", shell=True)
+p3 = Popen("start /wait cmd /K python imagereader.py E:\\testimg.dd test.dd s1 s2", shell=True)
 
 while True:
     input = raw_input()

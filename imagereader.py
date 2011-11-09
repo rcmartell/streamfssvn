@@ -49,7 +49,7 @@ class ImageReader():
         ifh = open(self.src, 'rb')
         ofh = open(self.dest, 'wb+')
         self.finished = False
-        self.queue = [([0] * QUEUE_SIZE, [0] * QUEUE_SIZE) for idx in range(len(self.streams))]
+        self.queue = [([-1] * QUEUE_SIZE, [-1] * QUEUE_SIZE) for idx in range(len(self.streams))]
         self.queue_idx = [0] * len(self.streams)
         for stream in self.streams:
             stream.setup_clustermap()
@@ -72,6 +72,7 @@ class ImageReader():
             if self.queue_idx[target] == QUEUE_SIZE:
                 self.streams[target].add_queue(self.queue[target][0], self.queue[target][1])
                 self.queue_idx[target] = 0
+                self.queue = ([-1] * QUEUE_SIZE, [-1] * QUEUE_SIZE)
             #ofh.write(data)
             pbar.update(idx * self.cluster_size)
         self.finished = True
