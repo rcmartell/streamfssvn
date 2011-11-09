@@ -88,6 +88,18 @@ class MFTParser():
         self.offset = self.mft_base_offset + self.part_offset
         self.img.seek(self.offset, os.SEEK_SET)
         self.entry = self.img.read(MFT_ENTRY_SIZE)
+        fix_arr_off = unpack("<H", self.entry[4:6])[0] + 2
+        fix_arr_len = unpack("<H", self.entry[6:8])[0] + 1
+        sec_end = self.sector_size-2
+        # Python strings are immutable...
+        self.entry = list(self.entry)
+        # For each sector in this entry, replace the fixup values with the original ones.
+        for i in range(0, fix_arr_len, 2):
+            self.entry[sec_end] = self.entry[fix_arr_off+i]
+            self.entry[sec_end+1] = self.entry[fix_arr_off+i+1]
+            sec_end += self.sector_size
+        # Pack the list back into binary
+        self.entry = pack("<1024c", *self.entry)
         self.offset = self.entry.find(DATA_SIG)
         data_len = unpack("<I", self.entry[self.offset+4:self.offset+8])[0]
         data = self.entry[self.offset:self.offset+data_len]
