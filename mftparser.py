@@ -67,7 +67,7 @@ class MFTParser():
         self.sector_size = unpack('<H', self.img.read(0x0D)[-2:])[0]
         self.cluster_size = int(b2a_hex(unpack("<c", self.img.read(1))[0]),16) * self.sector_size
         self.num_sectors = unpack('<Q', self.img.read(0x22)[-8:])[0]
-        self.num_bytes = (self.num_sectors + 1) * self.sector_size
+        self.num_bytes = self.num_sectors * self.sector_size
         self.num_clusters = int(math.ceil(self.num_bytes / self.cluster_size))
         self.mft_base_offset = unpack("<Q", self.img.read(8))[0] * self.cluster_size
         self.mft_mir_base_offset = unpack("<Q", self.img.read(8))[0] * self.cluster_size
@@ -799,7 +799,7 @@ class MFTParser():
         print "Volume Size: %i" % self.num_bytes
         print "Sector Size: %i" % self.sector_size
         print "Cluster Size: %i" % self.cluster_size
-        print "Number of Sectors: %i" % (self.num_bytes / self.sector_size)
+        print "Number of Sectors: %i" % self.num_sectors
         print "Number of Clusters: %i" % self.num_clusters
         print "MFT Entry Size(Bytes): %i" % MFT_ENTRY_SIZE
         print "$MFT Offset(Bytes): %i" % self.mft_base_offset
