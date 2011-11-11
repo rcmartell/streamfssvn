@@ -3,7 +3,7 @@ from mftparser import MFTParser
 from time import time, ctime
 from progressbar import *
 from threading import *
-import warnings, gc
+import warnings, gc, sys
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.util, threading
 
@@ -78,7 +78,10 @@ class ImageReader():
         for thread in threads:
             thread.join()
         for idx in range(len(self.streams)):
-            self.streams[idx].add_queue(self.thread_queue[idx][0], self.thread_queue[idx][1])
+            try:
+                self.streams[idx].add_queue(self.thread_queue[idx][0], self.thread_queue[idx][1])
+            except:
+                pass
         pbar.finish()
         ifh.close()
         ofh.close()
@@ -99,6 +102,16 @@ class ImageReader():
             self.streams[tid].add_queue(clusters, data)
 
 def main():
+    if sys.platform == "win32":
+        try:
+            os.system("cls")
+        except:
+            pass
+    else:
+        try:
+            os.system("clear")
+        except:
+            pass
     print "Starting Time: %s" % str(time.ctime())
     irdr = ImageReader(sys.argv[1], sys.argv[2])
     irdr.init_fs_metadata()
