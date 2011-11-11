@@ -39,7 +39,6 @@ class StreamClient():
         else:
             curses.initscr()
             curses.noecho()
-            curses.cbreak()
             self.win = curses.newwin(0,0)
             self.win.addstr(0, 0, "Waiting for server...")
             self.win.refresh()
@@ -281,8 +280,6 @@ class StreamClient():
             if sys.platform == "win32":
                 self.console.text(0, 28, "Writing %d resident files to disk..." % len(self.residentfiles))
             else:
-                self.win.clear()
-                self.win.refresh()
                 self.win.addstr(13, 0, "Writing %d resident files to disk..." % len(self.residentfiles))
                 self.win.refresh()
             for file in self.residentfiles:
@@ -298,17 +295,12 @@ class StreamClient():
             self.showCurrentStatus = False
             self.ns.remove(name=self.name)
             self.daemon.shutdown()
-            try:
-                os.system('reset')
-            except:
-                pass
+            curses.echo(); curses.endwin()
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             if sys.platform == "win32":
                 self.console.text(0, 28, "Writing %d resident files to disk..." % len(self.residentfiles))
             else:
-                self.win.clear()
-                self.win.refresh()
                 self.win.addstr(13, 0, "Writing %d resident files to disk..." % len(self.residentfiles))
                 self.win.refresh()
                 for file in self.residentfiles:
@@ -320,8 +312,7 @@ class StreamClient():
                     except:
                         pass
             self.showCurrentStatus = False
-            curses.nocbreak(); self.win.keypad(0); curses.echo()
-            curses.endwin()
+            curses.echo(); curses.endwin()
             self.ns.remove(name=self.name)
             self.daemon.shutdown()
             os.system('reset')
@@ -354,8 +345,8 @@ class StreamClient():
                     self.win.addstr(2, 0, "Clusters in queue: %d           " % len(self.queue))
                     self.win.addstr(3, 0, "Clusters received: %d | Total clusters: %d        " % (self.clustercount, self.num_clusters))
                     self.win.addstr(4, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
-                    self.win.addstr(5, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
-                                          ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
+                    self.win.addstr(4, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
+                                      ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), ((psutil.avail_phymem() + psutil.cached_phymem() + psutil.phymem_buffers()) / MB)))
                     cur_write_rate = (self.process.get_io_counters()[3] / MB)
                     duration = int(time.time()) - starttime
                     self.win.addstr(6, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
@@ -382,10 +373,9 @@ def main():
     ns.register(name, uri)
     try:
         daemon.requestLoop()
-    except KeyboardInterrupt:
+    except:
         if sys.platform == "linux2":
-            curses.nocbreak(); client.win.keypad(0); curses.echo()
-            curses.endwin()
+            curses.echo(); curses.endwin()
         print 'User aborted'
         ns.remove(name=name)
         daemon.shutdown()
