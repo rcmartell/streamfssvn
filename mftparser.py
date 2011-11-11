@@ -175,7 +175,7 @@ class MFTParser():
                     # Part of a multi-entry data attribute, not a unique File Entry.
                     # It will eventually be included in an Attribute List attribute
                         count += 1
-                        self.inode += 1
+                        inode += 1
                         continue
                     while True:
                         # Trudge through the entry one attribute at a time using their
