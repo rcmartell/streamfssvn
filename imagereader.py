@@ -61,9 +61,9 @@ class ImageReader():
             thread.start()
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
-        fh.seek(0, os.SEEK_END)
+        ifh.seek(0, os.SEEK_END)
         length = fh.tell()
-        fh.seek(0, os.SEEK_SET)
+        ifh.seek(0, os.SEEK_SET)
         print length
         for idx in range(len(self.mapping)):
             target = self.mapping[idx]
