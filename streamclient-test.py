@@ -68,6 +68,7 @@ class StreamClient():
         os.chdir("Incomplete")
         self.magic = FileMagic(self.path)
         self.clustercount = 0
+        self.totalclusters = 0
                 
 
     """
@@ -134,6 +135,7 @@ class StreamClient():
                 self.clusters.extend(v[1])
             except:
                 self.clusters.append(v[1])
+        self.totalclusters = len(self.clusters)
         return self.clusters
 
     """
@@ -343,7 +345,7 @@ class StreamClient():
                     time.sleep(1)
                     self.win.addstr(1, 0, "%d of %d files remaining              " % (len(self.file_progress), num_files))
                     self.win.addstr(2, 0, "Clusters in queue: %d           " % len(self.queue))
-                    self.win.addstr(3, 0, "Clusters received: %d | Total clusters: %d        " % (self.clustercount, self.num_clusters))
+                    self.win.addstr(3, 0, "Clusters received: %d | Total clusters: %d        " % (self.clustercount, self.totalclusters))
                     self.win.addstr(4, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
                     self.win.addstr(4, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
                                       ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), ((psutil.avail_phymem() + psutil.cached_phymem() + psutil.phymem_buffers()) / MB)))
