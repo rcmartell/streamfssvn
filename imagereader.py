@@ -61,7 +61,6 @@ class ImageReader():
             thread.start()
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
-        cluster_count = [0] * len(self.streams)
         for idx in range(len(self.mapping)):
             target = self.mapping[idx]
             if target == -1:
@@ -73,7 +72,6 @@ class ImageReader():
             self.thread_queue[target][0].append(idx)
             self.thread_queue[target][1].append(data)
             self.lock[target].release()
-            cluster_count[target] += 1
             ofh.write(data)
             pbar.update(idx * self.cluster_size)
         self.finished = True
@@ -84,8 +82,6 @@ class ImageReader():
         pbar.finish()
         ifh.close()
         ofh.close()
-        for idx in cluster_count:
-            print "Stream%d: %d" % (idx, cluster_count[idx])
 
     def threaded_queue(self, idx):
         tid = idx
