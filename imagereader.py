@@ -3,7 +3,7 @@ from mftparser import MFTParser
 from time import time, ctime
 from progressbar import *
 from threading import *
-import warnings, gc, sys
+import warnings, gc, sys, os
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.util, threading
 
