@@ -7,7 +7,7 @@ import warnings, gc, sys
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.util, threading
 
-QUEUE_SIZE = 4096
+QUEUE_SIZE = 8192
 
 
 class ImageReader():
@@ -16,7 +16,7 @@ class ImageReader():
         self.src = src
         self.dest = dest
         self.entries = None
-        self.widgets = ['Progress: ', Percentage(), ' ', Bar(marker=RotatingMarker()), ' ', ETA(), ' ', FileTransferSpeed()]
+        self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
 
     def init_fs_metadata(self, fstype='ntfs'):
         print 'Parsing filesystem metadata...',
@@ -81,6 +81,7 @@ class ImageReader():
             try:
                 self.streams[idx].add_queue(self.thread_queue[idx][0], self.thread_queue[idx][1])
             except:
+                print "Error sending data to client: %d" % idx
                 pass
         pbar.finish()
         ifh.close()
