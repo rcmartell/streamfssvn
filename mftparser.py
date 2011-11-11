@@ -806,19 +806,14 @@ class MFTParser():
         print "$MFT Offset(Clusters): %i" % (self.mft_base_offset / self.cluster_size)
         print "$MFTMIR Offset(Bytes): %i" % self.mft_mir_base_offset
         print "$MFTMIR Offset(Clusters): %i" % (self.mft_mir_base_offset / self.cluster_size)
-        #print "Number of files on volume: %i" % len(self.entries)
     
-    def cluster_to_file(self, parser, clusters):
-        for cluster in clusters:
-            allocated = 0
-            cluster = int(cluster)
-            for entry in parser.entries:
-                if cluster in entry.clusters:
-                    print("Cluster: %s maps to file: %s" % (cluster, entry.name))
-                    allocated = 1
-                    break
-            if not allocated:
-                print("Cluster %s unallocated" % cluster)
+    def cluster_to_file(self, parser, cluster):
+        cluster = int(cluster)
+        for entry in parser.entries:
+            if cluster in entry.clusters:
+                print("Cluster: %s maps to file: %s" % (cluster, entry.name))
+                return
+        print("Cluster %s unallocated" % cluster)
                 
     def lookup(self, parser, name):
         for idx in range(len(parser.entries)):
@@ -838,24 +833,20 @@ class MFTParser():
 
 if __name__ == "__main__":
     import argparse
-    try:
-        import psyco
-        psyco.full()
-    except:
-        pass
 
     argparser = argparse.ArgumentParser(description="""
     Parses the MFT of an NTFS filesystem. The data returned depends on the flags selected by the user. Optional functionality similar to Sleuthkit's fsstat/istat is possible, as well as a tentative count of various file-types found throughout the system. Note: When using this option, the file-type is determined exclusively by extension, so counts may not truly reflect the contents of the system. The command-line functions are only "extra-functionality", as the main purpose of this tool is to be used by an "image reader", to parse and return serializable MFT entry objects, each representing a unique file on the file-system. Each object can be used, in conjunction with its raw data blocks, to recreate the file it represents on the fly.
     """)
-    argparser.add_argument('-i', '--image', help="Target image/drive to be parsed.", required=True)
+    argparser.add_argument('-t', '--target', help="Target image/drive to be parsed.", required=True)
     group = argparser.add_mutually_exclusive_group(required=True)
     group.add_argument('-e', '--entry', type=int, help="Get basic MFT entry data for supplied entry number. Similar to Sleuthkit's istat sans datarun info for ease of viewing. See -d/--data for datarun listings.")
     group.add_argument('-d', '--data', type=int, help="Get data blocks belonging to file in specified MFT entry.")
-    group.add_argument('-c', '--count', help="Get a summary count of various file-types found on the filesystem.", action='store_true')
-    group.add_argument('-f', '--fsinfo', help="Get basic volume information. Similar to Sleuthkit's fsstat.", action='store_true')
-    group.add_argument('-l', '--lookup', help="If filename exists on filesystem, return file's MFT entry number.") 
+    group.add_argument('-f', '--files', help="Get a summary count of various file-types found on the filesystem.", action='store_true')
+    group.add_argument('-i', '--info', help="Get basic volume information. Similar to Sleuthkit's fsstat.", action='store_true')
+    group.add_argument('-l', '--lookup', help="Find MFT Entry number(s) belonging to supplied filename. Note: If multiple files with the same name are found, returns all matching MFT Entry numbers.")
+    group.add_argument('-c', '--cluster', help="Map supplied cluster to it's owning file if allocated.")
     args = argparser.parse_args()
-    parser = MFTParser(args.image)
+    parser = MFTParser(args.target)
     parser.setup_mft_data()
     opts = vars(args)
     
@@ -914,15 +905,16 @@ if __name__ == "__main__":
                     clusters.extend(parser.data[i].clusters)
                 res_data = parser.data[i].res_data
             parser.print_data(parser.data[0], clusters, start_vcn, end_vcn, True)
-    elif opts['count']:
+    elif opts['files']:
         print time.ctime()
         parser.parse_mft(fullParse=False, quickstat=True)
         parser.getFiletypeStats()
         print time.ctime()
-    elif opts['fsinfo']:
+    elif opts['info']:
         parser.print_fsdata(parser)
     elif opts['lookup']:
         parser.parse_mft(fullParse=False, quickstat=True)
         parser.lookup(parser, opts['lookup'])
-    
-        
+    elif opts['cluster']:
+        parser.parse_mft(fullParse=False, quickstat=False)
+        parser.cluster_to_file(parser, opts['cluster'])
