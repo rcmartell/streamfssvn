@@ -7,7 +7,7 @@ import warnings, gc
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.util, threading
 
-QUEUE_SIZE = 1024
+QUEUE_SIZE = 4096
 
 
 class ImageReader():
@@ -46,43 +46,61 @@ class ImageReader():
         print 'Done.'
 
     def image_drive(self):
+        self.lock = [threading.Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
         ofh = open(self.dest, 'wb+')
         self.finished = False
-        self.queue = [([-1] * QUEUE_SIZE, [-1] * QUEUE_SIZE) for idx in range(len(self.streams))]
-        self.queue_idx = [0] * len(self.streams)
+        self.thread_queue = [[[], []] for idx in range(len(self.streams))]
+        threads = [Thread(target=self.threaded_queue, args=(idx,)) for idx in range(len(self.streams))]
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
             stream.queue_writes()
             stream.queue_showStatus()
+        for thread in threads:
+            thread.start()
         print 'Imaging drive...'
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         cluster_count = [0] * len(self.streams)
         for idx in range(len(self.mapping)):
             target = self.mapping[idx]
             if target == -1:
-                #ofh.write(ifh.read(self.cluster_size))
+                ofh.write(ifh.read(self.cluster_size))
                 pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
-            self.queue[target][0][self.queue_idx[target]] = idx
-            self.queue[target][1][self.queue_idx[target]] = data
-            self.queue_idx[target] += 1
-            if self.queue_idx[target] == QUEUE_SIZE:
-                self.streams[target].add_queue(self.queue[target][0], self.queue[target][1])
-                self.queue_idx[target] = 0
-                self.queue = ([-1] * QUEUE_SIZE, [-1] * QUEUE_SIZE)
-            #ofh.write(data)
+            self.lock[target].acquire()
+            self.thread_queue[target][0].append(idx)
+            self.thread_queue[target][1].append(data)
+            self.lock[target].release()
+            cluster_count[target] += 1
+            ofh.write(data)
             pbar.update(idx * self.cluster_size)
         self.finished = True
+        for thread in threads:
+            thread.join()
         for idx in range(len(self.streams)):
-            self.streams[idx].add_queue(self.queue[idx][0], self.queue[idx][1])
+            self.streams[idx].add_queue(self.thread_queue[idx][0], self.thread_queue[idx][1])
         pbar.finish()
         ifh.close()
         ofh.close()
-        for idx in range(len(self.streams)):
-            print "Stream-%d Total Clusters Sent: %d" % (idx, cluster_count[idx])
+        for idx in cluster_count:
+            print "Stream%d: %d" % (idx, cluster_count[idx])
+
+    def threaded_queue(self, idx):
+        tid = idx
+        while True:
+            while len(self.thread_queue[tid][0]) < QUEUE_SIZE:
+                time.sleep(0.005)
+                if self.finished:
+                    return
+            self.lock[tid].acquire()
+            clusters = self.thread_queue[tid][0]
+            data = self.thread_queue[tid][1]
+            del(self.thread_queue[tid][:])
+            self.thread_queue[tid] = [[], []]
+            self.lock[tid].release()
+            self.streams[tid].add_queue(clusters, data)
 
 def main():
     print "Starting Time: %s" % str(time.ctime())

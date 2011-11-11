@@ -318,7 +318,7 @@ class StreamClient():
                 self.win.addstr(2, 0, "Clusters in queue: %d           " % len(self.queue))
                 self.win.addstr(3, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
                 self.win.addstr(4, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
-                                      ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
+                                      ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), ((psutil.avail_phymem() + psutil.cached_phymem() + psutil.phymem_buffers()) / MB)))
                 cur_write_rate = (self.process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - starttime
                 self.win.addstr(5, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
