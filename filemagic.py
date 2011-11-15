@@ -59,6 +59,7 @@ class FileMagic():
                 except:
                     try:
                         shutil.move(file, self.dirs['Other'] + "[" + str(self.count) + "]" + os.path.basename(file))
+                        self.count += 1
                     except:
                         self.fh.write("Error moving file: %s\n" % file)
                         pass
@@ -68,6 +69,7 @@ class FileMagic():
         except:
             try:
                 shutil.move(file, self.dirs['Other'] + "[" + str(self.count) + "]" + os.path.basename(file))
+                self.count += 1
             except:
                 self.fh.write("Error moving file: %s\n" % file)
                 pass
