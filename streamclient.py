@@ -124,6 +124,7 @@ class StreamClient():
                 self.files[entry.name] = [entry.size, entry.clusters]
                 ncount += 1
         fh.write("Count: %d" % ncount)
+        fh.write("Number of files: %d" % len(self.files))
         fh.close()
 
     def setup_clustermap(self):
