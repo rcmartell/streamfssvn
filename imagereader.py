@@ -26,6 +26,7 @@ class ImageReader():
             self.num_clusters = parser.get_num_clusters()
             self.entries = parser.main()
             self.mapping = [-1] * self.num_clusters
+        print "Number of entries: %d" % len(self.entries)
         del(parser)
         print 'Done.'
 
