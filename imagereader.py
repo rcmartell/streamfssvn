@@ -53,7 +53,7 @@ class ImageReader():
     def image_drive(self):
         self.lock = [threading.Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
-        ofh = open(self.dest, 'wb+')
+        #ofh = open(self.dest, 'wb+')
         self.finished = False
         self.thread_queue = [[[], []] for idx in range(len(self.streams))]
         threads = [Thread(target=self.threaded_queue, args=(idx,)) for idx in range(len(self.streams))]
@@ -70,7 +70,7 @@ class ImageReader():
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             if target == -1:
-                ofh.write(ifh.read(self.cluster_size))
+                #ofh.write(ifh.read(self.cluster_size))
                 pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
@@ -78,7 +78,7 @@ class ImageReader():
             self.thread_queue[target][0].append(idx)
             self.thread_queue[target][1].append(data)
             self.lock[target].release()
-            ofh.write(data)
+            #ofh.write(data)
             pbar.update(idx * self.cluster_size)
         self.finished = True
         for thread in threads:
@@ -91,7 +91,7 @@ class ImageReader():
                 pass
         pbar.finish()
         ifh.close()
-        ofh.close()
+        #ofh.close()
 
     def threaded_queue(self, idx):
         tid = idx
