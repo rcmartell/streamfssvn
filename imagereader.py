@@ -66,7 +66,7 @@ class ImageReader():
         print 'Imaging drive...'
         sys.stdout.flush()
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
-        for idx in range(len(self.mapping)):
+        for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             if target == -1:
                 ofh.write(ifh.read(self.cluster_size))
