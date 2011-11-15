@@ -348,7 +348,7 @@ class StreamClient():
 def main():
     daemon = Pyro4.core.Daemon(sys.argv[1])
     ns = Pyro4.naming.locateNS()
-    uri = daemon.register(StreamClient(path=sys.argv[3], name=sys.argv[1], ns=ns, daemon=daemon))
+    uri = daemon.register(StreamClient(path=sys.argv[3], name=sys.argv[2], ns=ns, daemon=daemon))
     print "Host: %s\t\tPort: %i\t\tName: %s" % (socket.gethostname(), uri.port, sys.argv[2])
     ns.register(sys.argv[2], uri)
     try:
