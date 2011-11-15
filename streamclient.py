@@ -11,7 +11,7 @@ if sys.platform == "win32":
 else:
     import curses
 
-QUEUE_SIZE = 1024
+QUEUE_SIZE = 8192
 MB = 1024 * 1024
 
 class StreamClient():
@@ -93,7 +93,6 @@ class StreamClient():
         Setup necessary data structures to process entries received from Image Server.
         """
         count = 0
-        ncount = 0
         self.files = {}
         if sys.platform == "win32":
             self.console.text(0, 2, "Processing file entries...")
@@ -102,7 +101,6 @@ class StreamClient():
             self.win.refresh()
             self.win.addstr(0, 0, "Processing file entries...")
             self.win.refresh()
-        fh = open("/home/rmartell/%s" % self.name, "wb")
         for entry in entries:
             # To try and prevent name collisions
             try:
@@ -114,16 +112,10 @@ class StreamClient():
                 entry.name = "%sIncomplete/[" % self.path + str(count) + "]%s" % entry.name.split("Incomplete/")[1]
                 count += 1
             if entry.res_data != None:
-                ncount += 1
                 self.residentfiles[entry.name] = entry.res_data
             else:
-                if entry.name in self.files:
-                    fh.write("Error in entryname: %s\n" % entry.name)
                 self.files[entry.name] = [entry.size, entry.clusters]
-                ncount += 1
-        fh.write("Count: %d" % ncount)
-        fh.write("Number of files: %d" % len(self.files))
-        fh.close()
+
 
     def setup_clustermap(self):
         """
@@ -198,12 +190,8 @@ class StreamClient():
             # While incomplete files remain...
             while len(self.file_progress):
                 # Sleep while the queue is empty.
-                if len(self.queue) == 0:
-                    if self.finished:
-                        print "Number of unfinished files: %d" % len(self.file_progress)
-                        break
-                    else:
-                        time.sleep(0.005)
+                if not len(self.queue):
+                    time.sleep(0.005)
                 filedb = {}
                 # 1000 is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
@@ -274,14 +262,6 @@ class StreamClient():
                         del self.file_progress[file]
                         # Move file to appropriate folder based on its extension/magic number.
                         self.magic.process_file(file)
-            if len(self.file_progress) and self.finished:
-                self.win.refresh()
-                self.showCurrentStatus = False
-                curses.nocbreak(); self.win.keypad(0); curses.echo()
-                curses.endwin()
-                print "Files left uncompleted:"
-                for file in self.file_progress:
-                    print file + ": " + self.file_progress[file]
             # Write resident files to disk.
             for file in self.residentfiles:
                 fh = open(file, 'wb')

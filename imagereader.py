@@ -20,6 +20,7 @@ class ImageReader():
 
     def init_fs_metadata(self, fstype='ntfs'):
         print 'Parsing filesystem metadata...',
+        sys.stdout.flush()
         if fstype.lower() == 'ntfs':
             parser = MFTParser(self.src)
             self.cluster_size = parser.get_cluster_size()
@@ -28,9 +29,11 @@ class ImageReader():
             self.mapping = [-1] * self.num_clusters
         del(parser)
         print 'Done.'
+        sys.stdout.flush()
 
     def setup_stream_listeners(self, servers):
         print 'Setting up stream listeners...',
+        sys.stdout.flush()
         self.streams = []
         for idx in range(len(servers)):
             self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % servers[idx]))
@@ -44,6 +47,7 @@ class ImageReader():
         del(self.entries)
         gc.collect()
         print 'Done.'
+        sys.stdout.flush()
 
     def image_drive(self):
         self.lock = [threading.Lock() for idx in range(len(self.streams))]
@@ -59,12 +63,8 @@ class ImageReader():
             stream.queue_showStatus()
         for thread in threads:
             thread.start()
-        ifh.seek(0, os.SEEK_END)
-        length = ifh.tell()
-        ifh.seek(0, os.SEEK_SET)
-        print "Image Size: %d" % length
-        print ""
         print 'Imaging drive...'
+        sys.stdout.flush()
         pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(len(self.mapping)):
             target = self.mapping[idx]
@@ -89,7 +89,6 @@ class ImageReader():
                 print "Error sending data to client: %d" % idx
                 pass
         pbar.finish()
-        print "Total number of bytes read: %d" % ifh.tell()
         ifh.close()
         ofh.close()
 
