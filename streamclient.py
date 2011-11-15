@@ -93,6 +93,7 @@ class StreamClient():
         Setup necessary data structures to process entries received from Image Server.
         """
         count = 0
+        ncount = 0
         self.files = {}
         if sys.platform == "win32":
             self.console.text(0, 2, "Processing file entries...")
@@ -115,9 +116,14 @@ class StreamClient():
             else:
                 entry.name = "%sIncomplete/%s" % (self.path, entry.name)
             if entry.res_data != None:
+                ncount += 1
                 self.residentfiles[entry.name] = entry.res_data
             else:
+                if entry.name in self.files:
+                    fh.write("Error in entryname: %s\n" % entry.name)
                 self.files[entry.name] = [entry.size, entry.clusters]
+                ncount += 1
+        fh.write("Count: %d" % ncount)
         fh.close()
 
     def setup_clustermap(self):
