@@ -5,7 +5,7 @@ from progressbar import *
 from threading import *
 import warnings, gc, sys, os
 warnings.filterwarnings("ignore")
-import Pyro4.core, Pyro4.util, threading
+import Pyro4.core, Pyro4.util, threading, cProfile
 
 QUEUE_SIZE = 8192
 
@@ -113,10 +113,10 @@ def main():
     else:
         os.system("clear")
     print "Starting Time: %s" % str(time.ctime().split(" ")[3])
-    irdr = ImageReader(sys.argv[1], sys.argv[2])
-    irdr.init_fs_metadata()
-    irdr.setup_stream_listeners(sys.argv[3:])
-    irdr.image_drive()
+    reader = ImageReader(sys.argv[1], sys.argv[2])
+    reader.init_fs_metadata()
+    reader.setup_stream_listeners(sys.argv[3:])
+    cProfile.run(reader.image_drive(), 'imagereaderProfile')
     print "End Time: %s" % str(time.ctime().split(" ")[3])
 if __name__ == "__main__":
     main()
