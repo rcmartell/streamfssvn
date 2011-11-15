@@ -16,7 +16,7 @@ class ImageReader():
         self.src = src
         self.dest = dest
         self.entries = None
-        self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
+        #self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
 
     def init_fs_metadata(self, fstype='ntfs'):
         print 'Parsing filesystem metadata...',
@@ -66,12 +66,12 @@ class ImageReader():
             thread.start()
         print 'Imaging drive...'
         sys.stdout.flush()
-        pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
+        #pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             if target == -1:
                 ofh.write(ifh.read(self.cluster_size))
-                pbar.update(idx * self.cluster_size)
+                #pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
             self.lock[target].acquire()
@@ -79,7 +79,7 @@ class ImageReader():
             self.thread_queue[target][1].append(data)
             self.lock[target].release()
             ofh.write(data)
-            pbar.update(idx * self.cluster_size)
+            #pbar.update(idx * self.cluster_size)
         self.finished = True
         for thread in threads:
             thread.join()
@@ -89,7 +89,7 @@ class ImageReader():
             except:
                 print "Error sending data to client: %d" % idx
                 pass
-        pbar.finish()
+        #pbar.finish()
         ifh.close()
         ofh.close()
 

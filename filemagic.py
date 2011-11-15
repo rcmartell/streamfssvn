@@ -5,7 +5,7 @@ import shutil
 class FileMagic():
     def __init__(self, path):
         self.count = 0
-        self.fh = open("/home/rmartell/filemagicLog", "wb")
+        self.fh = open("/home/rob/filemagicLog", "wb")
         self.dirs = {
             'Image'         : '%s/Complete/Image/' % path,
             'Video'         : '%s/Complete/Video/' % path,
