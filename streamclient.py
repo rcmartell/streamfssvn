@@ -118,6 +118,8 @@ class StreamClient():
             else:
                 self.files[entry.name] = [entry.size, entry.clusters]
         self.win.addstr(0, 0, "Number of resident files: %d" % len(self.residentfiles))
+        self.win.addstr(1, 0, "Count: %d" % count)
+        self.win.addstr(2, 0, "Number of actual entries: %d" % len(self.files))
         self.win.refresh()
 
     def setup_clustermap(self):
