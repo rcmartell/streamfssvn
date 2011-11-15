@@ -203,7 +203,7 @@ class StreamClient():
                 filedb = {}
                 # QUEUE_SIZE is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
-                for idx in range(QUEUE_SIZE):
+                for idx in xrange(QUEUE_SIZE):
                     # This breaks us out of the loop if we weren't able to grab
                     # QUEUE_SIZE entries in one go.
                     if len(self.queue) == 0:
