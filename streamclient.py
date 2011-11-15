@@ -103,18 +103,21 @@ class StreamClient():
             self.win.addstr(0, 0, "Processing file entries...")
             self.win.refresh()
         for entry in entries:
-            # To try and prevent name collisions
             try:
+                # Replace entry name with the full file-path
                 entry.name = "%sIncomplete/%s" % (self.path, str(entry.name))
             except:
                 fh.write("Error in entryname: %s\n" % entry.name)
                 continue
             if entry.name in self.files or entry.name in self.residentfiles:
+                # To try and prevent name collisions
                 entry.name = "%sIncomplete/[" % self.path + str(count) + "]%s" % entry.name.split("Incomplete/")[1]
                 count += 1
             if entry.res_data != None:
+                # File is resident
                 self.residentfiles[entry.name] = entry.res_data
             else:
+                # Nonresident
                 self.files[entry.name] = [entry.size, entry.clusters]
         return
 
@@ -198,7 +201,7 @@ class StreamClient():
                 if not len(self.queue):
                     time.sleep(0.005)
                 filedb = {}
-                # 1000 is an arbitrary queue size to work on at one time.
+                # QUEUE_SIZE is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
                 for idx in range(QUEUE_SIZE):
                     # This breaks us out of the loop if we weren't able to grab
@@ -337,6 +340,7 @@ class StreamClient():
 
 
 def main():
+    # Start Pyro daemon
     daemon = Pyro4.core.Daemon(sys.argv[1])
     ns = Pyro4.naming.locateNS()
     uri = daemon.register(StreamClient(path=sys.argv[3], name=sys.argv[2], ns=ns, daemon=daemon))
