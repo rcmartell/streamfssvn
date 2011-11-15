@@ -15,11 +15,12 @@ QUEUE_SIZE = 1024
 MB = 1024 * 1024
 
 class StreamClient():
-    def __init__(self, path, ns, daemon):
+    def __init__(self, path, name, ns, daemon):
         if not path.endswith(os.path.sep):
             self.path = path + os.path.sep
         else:
             self.path = path
+        self.name = name
         self.ns = ns
         self.daemon = daemon
         self.cluster_size = 0
@@ -100,13 +101,13 @@ class StreamClient():
             self.win.refresh()
             self.win.addstr(0, 0, "Processing file entries...")
             self.win.refresh()
-        self.win.addstr(0, 0, "Number of entries: %d" % len(entries))
+        fh = open("/home/rmartell/%s" % self.name, "wb")
         for entry in entries:
             # To try and prevent name collisions
             try:
                 entry.name = str(entry.name)
             except:
-                print "Error in entryname: %s" % entry.name
+                fh.write("Error in entryname: %s\n" % entry.name)
                 continue
             if entry.name in self.files or entry.name in self.residentfiles:
                 entry.name = "[" + str(count) + "]" + "%sIncomplete/%s" % (self.path, entry.name)
@@ -117,10 +118,7 @@ class StreamClient():
                 self.residentfiles[entry.name] = entry.res_data
             else:
                 self.files[entry.name] = [entry.size, entry.clusters]
-        self.win.addstr(0, 0, "Number of resident files: %d" % len(self.residentfiles))
-        self.win.addstr(1, 0, "Count: %d" % count)
-        self.win.addstr(2, 0, "Number of actual entries: %d" % len(self.files))
-        self.win.refresh()
+        fh.close()
 
     def setup_clustermap(self):
         """
@@ -350,7 +348,7 @@ class StreamClient():
 def main():
     daemon = Pyro4.core.Daemon(sys.argv[1])
     ns = Pyro4.naming.locateNS()
-    uri = daemon.register(StreamClient(path=sys.argv[3], ns=ns, daemon=daemon))
+    uri = daemon.register(StreamClient(path=sys.argv[3], name=sys.argv[1], ns=ns, daemon=daemon))
     print "Host: %s\t\tPort: %i\t\tName: %s" % (socket.gethostname(), uri.port, sys.argv[2])
     ns.register(sys.argv[2], uri)
     try:
