@@ -16,7 +16,7 @@ class ImageReader():
         self.src = src
         self.dest = dest
         self.entries = None
-        #self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
+        self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
 
     def init_fs_metadata(self, fstype='ntfs'):
         print 'Parsing filesystem metadata...',
