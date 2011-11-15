@@ -99,7 +99,6 @@ class StreamClient():
             self.console.text(0, 2, "Processing file entries...")
         else:
             self.win.clear()
-            self.win.refresh()
             self.win.addstr(0, 0, "Processing file entries...")
             self.win.refresh()
         for entry in entries:
@@ -291,7 +290,7 @@ class StreamClient():
                 curses.endwin()
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
-            sys.exit(-1)
+            return
 
 
     def showStatus(self):
@@ -350,8 +349,7 @@ def main():
         daemon.requestLoop()
     except KeyboardInterrupt:
         if sys.platform == "linux2":
-            curses.nocbreak(); self.win.keypad(0); curses.echo()
-            curses.endwin()
+            curses.nocbreak(); self.win.keypad(0); curses.echo(); curses.endwin()
         print 'User aborted'
         ns.remove(name=sys.argv[2])
         daemon.shutdown()
