@@ -38,6 +38,7 @@ class ImageReader():
         for idx in range(len(servers)):
             self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % servers[idx]))
             self.streams[idx]._pyroBind()
+            self.streams[idx]._pyroOneway.add("add_queue")
             self.streams[idx].set_cluster_size(self.cluster_size)
             self.streams[idx].set_num_clusters(self.num_clusters)
             self.streams[idx].process_entries(self.entries[idx::len(servers)])
