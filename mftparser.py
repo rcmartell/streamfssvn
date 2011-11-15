@@ -72,13 +72,13 @@ class MFTParser():
         self.mft_base_offset = unpack("<Q", self.img.read(8))[0] * self.cluster_size
         self.mft_mir_base_offset = unpack("<Q", self.img.read(8))[0] * self.cluster_size
         self.serial_num = hex(unpack("<Q", self.img.read(16)[-8:])[0])
-    
+
     def get_cluster_size(self):
         return self.cluster_size
-    
+
     def get_num_clusters(self):
         return self.num_clusters
-    
+
     def setup_mft_data(self):
         """
         The $MFT file (MFT entry 0) stores information about all allocated MFT entries in its data section. This information is used
@@ -184,11 +184,11 @@ class MFTParser():
                         # the END_OF_ENTRY signature.
                         if self.entry[self.offset:self.offset+4] == STANDARD_INFO_SIG:
                             self.std_info = self.parse_std_info(self.offset)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == ATTR_LIST_SIG:
                             self.attr_list = self.parse_attr_list(self.offset)
                             self.parse_attr_list_entries(self.attr_list, inode)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == FILENAME_SIG:
                             filename = self.parse_filename(self.offset)
                             if self.filename != None:
@@ -198,40 +198,40 @@ class MFTParser():
                                     self.filename = filename
                             else:
                                 self.filename = filename
-                        
+
                         elif self.entry[self.offset:self.offset+4] == OBJECT_ID_SIG:
                             self.object_id = self.parse_object_id(self.offset)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == SECURITY_DESC_SIG:
                             self.sec_desc = self.parse_sec_desc(self.offset)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == VOLUME_NAME_SIG:
                             self.volume_name = self.parse_volume_name(self.offset)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == VOLUME_INFO_SIG:
                             self.volume_info = self.parse_volume_info(self.offset)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == BITMAP_SIG:
                             self.parse_bitmap_attr(self.offset)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == DATA_SIG:
                             self.data.append(self.parse_data(self.offset, fullParse, quickstat))
-                        
+
                         elif self.entry[self.offset:self.offset+4] == INDEX_ROOT_SIG:
                             self.idx_root = self.parse_idx_root(self.offset)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == INDEX_ALLOC_SIG:
                             self.idx_alloc = self.parse_idx_alloc(self.offset)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == LOG_UTIL_STREAM_SIG:
                            self.log_util = self.parse_data(self.offset)
-                        
+
                         elif self.entry[self.offset:self.offset+4] == END_OF_ENTRY_SIG:
                             break
                         else:
                             # Where the hell are we? Just go to the next entry...
                             break
-                    
+
                     # To Prevent NoneType Errors if a
                     # standard info attribute is not present.
                     if hasattr(self.std_info, 'ctime'):
@@ -279,7 +279,7 @@ class MFTParser():
         self.img.close()
         return self.entries
 
-    
+
     def parse_header(self):
         """ Parse the Standard MFT Entry header. All entries should begin with this header. SHOULD.. """
         # First things first, we need to deal with the fixup values. Grab the saved values from the fixup
@@ -314,7 +314,7 @@ class MFTParser():
         self.offset += MFT_HEADER_LEN
         # Return an object modeling the entry's standard header
         return MFT_STANDARD_HEADER(lsn=lsn, seq_num=seq_num, lnk_cnt=lnk_cnt, flags=flags, entry_num=entry_num, mft_base=mft_base)
-    
+
     def parse_attr_list(self, offset):
         """Parse the Attribute List attribute of an entry. Entries only have an attribute list if a single entry is too small
            to hold all the metadata of the entry's attributes."""
@@ -336,7 +336,7 @@ class MFTParser():
             offset += entry_len
             self.offset = offset
         return attrs
-    
+
     def parse_attr_list_entries(self, attr_list, count):
         old_offset = self.offset
         old_entry = self.entry
@@ -365,7 +365,7 @@ class MFTParser():
         self.offset = old_offset
         self.entry = old_entry
         return None
-    
+
     def parse_attr_def(self, offset):
         offset += 4
         attr_name = self.entry[offset:offset+128]
@@ -376,7 +376,7 @@ class MFTParser():
         min_size = unpack("<Q", self.entry[offset+144:offset+152])[0]
         max_size = unpack("<Q", self.entry[offset+152:offset+160])[0]
 
-    
+
     def parse_std_info(self, offset):
         std_info_len = unpack("<I", self.entry[offset+4:offset+8])[0]
         std_info = self.entry[offset+24:offset + std_info_len]
@@ -393,7 +393,7 @@ class MFTParser():
         attrs = [key for key in ATTRIBUTES if flags & ATTRIBUTES[key]]
         self.offset += std_info_len
         return STANDARD_INFO(ctime=ctime, mtime=mtime, atime=atime, flags=attrs)
-    
+
     def parse_filename(self, offset):
         attr_len = unpack("<I", self.entry[offset+4:offset+8])[0]
         filename = self.entry[offset+24:offset + attr_len]
@@ -417,21 +417,21 @@ class MFTParser():
         self.offset += attr_len
         return FILENAME(parent=parent, ctime=ctime, mtime=mtime, atime=atime,
                  alloc_size=alloc_size, real_size=real_size, flags=attrs, name_len=name_len, name=name, namespace=namespace)
-    
+
     def parse_object_id(self, offset):
         object_id = b2a_hex(self.entry[offset+39:offset+23:-1])
         object_id = '-'.join([object_id[0:8], object_id[8:12], object_id[12:16], object_id[16:20], object_id[20:]])
         self.offset += 40
         return OBJECT_ID(object_id)
-    
+
     def parse_volume_name(self, offset):
         self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
         return None
-    
+
     def parse_volume_info(self, offset):
         self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
         return None
-    
+
     def parse_idx_root(self, offset):
         entry_len = unpack("<I", self.entry[offset+4:offset+8])[0]
         if not self.fullParse:
@@ -466,7 +466,7 @@ class MFTParser():
                 break
         self.offset += entry_len
         return IDX_ROOT(attr_type=attr_type, idx_entries=idx_entries)
-    
+
     def parse_idx_alloc(self, offset):
         idx_alloc_len = unpack("<I", self.entry[offset+4:offset+8])[0]
         if not self.fullParse:
@@ -514,7 +514,7 @@ class MFTParser():
         self.offset += idx_alloc_len
         return IDX_ALLOC(entries)
 
-    
+
     def parse_idx_entry_nonresident(self, lcn):
         self.img.seek(lcn, os.SEEK_SET)
         idx_entry = self.img.read(4096)
@@ -555,7 +555,7 @@ class MFTParser():
             if flags & 0x2 or offset >= idx_end_used:
                 break
         return file_entries
-    
+
     '''
     def parse_idx_entry_filename(self, entry, filename_len):
         filename = entry[0:filename_len]
@@ -656,22 +656,22 @@ class MFTParser():
             return PDATA(data_size=real_size, clusters=clusters, res_data=res_data)
         else:
             return PDATA(data_size=real_size, clusters=[], res_data=res_data)
-    
+
     def parse_bitmap_attr(self, offset):
         self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
         return None
-    
+
     def parse_sec_desc(self, offset):
         self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
         return None
-    
+
     def getFiletypeStats(self):
         filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'system' : [], 'compressed' : [], 'other' : []}
         video = ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV']
         image = ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX']
         audio = ['MP3', 'M4A', 'M4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG']
         binaries = ['BIN', 'EXE', 'APP', 'O']
-        text = ['TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'JS', 'JAVA', 'C', 'H', 'PY', 
+        text = ['TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'JS', 'JAVA', 'C', 'H', 'PY',
                 'PL', 'CPP', 'XAML', 'VB', 'HLP', 'SH', 'HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM', 'PDF']
         system = ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
         compressed = ['GZ', 'ZIP', 'BZ', '7Z', 'ACE', 'RAR', 'Z']
@@ -691,7 +691,6 @@ class MFTParser():
                 i += 1
             if i == 9:
                 filestats['other'].append(entry.name)
-        print "Finished analysing files.\n"
         print "Number of files: %i" % len(self.entries)
         print "video      : %i" % len(filestats['video'])
         print "images     : %i" % len(filestats['image'])
@@ -701,13 +700,8 @@ class MFTParser():
         print "compressed : %i" % len(filestats['compressed'])
         print "system     : %i" % len(filestats['system'])
         print "other      : %i" % len(filestats['other'])
-        if len(sys.argv) >= 4:
-            ftype = sys.argv[3].lower()
-            if ftype in filestats:
-                print "\n********** Listing of %s files **********" % ftype
-                for f in filestats[ftype]:
-                    print f
-    
+
+
     def print_header(self, parser):
         print "*****************HEADER INFO*****************"
         print "Entry:                           %i" % parser.header.entry_num
@@ -720,7 +714,7 @@ class MFTParser():
             print "Unallocated/Deleted"
         print "Links:                           %i" % parser.header.lnk_cnt
         print ''
-    
+
     def print_std_info(self, parser):
         print "****************STANDARD INFO****************"
         print "Flags:   ",
@@ -729,7 +723,7 @@ class MFTParser():
         print "File Modified:       %s" % parser.std_info.mtime
         print "Accessed:            %s" % parser.std_info.atime
         print ''
-    
+
     def print_filename(self, parser):
         print "****************FILENAME INFO****************"
         print "Flags:   ",
@@ -742,24 +736,24 @@ class MFTParser():
         print "Allocated size:      %i" % parser.filename.alloc_size
         print "Actual size:         %i" % parser.filename.real_size
         print ''
-    
+
     def print_object_id(self, parser):
         print "******************OBJECT ID******************"
         print "Object ID: %s" % parser.object_id.object_id.upper()
         print ''
-    
+
     def print_idx_root(self, parser):
         print "*****************INDEX ROOT**************"
         print parser.idx_root.idx_entries
         print ''
 
-    
+
     def print_idx_alloc(self, parser):
         print "*****************INDEX ALLOCATION**************"
         print parser.idx_alloc.idx_entries
         print ''
 
-    
+
     def print_data(self, data, clusters, start_vcn, end_vcn, show_clusters=False):
         print "******************DATA INFO******************"
         print "Attribute ID:                    %i" % data.attr_id
@@ -791,7 +785,7 @@ class MFTParser():
             print "ADS Data: "
             print data.res_data
         print ''
-    
+
     def print_fsdata(self, parser):
         print "******************FS INFO******************"
         print "Volume Type: NTFS"
@@ -806,7 +800,7 @@ class MFTParser():
         print "$MFT Offset(Clusters): %i" % (self.mft_base_offset / self.cluster_size)
         print "$MFTMIR Offset(Bytes): %i" % self.mft_mir_base_offset
         print "$MFTMIR Offset(Clusters): %i" % (self.mft_mir_base_offset / self.cluster_size)
-    
+
     def cluster_to_file(self, parser, cluster):
         cluster = int(cluster)
         for entry in parser.entries:
@@ -814,18 +808,13 @@ class MFTParser():
                 print("Cluster: %s maps to file: %s" % (cluster, entry.name))
                 return
         print("Cluster %s unallocated" % cluster)
-                
+
     def lookup(self, parser, name):
         for idx in range(len(parser.entries)):
             if parser.entries[idx].name == name:
                 print "MFT Entry: %d" % idx
-    
+
     def main(self):
-        try:
-            import psyco
-            psyco.full()
-        except:
-            pass
         self.setup_mft_data()
         self.parse_mft()
         return self.entries
@@ -849,7 +838,7 @@ if __name__ == "__main__":
     parser = MFTParser(args.target)
     parser.setup_mft_data()
     opts = vars(args)
-    
+
     if opts['entry'] or opts['data']:
         try:
             entry_num = int(opts['entry'])

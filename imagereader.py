@@ -59,12 +59,13 @@ class ImageReader():
             stream.queue_showStatus()
         for thread in threads:
             thread.start()
-        print 'Imaging drive...'
-        pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         ifh.seek(0, os.SEEK_END)
         length = ifh.tell()
         ifh.seek(0, os.SEEK_SET)
-        print length
+        print "Image Size: %d" % length
+        print ""
+        print 'Imaging drive...'
+        pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
         for idx in range(len(self.mapping)):
             target = self.mapping[idx]
             if target == -1:
@@ -79,7 +80,6 @@ class ImageReader():
             ofh.write(data)
             pbar.update(idx * self.cluster_size)
         self.finished = True
-        print "Fseek: %d" % ifh.tell()
         for thread in threads:
             thread.join()
         for idx in range(len(self.streams)):
@@ -89,6 +89,7 @@ class ImageReader():
                 print "Error sending data to client: %d" % idx
                 pass
         pbar.finish()
+        print "Total number of bytes read: %d" % ifh.tell()
         ifh.close()
         ofh.close()
 
@@ -118,11 +119,11 @@ def main():
             os.system("clear")
         except:
             pass
-    print "Starting Time: %s" % str(time.ctime())
+    print "Starting Time: %s" % str(time.ctime().split(" ")[3])
     irdr = ImageReader(sys.argv[1], sys.argv[2])
     irdr.init_fs_metadata()
     irdr.setup_stream_listeners(sys.argv[3:])
     irdr.image_drive()
-    print "End Time: %s" % str(time.ctime())
+    print "End Time: %s" % str(time.ctime().split(" ")[3])
 if __name__ == "__main__":
     main()

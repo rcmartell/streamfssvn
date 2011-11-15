@@ -22,7 +22,7 @@ class FILE_RECORD(object):
 
 class MFT_STANDARD_HEADER():
     """Standard MFT Entry header. All entries should start with one...Should..."""
-    def __init__(self,lsn=None, seq_num=None, lnk_cnt=None,flags=None, entry_num=None, mft_base=None):
+    def __init__(self, lsn=None, seq_num=None, lnk_cnt=None, flags=None, entry_num=None, mft_base=None):
         self.lsn = lsn
         self.seq_num = seq_num
         self.lnk_cnt = lnk_cnt
