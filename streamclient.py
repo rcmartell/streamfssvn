@@ -339,6 +339,7 @@ class StreamClient():
 
 
 def main():
+    import mft
     # Start Pyro daemon
     daemon = Pyro4.core.Daemon(sys.argv[1])
     ns = Pyro4.naming.locateNS()
