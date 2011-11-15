@@ -109,15 +109,9 @@ class ImageReader():
 
 def main():
     if sys.platform == "win32":
-        try:
-            os.system("cls")
-        except:
-            pass
+        os.system("cls")
     else:
-        try:
-            os.system("clear")
-        except:
-            pass
+        os.system("clear")
     print "Starting Time: %s" % str(time.ctime().split(" ")[3])
     irdr = ImageReader(sys.argv[1], sys.argv[2])
     irdr.init_fs_metadata()
