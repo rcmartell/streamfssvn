@@ -111,7 +111,7 @@ class StreamClient():
                 fh.write("Error in entryname: %s\n" % entry.name)
                 continue
             if entry.name in self.files or entry.name in self.residentfiles:
-                entry.name = "[" + str(count) + "]" + "%sIncomplete/%s" % (self.path, entry.name)
+                entry.name = "%sIncomplete/[" % self.path + str(count) + "]%s" % entry.name.split("Incomplete/")[1]
                 count += 1
             if entry.res_data != None:
                 ncount += 1
