@@ -100,6 +100,7 @@ class StreamClient():
             self.win.refresh()
             self.win.addstr(0, 0, "Processing file entries...")
             self.win.refresh()
+        self.win.addstr(0, 0, "Number of entries: %d" % len(entries))
         for entry in entries:
             # To try and prevent name collisions
             try:
