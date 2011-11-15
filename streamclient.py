@@ -106,15 +106,13 @@ class StreamClient():
         for entry in entries:
             # To try and prevent name collisions
             try:
-                entry.name = str(entry.name)
+                entry.name = "%sIncomplete/%s" % (self.path, str(entry.name))
             except:
                 fh.write("Error in entryname: %s\n" % entry.name)
                 continue
             if entry.name in self.files or entry.name in self.residentfiles:
                 entry.name = "[" + str(count) + "]" + "%sIncomplete/%s" % (self.path, entry.name)
                 count += 1
-            else:
-                entry.name = "%sIncomplete/%s" % (self.path, entry.name)
             if entry.res_data != None:
                 ncount += 1
                 self.residentfiles[entry.name] = entry.res_data
