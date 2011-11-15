@@ -4,6 +4,7 @@ import shutil
 
 class FileMagic():
     def __init__(self, path):
+        self.fh = open("/home/rmartell/filemagicLog", "wb")
         self.dirs = {
             'Image'         : '%s/Complete/Image/' % path,
             'Video'         : '%s/Complete/Video/' % path,
@@ -48,6 +49,7 @@ class FileMagic():
                             os.remove(self.dirs[filter] + os.path.basename(file))
                             shutil.move(file, self.dirs[filter])
                         except:
+                            self.fh.write("Error moving file: %s\n" % file)
                             pass
                     return
             except:
@@ -58,6 +60,7 @@ class FileMagic():
                         os.remove(self.dirs['Other'] + os.path.basename(file))
                         shutil.move(file, self.dirs['Other'])
                     except:
+                        self.fh.write("Error moving file: %s\n" % file)
                         pass
                 return
         try:
@@ -67,5 +70,6 @@ class FileMagic():
                 os.remove(self.dirs['Other'] + os.path.basename(file))
                 shutil.move(file, self.dirs['Other'])
             except:
+                self.fh.write("Error moving file: %s\n" % file)
                 pass
         return
