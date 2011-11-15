@@ -116,7 +116,7 @@ def main():
     reader = ImageReader(sys.argv[1], sys.argv[2])
     reader.init_fs_metadata()
     reader.setup_stream_listeners(sys.argv[3:])
-    cProfile.run(reader.image_drive(), 'imagereaderProfile')
+    cProfile.run('reader.image_drive()', 'imagereaderProfile')
     print "End Time: %s" % str(time.ctime().split(" ")[3])
 if __name__ == "__main__":
     main()
