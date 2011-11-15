@@ -58,15 +58,14 @@ class StreamClient():
         self.handles = {}
         self.filenames = []
         self.residentfiles = {}
+        self.file_progress = {}
         if sys.platform == "win32":
             self.console = Console.getconsole()
             self.console.page()
             self.console.title("Running Stream Listener")
             self.console.text(0, 0, "Waiting for server...")
         else:
-            curses.initscr()
-            curses.noecho()
-            curses.cbreak()
+            curses.initscr(); curses.noecho(); curses.cbreak()
             self.win = curses.newwin(0,0)
             self.win.addstr(0, 0, "Waiting for server...")
             self.win.refresh()
@@ -80,6 +79,7 @@ class StreamClient():
         Set by Image Server
         """
         self.cluster_size = int(size)
+        return
 
     def set_num_clusters(self, num):
         """
@@ -87,6 +87,7 @@ class StreamClient():
         """
         self.num_clusters = int(num)
         self.clustermap = [0] * self.num_clusters
+        return
 
     def process_entries(self, entries):
         """
@@ -115,6 +116,7 @@ class StreamClient():
                 self.residentfiles[entry.name] = entry.res_data
             else:
                 self.files[entry.name] = [entry.size, entry.clusters]
+        return
 
 
     def setup_clustermap(self):
@@ -124,15 +126,16 @@ class StreamClient():
         for k, v in self.files.iteritems():
             for c in v[1]:
                 self.clustermap[int(c)] = k
+        return
 
     def setup_file_progress(self):
         """
         Create a dictionary containing the number of clusters each file is composed of.
         This will be used to determine if a file has been completely written to disk.
         """
-        self.file_progress = {}
         for file in self.files:
             self.file_progress[file] = len(self.files[file][1])
+        return
 
     def list_clusters(self):
         """
@@ -153,12 +156,14 @@ class StreamClient():
         self.clusters = []
         del(self.clusters)
         gc.collect()
+        return
 
     def add_queue(self, cluster, data):
         """
         Method used by Image Server to transfer cluster/data to client.
         """
         self.queue.extend(zip(cluster, data))
+        return
 
 
     def queue_writes(self):
@@ -176,7 +181,7 @@ class StreamClient():
 
     def set_finished(self):
         self.finished = True
-
+        return
 
     def write_data(self):
         """
@@ -274,6 +279,7 @@ class StreamClient():
                 curses.endwin()
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
+            return
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.showCurrentStatus = False
