@@ -683,13 +683,11 @@ class MFTParser():
             except:
                 filestats['other'].append(entry.name)
                 continue
-            i = 0
             for ftype in filetypes:
                 if ext.upper() in ftype:
                     filestats[types[i]].append(entry.name)
                     break
-                i += 1
-            if i == 9:
+            else:
                 filestats['other'].append(entry.name)
         print "Number of files: %i" % len(self.entries)
         print "video      : %i" % len(filestats['video'])
