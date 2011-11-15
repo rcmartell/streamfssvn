@@ -192,6 +192,7 @@ class StreamClient():
                 # Sleep while the queue is empty.
                 if len(self.queue) == 0:
                     if self.finished:
+                        print "Number of unfinished files: %d" % len(self.file_progress)
                         break
                     else:
                         time.sleep(0.005)
