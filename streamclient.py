@@ -331,7 +331,7 @@ class StreamClient():
                                       ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), ((psutil.avail_phymem() +
                                       psutil.cached_phymem() + psutil.phymem_buffers()) / MB)))
                 self.win.addstr(5, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
-                self.win.addstr(6, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
+                self.win.addstr(6, 0, "Average write rate: %d MB/s          " % (cur_write_rate / (duration - total_idle)))
                 self.win.addstr(7, 0, "Current idle time: %0.2d:%0.2d:%0.2d" % ((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
                 self.win.addstr(8, 0, "Total idle time: %0.2d:%0.2d:%0.2d" % ((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
                 self.win.addstr(9, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
