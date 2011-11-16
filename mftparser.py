@@ -110,7 +110,7 @@ class MFTParser():
         file_fragmented = False
         while True:
             try:
-                tmp = int(unpack("<c", data[run_off])[0], 16)
+                tmp = int(b2a_hex(unpack("<c", data[run_off])[0]), 16)
                 data_run_offset_bytes = int(tmp & 0xF0) >> 4
                 data_run_bytes = int(tmp & 0x0F)
                 if data_run_offset_bytes == 0 or data_run_bytes == 0:
@@ -487,7 +487,7 @@ class MFTParser():
         max_sign = [0, (2**7)-1, (2**15)-1, (2**31)-1, (2**63)-1]
         file_fragmented = False
         while True:
-            tmp = int(unpack("<c", data[run_off])[0], 16)
+            tmp = int(b2a_hex(unpack("<c", data[run_off])[0]), 16)
             data_run_offset_bytes = int(tmp & 0xF0) >> 4
             data_run_bytes = int(tmp & 0x0F)
             if data_run_offset_bytes == 0 or data_run_bytes == 0:
@@ -611,7 +611,7 @@ class MFTParser():
             alloc_size = unpack("<Q", data[40:48])[0]
             real_size = unpack("<Q", data[48:56])[0]
             while True:
-                tmp = int(unpack("<c", data[run_off])[0], 16)
+                tmp = int(b2a_hex(unpack("<c", data[run_off])[0]), 16)
                 data_run_offset_bytes = int(tmp & 0xF0) >> 4
                 data_run_bytes = int(tmp & 0x0F)
                 if data_run_offset_bytes == 0 or data_run_bytes == 0:
