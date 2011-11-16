@@ -628,7 +628,7 @@ class MFTParser():
                 data_run_offset = unpack("<Q", data[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
                 data = data[data_run_offset_bytes:]
                 if file_fragmented:
-                    if max_sign[data_run_offset_bytes] > data_run_offset:
+                    if max_sign[data_run_offset_bytes] > data_run_offset + prev_data_run_offset:
                         data_run_offset += prev_data_run_offset
                     else:
                         data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
