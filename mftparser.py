@@ -106,7 +106,7 @@ class MFTParser():
         run_off = unpack("<H", data[32:34])[0]
         prev_data_run_offset = 0
         self.mft_data = []
-        max_sign = [int(2**((8*x)-1)-1) for x in range(9)]
+        max_sign = [15, 127, 32767, 2147483647]
         file_fragmented = False
         while True:
             try:
@@ -485,7 +485,7 @@ class MFTParser():
         entries = []
         run_off = 0
         prev_data_run_offset = 0
-        max_sign = [int(2**((8*x)-1)-1) for x in range(9)]
+        max_sign = [15, 127, 32767, 2147483647]
         file_fragmented = False
         while True:
             tmp = b2a_hex(unpack("<c", data_run[run_off])[0])
@@ -597,7 +597,7 @@ class MFTParser():
         end_vcn = None
         file_fragmented = False
         prev_data_run_offset = 0
-        max_sign = [int(2**((8*x)-1)-1) for x in range(9)]
+        max_sign = [15, 127, 32767, 2147483647]
         data_len = unpack("<I", self.entry[offset+4:offset+8])[0]
         if quickstat:
             self.offset += data_len
@@ -628,7 +628,7 @@ class MFTParser():
                 data_run_offset = unpack("<Q", data[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
                 data = data[data_run_offset_bytes:]
                 if file_fragmented:
-                    if max_sign[data_run_offset_bytes] > data_run_offset + prev_data_run_offset:
+                    if max_sign[data_run_offset_bytes] > data_run_offset:
                         data_run_offset += prev_data_run_offset
                     else:
                         data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
