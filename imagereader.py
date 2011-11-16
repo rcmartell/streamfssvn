@@ -43,7 +43,11 @@ class ImageReader():
             self.streams[idx].set_num_clusters(self.num_clusters)
             self.streams[idx].process_entries(self.entries[idx::len(servers)])
             for cluster in self.streams[idx].list_clusters():
-                self.mapping[cluster] = idx
+                try:
+                    self.mapping[cluster] = idx
+                except:
+                    print cluster
+                    print self.num_clusters
             self.streams[idx].clear_clusters()
         del(self.entries)
         gc.collect()
