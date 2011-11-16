@@ -110,10 +110,10 @@ class MFTParser():
         file_fragmented = False
         while True:
             try:
-                tmp = b2a_hex(unpack("<c", data[run_off])[0])
-                data_run_offset_bytes = int(tmp[0], 16)
-                data_run_bytes = int(tmp[1], 16)
-                if tmp[0] == '0' or tmp[1] == '0':
+                tmp = int(unpack("<c", data[run_off])[0], 16)
+                data_run_offset_bytes = int(tmp & 0xF0) >> 4
+                data_run_bytes = int(tmp & 0x0F)
+                if data_run_offset_bytes == 0 or data_run_bytes == 0:
                     break
                 data = data[run_off+1:]
                 data_run_len = unpack("<Q", data[0:data_run_bytes] + ('\x00' * (8-data_run_bytes)))[0]
@@ -487,10 +487,10 @@ class MFTParser():
         max_sign = [0, (2**7)-1, (2**15)-1, (2**31)-1, (2**63)-1]
         file_fragmented = False
         while True:
-            tmp = b2a_hex(unpack("<c", data_run[run_off])[0])
-            data_run_offset_bytes = int(tmp[0], 16)
-            data_run_bytes = int(tmp[1], 16)
-            if tmp[0] == '0' or tmp[1] == '0':
+            tmp = int(unpack("<c", data[run_off])[0], 16)
+            data_run_offset_bytes = int(tmp & 0xF0) >> 4
+            data_run_bytes = int(tmp & 0x0F)
+            if data_run_offset_bytes == 0 or data_run_bytes == 0:
                 break
             data_run = data_run[run_off+1:]
             data_run_len = unpack("<Q", data_run[0:data_run_bytes] + ('\x00' * (8-data_run_bytes)))[0]
@@ -611,24 +611,21 @@ class MFTParser():
             alloc_size = unpack("<Q", data[40:48])[0]
             real_size = unpack("<Q", data[48:56])[0]
             while True:
-                tmp = b2a_hex(unpack("<c", data[run_off])[0])
-                data_run_offset_bytes = int(tmp[0], 16)
-                data_run_bytes = int(tmp[1], 16)
-                if tmp[0] == '0' or tmp[1] == '0':
+                tmp = int(unpack("<c", data[run_off])[0], 16)
+                data_run_offset_bytes = int(tmp & 0xF0) >> 4
+                data_run_bytes = int(tmp & 0x0F)
+                if data_run_offset_bytes == 0 or data_run_bytes == 0:
                     break
                 data = data[run_off+1:]
-                try:
-                    data_run_len = unpack("<Q", data[0:data_run_bytes%8] + ('\x00' * (8-(data_run_bytes%8))))[0]
-                except:
-                    print "Error: Could not parse all data clusters for file"
-                    sys.exit(-1)
+                data_run_len = unpack("<Q", data[0:data_run_bytes%8] + ('\x00' * (8-(data_run_bytes%8))))[0]
                 data = data[data_run_bytes:]
                 data_run_offset = unpack("<Q", data[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
                 data = data[data_run_offset_bytes:]
-                if max_sign[data_run_offset_bytes] > data_run_offset:
-                    data_run_offset += prev_data_run_offset
-                else:
-                    data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) - (1 << (8 * data_run_offset_bytes)))
+                if file_fragmented:
+                    if max_sign[data_run_offset_bytes] > data_run_offset:
+                        data_run_offset += prev_data_run_offset
+                    else:
+                        data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) - (1 << (8 * data_run_offset_bytes)))
                 clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
                 if data[0] == DATA_RUN_END:
                     break
