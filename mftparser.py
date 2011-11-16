@@ -812,9 +812,9 @@ class MFTParser():
         print("Cluster %s unallocated" % cluster)
 
     def lookup(self, parser, name):
-        for idx in range(len(parser.entries)):
-            if parser.entries[idx].name == name:
-                print "MFT Entry: %d" % parser.entries[idx].entry_num
+        for entry in parser.entries:
+            if entry.name == name:
+                print "MFT Entry: %d" % entry.entry_num
 
     def main(self):
         self.setup_mft_data()
