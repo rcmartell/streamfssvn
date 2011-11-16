@@ -14,8 +14,9 @@ class MFT_ENTRY():
         self.bitmap = bitmap
 
 class FILE_RECORD(object):
-    def __init__(self, name=None, resident=None, size=None, clusters=None, res_data=None):
+    def __init__(self, name=None, entry_num=0, size=None, clusters=None, res_data=None):
         self.name = name
+        self.entry_num = entry_num
         self.size = size
         self.clusters = clusters
         self.res_data = res_data

@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.util, threading, cProfile
 
 QUEUE_SIZE = 8192
-
+Pyro4.config.ONEWAY_THREADED=True
 
 class ImageReader():
     def __init__(self, src=None, dest=None):

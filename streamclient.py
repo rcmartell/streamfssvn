@@ -106,7 +106,6 @@ class StreamClient():
                 # Replace entry name with the full file-path
                 entry.name = "%sIncomplete/%s" % (self.path, str(entry.name))
             except:
-                fh.write("Error in entryname: %s\n" % entry.name)
                 continue
             if entry.name in self.files or entry.name in self.residentfiles:
                 # To try and prevent name collisions

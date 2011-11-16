@@ -165,6 +165,7 @@ class MFTParser():
                 self.offset = 0
                 self.data = []
                 clusters = []
+                self.entry_num = 0
                 self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
                 ctime, mtime, atime = None, None, None
                 name, flags, parent, real_size, data_size, size = None, None, None, 0, 0, 0
@@ -263,7 +264,7 @@ class MFTParser():
                             size = data_size
                         else:
                             size = real_size
-                        self.entries.append(FILE_RECORD(name=name, size=size, clusters=clusters, res_data=res_data))
+                        self.entries.append(FILE_RECORD(name=name, entry_num=self.entry_num, size=size, clusters=clusters, res_data=res_data))
                     inode += 1
                     count += 1
                     if self.cleanup:
@@ -311,6 +312,7 @@ class MFTParser():
         next_attr_id = unpack("<H", self.entry[40:42])[0]
         # MFT entry number, similar to an inode number
         entry_num = unpack("<I", self.entry[44:48])[0]
+        self.entry_num = entry_num
         self.offset += MFT_HEADER_LEN
         # Return an object modeling the entry's standard header
         return MFT_STANDARD_HEADER(lsn=lsn, seq_num=seq_num, lnk_cnt=lnk_cnt, flags=flags, entry_num=entry_num, mft_base=mft_base)
@@ -812,7 +814,7 @@ class MFTParser():
     def lookup(self, parser, name):
         for idx in range(len(parser.entries)):
             if parser.entries[idx].name == name:
-                print "MFT Entry: %d" % idx
+                print "MFT Entry: %d" % parser.entries[idx].entry_num
 
     def main(self):
         self.setup_mft_data()
