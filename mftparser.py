@@ -106,7 +106,7 @@ class MFTParser():
         run_off = unpack("<H", data[32:34])[0]
         prev_data_run_offset = 0
         self.mft_data = []
-        max_sign = [15, 127, 32767, 2147483647, 9223372036854775807]
+        max_sign = [0, (2**7)-1, (2**15)-1, (2**31)-1, (2**63)-1]
         file_fragmented = False
         while True:
             try:
@@ -484,7 +484,7 @@ class MFTParser():
         entries = []
         run_off = 0
         prev_data_run_offset = 0
-        max_sign = [15, 127, 32767, 2147483647]
+        max_sign = [0, (2**7)-1, (2**15)-1, (2**31)-1, (2**63)-1]
         file_fragmented = False
         while True:
             tmp = b2a_hex(unpack("<c", data_run[run_off])[0])
@@ -595,7 +595,7 @@ class MFTParser():
         end_vcn = None
         file_fragmented = False
         prev_data_run_offset = 0
-        max_sign = [15, 127, 32767, 2147483647]
+        max_sign = [0, (2**7)-1, (2**15)-1, (2**31)-1, (2**63)-1]
         data_len = unpack("<I", self.entry[offset+4:offset+8])[0]
         if quickstat:
             self.offset += data_len
@@ -625,11 +625,10 @@ class MFTParser():
                 data = data[data_run_bytes:]
                 data_run_offset = unpack("<Q", data[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
                 data = data[data_run_offset_bytes:]
-                if file_fragmented:
-                    if max_sign[data_run_offset_bytes] > data_run_offset:
-                        data_run_offset += prev_data_run_offset
-                    else:
-                        data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) - (1 << (8 * data_run_offset_bytes)))
+                if max_sign[data_run_offset_bytes] > data_run_offset:
+                    data_run_offset += prev_data_run_offset
+                else:
+                    data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) - (1 << (8 * data_run_offset_bytes)))
                 clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
                 if data[0] == DATA_RUN_END:
                     break
