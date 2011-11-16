@@ -124,7 +124,7 @@ class MFTParser():
                     if max_sign[data_run_offset_bytes] > data_run_offset:
                         data_run_offset += prev_data_run_offset
                     else:
-                        data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) + (1 << (8 * data_run_offset_bytes)))
+                        data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) - (1 << (8 * data_run_offset_bytes)))
                 self.mft_data.extend(range(data_run_offset, data_run_offset + data_run_len))
                 if data[0] == DATA_RUN_END:
                     break
@@ -501,7 +501,7 @@ class MFTParser():
                 if max_sign[data_run_offset_bytes] > data_run_offset:
                     data_run_offset += prev_data_run_offset
                 else:
-                    data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) + (1 << (8 * data_run_offset_bytes)))
+                    data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) - (1 << (8 * data_run_offset_bytes)))
             entries.extend(self.parse_idx_entry_nonresident(data_run_offset * self.cluster_size))
             if data_run[0] == DATA_RUN_END:
                 break
@@ -629,7 +629,7 @@ class MFTParser():
                     if max_sign[data_run_offset_bytes] > data_run_offset:
                         data_run_offset += prev_data_run_offset
                     else:
-                        data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) + (1 << (8 * data_run_offset_bytes)))
+                        data_run_offset = prev_data_run_offset + (int(bin(data_run_offset), 2) - (1 << (8 * data_run_offset_bytes)))
                 clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
                 if data[0] == DATA_RUN_END:
                     break
