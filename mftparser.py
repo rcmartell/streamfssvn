@@ -644,7 +644,7 @@ class MFTParser():
         else:
             name_len = int(b2a_hex(unpack("<c", data[9])[0]), 16)
             name_off = unpack("<H", data[10:12])[0]
-            real_size = unpack("<I", data[16:20])[0]
+            real_size = unpack("<I", data[12:16])[0]
             alloc_size = unpack("<I", data[16:20])[0]
             content_off = unpack("<H", data[20:22])[0]
             name = data[name_off:name_off + name_len]
