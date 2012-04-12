@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys, os, time, shutil
 import threading, socket, collections, gc
-from filemagic import FileMagic
+from filesorter import FileSorter
 import warnings, psutil
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
@@ -41,9 +41,9 @@ class StreamClient():
             shutil.rmtree('Complete')
         os.mkdir('Complete')
         os.chdir('Incomplete')
-        self.magic = FileMagic(self.path)
-        self.fileQueue = Queue()
-        self.proc = Process(target=self.magic.sort_files, args=(self.fileQueue,)).start()
+        self.sorter = FileSorter(self.path)
+        self.sortQueue = Queue()
+        self.proc = Process(target=self.sorter.sort_files, args=(self.sortQueue,)).start()
         self.queue = collections.deque()
         self.filenames = []
         self.residentfiles = {}
@@ -260,19 +260,19 @@ class StreamClient():
                     if not self.file_progress[f]:
                         del self.files[f]
                         del self.file_progress[f]
-                        # Move file to appropriate folder based on its extension/magic number.
-                        self.fileQueue.put_nowait(f)
+                        # Move file to appropriate folder based on its extension/sorter number.
+                        self.sortQueue.put_nowait(f)
             # Write resident files to disk.
             for f in self.residentfiles:
                 fh = open(file, 'wb')
                 fh.write(self.residentfiles[f])
                 fh.close()
-                self.fileQueue.put_nowait(f)
+                self.sortQueue.put_nowait(f)
             self.showCurrentStatus = False
             if sys.platform != "win32":
                 curses.nocbreak(); self.win.keypad(0); curses.echo()
                 curses.endwin()
-            self.magic.running = False
+            self.sorter.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
@@ -282,7 +282,7 @@ class StreamClient():
             if sys.platform != "win32":
                 curses.nocbreak(); self.win.keypad(0); curses.echo()
                 curses.endwin()
-            self.magic.running = False
+            self.sorter.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
@@ -295,7 +295,7 @@ class StreamClient():
         if sys.platform == "win32":
             while self.showCurrentStatus:
                 time.sleep(1)
-                if (psutil.avail_phymem() / MB) > 512:
+                if (psutil.avail_phymem() / MB) < 512:
                     self.throttle = True
                 else:
                     self.throttle = False
@@ -312,7 +312,7 @@ class StreamClient():
         else:
             while self.showCurrentStatus:
                 time.sleep(1)
-                if ((psutil.avail_phymem() + psutil.cached_phymem() + psutil.phymem_buffers()) / MB) > 512:
+                if ((psutil.avail_phymem() + psutil.cached_phymem() + psutil.phymem_buffers()) / MB) < 512:
                     self.throttle = True
                 else:
                     self.throttle = False
@@ -342,6 +342,7 @@ class StreamClient():
                     self.win.addstr(10, 0, "Throttling...")
                 else:
                     self.win.addstr(10, 0, "                       ")
+                    self.win.move(10, 0)
                 self.win.refresh()
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from mftparser import MFTParser
-from time import time, ctime
+from time import ctime, sleep
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 from threading import Thread, Lock
 import warnings, gc, sys, os
@@ -104,7 +104,7 @@ class ImageReader():
         tid = idx
         while True:
             while len(self.thread_queue[tid][0]) < QUEUE_SIZE:
-                time.sleep(1)
+                sleep(1)
                 if self.finished:
                     return
             self.lock[tid].acquire()
@@ -114,7 +114,7 @@ class ImageReader():
             self.thread_queue[tid] = [[], []]
             if self.streams[tid].add_queue(clusters, data):
                 while self.streams[tid].throttle_needed():
-                    time.sleep(2)
+                    sleep(2)
             self.lock[tid].release()
 
 def main():
@@ -122,11 +122,11 @@ def main():
         os.system("cls")
     else:
         os.system("clear")
-    print "Starting Time: %s" % str(time.ctime().split(" ")[3])
+    print "Starting Time: %s" % str(ctime().split(" ")[3])
     reader = ImageReader(sys.argv[1], sys.argv[2])
     reader.init_fs_metadata()
     reader.setup_stream_listeners(sys.argv[3:])
     reader.image_drive()
-    print "End Time: %s" % str(time.ctime().split(" ")[3])
+    print "End Time: %s" % str(ctime().split(" ")[3])
 if __name__ == "__main__":
     main()
