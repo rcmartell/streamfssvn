@@ -126,7 +126,10 @@ def main():
     reader = ImageReader(sys.argv[1], sys.argv[2])
     reader.init_fs_metadata()
     reader.setup_stream_listeners(sys.argv[3:])
-    reader.image_drive()
+    try:
+        reader.image_drive()
+    except KeyboardInterrupt:
+        sys.exit(-1)
     print "End Time: %s" % str(ctime().split(" ")[3])
 if __name__ == "__main__":
     main()
