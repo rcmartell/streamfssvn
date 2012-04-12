@@ -37,7 +37,7 @@ class FileMagic():
     #    self.queue.put(file)
     #    return
 
-    def spin_wait(self, queue):
+    def sort_files(self, queue):
         while self.running:
             f = queue.get()
             self.sort_file(f)

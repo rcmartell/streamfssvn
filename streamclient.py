@@ -42,8 +42,8 @@ class StreamClient():
         os.mkdir('Complete')
         os.chdir('Incomplete')
         self.magic = FileMagic(self.path)
-        self.finishedQueue = Queue()
-        self.proc = Process(target=self.magic.spin_wait, args=(self.finishedQueue,)).start()
+        self.fileQueue = Queue()
+        self.proc = Process(target=self.magic.sort_files, args=(self.fileQueue,)).start()
         self.queue = collections.deque()
         self.filenames = []
         self.residentfiles = {}
@@ -261,13 +261,13 @@ class StreamClient():
                         del self.files[f]
                         del self.file_progress[f]
                         # Move file to appropriate folder based on its extension/magic number.
-                        self.finishedQueue.put(f)
+                        self.fileQueue.put_nowait(f)
             # Write resident files to disk.
             for f in self.residentfiles:
                 fh = open(file, 'wb')
                 fh.write(self.residentfiles[f])
                 fh.close()
-                self.finishedQueue.put(f)
+                self.fileQueue.put_nowait(f)
             self.showCurrentStatus = False
             if sys.platform != "win32":
                 curses.nocbreak(); self.win.keypad(0); curses.echo()
