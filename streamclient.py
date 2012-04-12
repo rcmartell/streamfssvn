@@ -324,25 +324,25 @@ class StreamClient():
                 else:
                     cur_idle = 0
                 prev_bytes_written = cur_write_rate
-                self.win.addstr(1, 0, "%d of %d files remaining              " % (len(self.file_progress), num_files))
-                self.win.addstr(2, 0, "Clusters in queue: %d           " % len(self.queue))
-                self.win.addstr(3, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
-                self.win.addstr(4, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
+                self.win.addstr(0, 0, "%d of %d files remaining              " % (len(self.file_progress), num_files))
+                self.win.addstr(1, 0, "Clusters in queue: %d           " % len(self.queue))
+                self.win.addstr(2, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
+                self.win.addstr(3, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
                                       ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), ((psutil.avail_phymem() +
                                       psutil.cached_phymem() + psutil.phymem_buffers()) / MB)))
-                self.win.addstr(5, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
+                self.win.addstr(4, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
                 try:
-                    self.win.addstr(6, 0, "Average write rate: %d MB/s          " % (cur_write_rate / (duration - total_idle)))
+                    self.win.addstr(5, 0, "Average write rate: %d MB/s          " % (cur_write_rate / (duration - total_idle)))
                 except:
-                    self.win.addstr(6, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
-                self.win.addstr(7, 0, "Current idle time: %0.2d:%0.2d:%0.2d" % ((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
-                self.win.addstr(8, 0, "Total idle time: %0.2d:%0.2d:%0.2d" % ((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
-                self.win.addstr(9, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
+                    self.win.addstr(5, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
+                self.win.addstr(6, 0, "Current idle time: %0.2d:%0.2d:%0.2d" % ((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
+                self.win.addstr(7, 0, "Total idle time: %0.2d:%0.2d:%0.2d" % ((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
+                self.win.addstr(8, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
                 if self.throttle:
-                    self.win.addstr(10, 0, "Throttling...")
+                    self.win.addstr(9, 0, "Throttling...")
                 else:
-                    self.win.addstr(10, 0, "                       ")
-                    self.win.move(10, 0)
+                    self.win.addstr(9, 0, "                       ")
+                    self.win.move(9, 0)
                 self.win.refresh()
 
 
