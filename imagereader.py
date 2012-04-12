@@ -1,11 +1,11 @@
 #!/usr/bin/python
 from mftparser import MFTParser
 from time import time, ctime
-from progressbar import *
-from threading import *
-import warnings, gc, sys, os, mft
+from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
+from threading import Thread, Lock
+import warnings, gc, sys, os
 warnings.filterwarnings("ignore")
-import Pyro4.core, Pyro4.util, threading, cProfile
+import Pyro4.core
 
 QUEUE_SIZE = 8192
 Pyro4.config.ONEWAY_THREADED=True
@@ -41,13 +41,14 @@ class ImageReader():
             self.streams[idx]._pyroOneway.add("add_queue")
             self.streams[idx].set_cluster_size(self.cluster_size)
             self.streams[idx].set_num_clusters(self.num_clusters)
+            serializer = Pyro4.core.util.Serializer()
+            s = serializer.serialize(self.entries[idx::len(servers)])
+            fh = open("/home/rob/entriesObjectSerialized", "wb")
+            fh.write(s[0])
+            fh.close()
             self.streams[idx].process_entries(self.entries[idx::len(servers)])
             for cluster in self.streams[idx].list_clusters():
-                try:
-                    self.mapping[cluster] = idx
-                except:
-                    print cluster
-                    print self.num_clusters
+                self.mapping[cluster] = idx
             self.streams[idx].clear_clusters()
         del(self.entries)
         gc.collect()
@@ -55,11 +56,12 @@ class ImageReader():
         sys.stdout.flush()
 
     def image_drive(self):
-        self.lock = [threading.Lock() for idx in range(len(self.streams))]
+        self.lock = [Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
         #ofh = open(self.dest, 'wb+')
         self.finished = False
         self.thread_queue = [[[], []] for idx in range(len(self.streams))]
+        #threads = [Process(target=self.threaded_queue, args=(idx,)) for idx in range(len(self.streams))]
         threads = [Thread(target=self.threaded_queue, args=(idx,)) for idx in range(len(self.streams))]
         for stream in self.streams:
             stream.setup_clustermap()
@@ -102,7 +104,7 @@ class ImageReader():
         tid = idx
         while True:
             while len(self.thread_queue[tid][0]) < QUEUE_SIZE:
-                time.sleep(0.005)
+                time.sleep(1)
                 if self.finished:
                     return
             self.lock[tid].acquire()
@@ -110,8 +112,10 @@ class ImageReader():
             data = self.thread_queue[tid][1]
             del(self.thread_queue[tid][:])
             self.thread_queue[tid] = [[], []]
+            if self.streams[tid].add_queue(clusters, data):
+                while self.streams[tid].throttle_needed():
+                    time.sleep(2)
             self.lock[tid].release()
-            self.streams[tid].add_queue(clusters, data)
 
 def main():
     if sys.platform == "win32":

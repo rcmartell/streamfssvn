@@ -3,7 +3,7 @@
 
 from __future__ import division
 from mft import *
-import os, sys, time, math, gc
+import os, sys, time, math, gc, string
 from struct import unpack, pack
 from binascii import b2a_hex
 
@@ -248,6 +248,8 @@ class MFTParser():
                         flags = self.filename.flags
                     if hasattr(self.filename, 'real_size'):
                         real_size = self.filename.real_size
+                    if hasattr(self.filename, 'parent'):
+                        parent = self.filename.parent
                     # And of course, for data attributes
                     for data in self.data:
                         if hasattr(data, 'clusters') and len(data.clusters):
@@ -442,7 +444,7 @@ class MFTParser():
         idx_root = self.entry[offset+32:offset+32+entry_len]
         attr_type = idx_root[0:4]
         coll_sort_rule = unpack("<I", idx_root[4:8])[0]
-        idx_alloc_entry_size = unpack("<I", idx_root[8:12])[0]
+        self.idx_alloc_entry_size = unpack("<I", idx_root[8:12])[0]
         clusters_per_entry = int(b2a_hex(unpack("<c", idx_root[12])[0]),16)
         idx_entry_list_off = unpack("<I", idx_root[16:20])[0]
         end_entry_list_off = unpack("<I", idx_root[20:24])[0]
@@ -898,7 +900,7 @@ if __name__ == "__main__":
             parser.print_data(parser.data[0], clusters, start_vcn, end_vcn, True)
     elif opts['files']:
         print time.ctime()
-        parser.parse_mft(fullParse=False, quickstat=True)
+        parser.parse_mft(fullParse=True, quickstat=True)
         parser.getFiletypeStats()
         print time.ctime()
     elif opts['info']:

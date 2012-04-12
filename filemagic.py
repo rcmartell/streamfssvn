@@ -1,11 +1,9 @@
-import sys, os
-import magic, threading
-import shutil
+import os, shutil
 
 class FileMagic():
     def __init__(self, path):
         self.count = 0
-        self.fh = open("/home/rob/filemagicLog", "wb")
+        self.fh = open(path + "/filemagicLog", "wb")
         self.dirs = {
             'Image'         : '%s/Complete/Image/' % path,
             'Video'         : '%s/Complete/Video/' % path,
@@ -21,6 +19,7 @@ class FileMagic():
             except:
                 pass
         self.setup_filters()
+        self.running = True
 
     def setup_filters(self):
         self.filters = {
@@ -34,43 +33,49 @@ class FileMagic():
         }
 
 
-    def process_file(self, file):
-        self.thread = threading.Thread(target=self.sort_file, args=(file,))
-        self.thread.start()
+    #def process_file(self, file):
+    #    self.queue.put(file)
+    #    return
+
+    def spin_wait(self, queue):
+        while self.running:
+            f = queue.get()
+            self.sort_file(f)
         return
 
-    def sort_file(self, file):
-        for filter in self.filters:
+
+    def sort_file(self, f):
+        for _filter in self.filters:
             try:
-                if os.path.splitext(file)[1][1:].upper() in self.filters[filter]:
+                if os.path.splitext(f)[1][1:].upper() in self.filters[_filter]:
                     try:
-                        shutil.move(file, self.dirs[filter])
+                        shutil.move(f, self.dirs[_filter])
                     except:
                         try:
-                            shutil.move(file, self.dirs[filter] + "[" + str(self.count) + "]" + os.path.basename(file))
+                            shutil.move(f, self.dirs[_filter] + "[" + str(self.count) + "]" + os.path.basename(f))
                             self.count += 1
                         except:
-                            self.fh.write("Error moving file: %s\n" % file)
+                            self.fh.write("Error moving file: %s\n" % f)
                             pass
                     return
             except:
                 try:
-                    shutil.move(file, self.dirs['Other'])
+                    shutil.move(f, self.dirs['Other'])
                 except:
                     try:
-                        shutil.move(file, self.dirs['Other'] + "[" + str(self.count) + "]" + os.path.basename(file))
+                        shutil.move(f, self.dirs['Other'] + "[" + str(self.count) + "]" + os.path.basename(f))
                         self.count += 1
                     except:
-                        self.fh.write("Error moving file: %s\n" % file)
+                        self.fh.write("Error moving file: %s\n" % f)
                         pass
                 return
         try:
-            shutil.move(file, self.dirs['Other'])
+            shutil.move(f, self.dirs['Other'])
         except:
             try:
-                shutil.move(file, self.dirs['Other'] + "[" + str(self.count) + "]" + os.path.basename(file))
+                shutil.move(f, self.dirs['Other'] + "[" + str(self.count) + "]" + os.path.basename(f))
                 self.count += 1
             except:
-                self.fh.write("Error moving file: %s\n" % file)
+                self.fh.write("Error moving file: %s\n" % f)
                 pass
         return

@@ -4,12 +4,19 @@ import threading, socket, collections, gc
 from filemagic import FileMagic
 import warnings, psutil
 warnings.filterwarnings("ignore")
-import Pyro4.core, Pyro4.naming, Pyro4.util
+import Pyro4.core, Pyro4.naming
+from multiprocessing import Process, Queue
 
 if sys.platform == "win32":
-    import Console
+    try:
+        import Console #@UnresolvedImport
+    except:
+        pass
 else:
-    import curses
+    try:
+        import curses
+    except:
+        pass
 
 QUEUE_SIZE = 8192
 MB = 1024 * 1024
@@ -28,31 +35,16 @@ class StreamClient():
         self.file_progress = {}
         os.chdir(self.path)
         if os.path.isdir('Incomplete'):
-            files = os.listdir('Incomplete')
-            for file in files:
-                try:
-                    os.rm(os.path.abspath(file))
-                except:
-                    pass
-        else:
-            try:
-                os.mkdir('Incomplete')
-            except:
-                pass
+            shutil.rmtree('Incomplete')
+        os.mkdir('Incomplete')
         if os.path.isdir('Complete'):
-            files = os.listdir('Complete')
-            for file in files:
-                try:
-                    os.rm(os.path.abspath(file))
-                except:
-                    pass
-        else:
-            try:
-                os.mkdir('Complete')
-            except:
-                pass
+            shutil.rmtree('Complete')
+        os.mkdir('Complete')
         os.chdir('Incomplete')
         self.magic = FileMagic(self.path)
+        self.magicQueue = Queue()
+        self.proc = Process(target=self.magic.spin_wait, args=(self.magicQueue,))
+        self.proc.start()
         self.queue = collections.deque()
         self.other = []
         self.handles = {}
@@ -72,6 +64,7 @@ class StreamClient():
         self.process = psutil.Process(os.getpid())
         self.totalmem = psutil.TOTAL_PHYMEM
         self.showCurrentStatus = True
+        self.throttle = False
         self.finished = False
 
     def set_cluster_size(self, size):
@@ -134,8 +127,8 @@ class StreamClient():
         Create a dictionary containing the number of clusters each file is composed of.
         This will be used to determine if a file has been completely written to disk.
         """
-        for file in self.files:
-            self.file_progress[file] = len(self.files[file][1])
+        for f in self.files:
+            self.file_progress[f] = len(self.files[f][1])
         return
 
     def list_clusters(self):
@@ -143,7 +136,7 @@ class StreamClient():
         Create a list of all the clusters this client will be receiving.
         """
         self.clusters = []
-        for k, v in self.files.iteritems():
+        for v in self.files.itervalues():
             try:
                 self.clusters.extend(v[1])
             except:
@@ -164,8 +157,10 @@ class StreamClient():
         Method used by Image Server to transfer cluster/data to client.
         """
         self.queue.extend(zip(cluster, data))
-        return
+        return self.throttle
 
+    def throttle_needed(self):
+        return self.throttle
 
     def queue_writes(self):
         """
@@ -197,13 +192,15 @@ class StreamClient():
             while len(self.file_progress):
                 # Sleep while the queue is empty.
                 if not len(self.queue):
-                    time.sleep(0.005)
+                    time.sleep(1)
                 filedb = {}
                 # QUEUE_SIZE is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
                 for idx in xrange(QUEUE_SIZE):
                     # This breaks us out of the loop if we weren't able to grab
-                    # QUEUE_SIZE entries in one go.
+                    # QUEUE_SIZE entries in one go. We're not using break so that
+                    # we can hopefully fill up filedb which helps in consolidating
+                    # writes to disk.
                     if len(self.queue) == 0:
                         continue
                     # Grab the front cluster/data set from the queue
@@ -215,14 +212,14 @@ class StreamClient():
                     except:
                         filedb[self.clustermap[cluster]] = [(cluster, data)]
                 # For every file this iteration has data for...
-                for file in filedb:
+                for f in filedb:
                     # Try to open the file if it exists, otherwise create it.
                     try:
-                        fh = open(file, 'r+b')
+                        fh = open(f, 'r+b')
                     except:
-                        fh = open(file, 'wb')
+                        fh = open(f, 'wb')
                     # Create individual lists of the file's clusters and data we've obtained from the qeueue.
-                    clusters, data = zip(*filedb[file])
+                    clusters, data = zip(*filedb[f])
                     idx = 0
                     num_clusters = len(clusters)
                     buff = []
@@ -243,13 +240,13 @@ class StreamClient():
                         except:
                             pass
                         # Seek to the initial offset
-                        fh.seek(self.files[file][1].index(seek) * self.cluster_size, os.SEEK_SET)
+                        fh.seek(self.files[f][1].index(seek) * self.cluster_size, os.SEEK_SET)
                         # Check to see if (initial offset + data length) > size of the file. This
                         # normally occurs because the file's size is not an exact multiple of the
                         # cluster size and thus the final cluster is zero padded. If this is so,
                         # trim off the padding.
-                        if fh.tell() + len("".join(buff)) > int(self.files[file][0]):
-                            left = int(self.files[file][0] - fh.tell())
+                        if fh.tell() + len("".join(buff)) > int(self.files[f][0]):
+                            left = int(self.files[f][0] - fh.tell())
                             out = "".join(buff)
                             fh.write(out[:left])
                             fh.flush()
@@ -258,26 +255,27 @@ class StreamClient():
                             fh.write("".join(buff))
                             fh.flush()
                         # Subtract the number of clusters written from the file's remaining clusters list.
-                        self.file_progress[file] -= len(buff)
+                        self.file_progress[f] -= len(buff)
                         idx += 1
                         buff = []
                     fh.close()
                     # If the file's file_progress list is empty, then the entire file has been written to disk.
-                    if not self.file_progress[file]:
-                        del self.files[file]
-                        del self.file_progress[file]
+                    if not self.file_progress[f]:
+                        del self.files[f]
+                        del self.file_progress[f]
                         # Move file to appropriate folder based on its extension/magic number.
-                        self.magic.process_file(file)
+                        self.magicQueue.put(f)
             # Write resident files to disk.
-            for file in self.residentfiles:
+            for f in self.residentfiles:
                 fh = open(file, 'wb')
-                fh.write(self.residentfiles[file])
+                fh.write(self.residentfiles[f])
                 fh.close()
-                self.magic.process_file(file)
+                self.magicQueue.put(f)
             self.showCurrentStatus = False
             if sys.platform != "win32":
                 curses.nocbreak(); self.win.keypad(0); curses.echo()
                 curses.endwin()
+            self.magic.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
@@ -287,6 +285,7 @@ class StreamClient():
             if sys.platform != "win32":
                 curses.nocbreak(); self.win.keypad(0); curses.echo()
                 curses.endwin()
+            self.magic.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
@@ -299,6 +298,10 @@ class StreamClient():
         if sys.platform == "win32":
             while self.showCurrentStatus:
                 time.sleep(1)
+                if (psutil.avail_phymem() / MB) > 512:
+                    self.throttle = True
+                else:
+                    self.throttle = False
                 cur_write_rate = (self.process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - starttime
                 self.console.text(0, 4, "%d of %d files remaining     " % (len(self.file_progress), num_files))
@@ -312,6 +315,10 @@ class StreamClient():
         else:
             while self.showCurrentStatus:
                 time.sleep(1)
+                if ((psutil.avail_phymem() + psutil.cached_phymem() + psutil.phymem_buffers()) / MB) > 512:
+                    self.throttle = True
+                else:
+                    self.throttle = False
                 cur_write_rate = (self.process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - starttime
                 if cur_write_rate == prev_bytes_written:
@@ -334,24 +341,27 @@ class StreamClient():
                 self.win.addstr(7, 0, "Current idle time: %0.2d:%0.2d:%0.2d" % ((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
                 self.win.addstr(8, 0, "Total idle time: %0.2d:%0.2d:%0.2d" % ((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
                 self.win.addstr(9, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
+                if self.throttle:
+                    self.win.addstr(10, 0, "Throttling...")
+                else:
+                    self.win.addstr(10, 0, "                       ")
                 self.win.refresh()
 
 
 def main():
-    import mft
     # Start Pyro daemon
-    daemon = Pyro4.core.Daemon(sys.argv[1])
+    daemon = Pyro4.core.Daemon(socket.gethostname())
     ns = Pyro4.naming.locateNS()
-    uri = daemon.register(StreamClient(path=sys.argv[3], name=sys.argv[2], ns=ns, daemon=daemon))
+    uri = daemon.register(StreamClient(name=sys.argv[1], path=sys.argv[2], ns=ns, daemon=daemon))
     print "Host: %s\t\tPort: %i\t\tName: %s" % (socket.gethostname(), uri.port, sys.argv[2])
-    ns.register(sys.argv[2], uri)
+    ns.register(sys.argv[1], uri)
     try:
         daemon.requestLoop()
     except KeyboardInterrupt:
         if sys.platform == "linux2":
-            curses.nocbreak(); self.win.keypad(0); curses.echo(); curses.endwin()
+            curses.nocbreak(); curses.echo(); curses.endwin()
         print 'User aborted'
-        ns.remove(name=sys.argv[2])
+        ns.remove(name=sys.argv[1])
         daemon.shutdown()
         sys.exit(-1)
 
