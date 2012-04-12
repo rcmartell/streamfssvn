@@ -42,15 +42,11 @@ class StreamClient():
         os.mkdir('Complete')
         os.chdir('Incomplete')
         self.magic = FileMagic(self.path)
-        self.magicQueue = Queue()
-        self.proc = Process(target=self.magic.spin_wait, args=(self.magicQueue,))
-        self.proc.start()
+        self.finishedQueue = Queue()
+        self.proc = Process(target=self.magic.spin_wait, args=(self.finishedQueue,)).start()
         self.queue = collections.deque()
-        self.other = []
-        self.handles = {}
         self.filenames = []
         self.residentfiles = {}
-        self.file_progress = {}
         if sys.platform == "win32":
             self.console = Console.getconsole()
             self.console.page()
@@ -79,7 +75,7 @@ class StreamClient():
         Set by Image Server
         """
         self.num_clusters = int(num)
-        self.clustermap = [0] * self.num_clusters
+        self.clustermap = [-1] * self.num_clusters
         return
 
     def process_entries(self, entries):
@@ -87,7 +83,6 @@ class StreamClient():
         Setup necessary data structures to process entries received from Image Server.
         """
         count = 0
-        self.files = {}
         if sys.platform == "win32":
             self.console.text(0, 2, "Processing file entries...")
         else:
@@ -96,7 +91,7 @@ class StreamClient():
             self.win.refresh()
         for entry in entries:
             try:
-                # Replace entry name with the full file-path
+                # Replace entry name with a full path
                 entry.name = "%sIncomplete/%s" % (self.path, str(entry.name))
             except:
                 continue
@@ -110,6 +105,8 @@ class StreamClient():
             else:
                 # Nonresident
                 self.files[entry.name] = [entry.size, entry.clusters]
+        del(entries)
+        gc.collect()
         return
 
 
@@ -264,13 +261,13 @@ class StreamClient():
                         del self.files[f]
                         del self.file_progress[f]
                         # Move file to appropriate folder based on its extension/magic number.
-                        self.magicQueue.put(f)
+                        self.finishedQueue.put(f)
             # Write resident files to disk.
             for f in self.residentfiles:
                 fh = open(file, 'wb')
                 fh.write(self.residentfiles[f])
                 fh.close()
-                self.magicQueue.put(f)
+                self.finishedQueue.put(f)
             self.showCurrentStatus = False
             if sys.platform != "win32":
                 curses.nocbreak(); self.win.keypad(0); curses.echo()
