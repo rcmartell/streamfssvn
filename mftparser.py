@@ -1,9 +1,8 @@
-
 #!/usr/bin/python
 
 from __future__ import division
 from mft import *
-import os, sys, time, math, gc, string
+import os, time, math, gc
 from struct import unpack, pack
 from binascii import b2a_hex
 
@@ -302,8 +301,7 @@ class MFTParser():
                     pass
             for entry in self.entries:
                 parent = entry.parent
-                path = self.directories[parent][0] + '/' + entry.name
-                entry.path = path
+                entry.name = self.directories[parent][0] + '/' + entry.name
         del(self.directories)
         gc.collect()
         self.img.close()
@@ -470,13 +468,13 @@ class MFTParser():
             return
         idx_root = self.entry[offset+32:offset+32+entry_len]
         attr_type = idx_root[0:4]
-        coll_sort_rule = unpack("<I", idx_root[4:8])[0]
+        #coll_sort_rule = unpack("<I", idx_root[4:8])[0]
         self.idx_alloc_entry_size = unpack("<I", idx_root[8:12])[0]
-        clusters_per_entry = int(b2a_hex(unpack("<c", idx_root[12])[0]),16)
+        #clusters_per_entry = int(b2a_hex(unpack("<c", idx_root[12])[0]),16)
         idx_entry_list_off = unpack("<I", idx_root[16:20])[0]
         end_entry_list_off = unpack("<I", idx_root[20:24])[0]
-        end_entry_alloc_off = unpack("<I", idx_root[24:28])[0]
-        idx_entry_flags = unpack("<I", idx_root[28:32])[0]
+        #end_entry_alloc_off = unpack("<I", idx_root[24:28])[0]
+        #idx_entry_flags = unpack("<I", idx_root[28:32])[0]
         idx_entries=[]
         idx_entry = idx_root[idx_entry_list_off+16:]
         offset = 0
@@ -506,10 +504,10 @@ class MFTParser():
         original_offset = self.img.tell()
         idx_alloc = self.entry[offset+32:offset+32+idx_alloc_len]
         idx_list_off = unpack("<I", idx_alloc[0:4])[0]
-        idx_end_used = unpack("<I", idx_alloc[4:8])[0]
-        idx_end_alloc = unpack("<I", idx_alloc[8:12])[0]
-        idx_entry_flags = unpack("<H", idx_alloc[12:14])[0]
-        data_run_len = idx_alloc_len - idx_list_off
+        #idx_end_used = unpack("<I", idx_alloc[4:8])[0]
+        #idx_end_alloc = unpack("<I", idx_alloc[8:12])[0]
+        #idx_entry_flags = unpack("<H", idx_alloc[12:14])[0]
+        #data_run_len = idx_alloc_len - idx_list_off
         data_run = idx_alloc[idx_list_off-32:]
         entries = []
         run_off = 0
@@ -523,7 +521,6 @@ class MFTParser():
             if tmp[0] == '0' or tmp[1] == '0':
                 break
             data_run = data_run[run_off+1:]
-            data_run_len = unpack("<Q", data_run[0:data_run_bytes] + ('\x00' * (8-data_run_bytes)))[0]
             data_run = data_run[data_run_bytes:]
             data_run_offset = unpack("<Q", data_run[0:data_run_offset_bytes] + ('\x00' * (8-data_run_offset_bytes)))[0]
             data_run = data_run[data_run_offset_bytes:]
@@ -548,7 +545,7 @@ class MFTParser():
 
     def parse_idx_entry_nonresident(self, lcn):
         self.img.seek(lcn, os.SEEK_SET)
-        idx_entry = self.img.read(4096)
+        idx_entry = self.img.read(self.cluster_size)
         fixup_arr_off = unpack("<H", idx_entry[4:6])[0] + 2
         fixup_arr_len = unpack("<H", idx_entry[6:8])[0] + 1
         #logfile_seq_num = unpack("<Q", idx_entry[8:16])[0]
@@ -565,8 +562,8 @@ class MFTParser():
         idx_entry = pack("<%dc" % self.idx_alloc_entry_size, *idx_entry)
         idx_list_off = unpack("<I", idx_entry[24:28])[0] + 24
         idx_end_used = unpack("<I", idx_entry[28:32])[0] + 24
-        idx_end_alloc = unpack("<I", idx_entry[32:36])[0] + 24
-        idx_entry_flags = unpack("<I", idx_entry[36:40])[0]
+        #idx_end_alloc = unpack("<I", idx_entry[32:36])[0] + 24
+        #idx_entry_flags = unpack("<I", idx_entry[36:40])[0]
         file_entries = []
         entry = idx_entry[idx_list_off:]
         offset = 0

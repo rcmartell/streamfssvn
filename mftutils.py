@@ -142,19 +142,19 @@ def print_fsdata(parser):
 def cluster_to_file(parser, cluster):
     for entry in parser.entries:
         if int(cluster) == entry.entry_num:
-            print "Cluster maps to MFT Entry for file: %s" % entry.path
+            print "Cluster: %s => MFT Entry: %s => File: %s" % (cluster, entry.entry_num, entry.name)
             return
         if int(cluster) in entry.clusters:
-            print "Cluster: %s maps to file: %s" % (cluster, entry.path)
+            print "Cluster: %s => File: %s => MFT Entry: %s" % (cluster, entry.name, entry.entry_num)
             return
     else:
-        print "Cluster %s unallocated" % cluster
+        print "Cluster: %s unallocated" % cluster
 
-def lookup(parser, name):
+def search(parser, name):
     for entry in parser.entries:
-        if entry.name == name:
+        if entry.name.__contains__(name):
             print "MFT Entry: %d" % entry.entry_num
-            print "Full Path: %s" % entry.path
+            print "Entry Name: %s" % entry.name
 
 
 if __name__ == "__main__":
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     group.add_argument('-d', '--data', type=int, help="Get data blocks belonging to file in specified MFT entry.")
     group.add_argument('-f', '--files', help="Get a summary count of various file-types found on the filesystem.", action='store_true')
     group.add_argument('-i', '--info', help="Get basic volume information. Similar to Sleuthkit's fsstat.", action='store_true')
-    group.add_argument('-l', '--lookup', help="Find MFT Entry number(s) belonging to supplied filename. Note: If multiple files with the same name are found, returns all matching MFT Entry numbers.")
+    group.add_argument('-s', '--search', help="Find MFT Entry number(s) belonging to files whose names contain the supplied string.")
     group.add_argument('-c', '--cluster', help="Map supplied cluster to it's owning file if allocated.")
     args = argparser.parse_args()
     parser = MFTParser(args.target)
@@ -208,6 +208,9 @@ if __name__ == "__main__":
                     end_vcn = parser.data[i].end_vcn
             print_data(parser.data[0], clusters, start_vcn, end_vcn)
     elif opts['data']:
+        if not hasattr(parser, 'data'):
+            print "Invalid MFT Entry"
+            sys.exit(-1)
         if hasattr(parser, 'header') and parser.header != None:
             print_header(parser)
         if hasattr(parser, 'std_info') and parser.std_info != None:
@@ -235,14 +238,14 @@ if __name__ == "__main__":
             print_data(parser.data[0], clusters, start_vcn, end_vcn, True)
     elif opts['files']:
         print time.ctime()
-        parser.parse_mft(fullParse=True, quickstat=True)
+        parser.parse_mft(fullParse=True, quickstat=True, getIDXEntries=True)
         getFiletypeStats(parser)
         print time.ctime()
     elif opts['info']:
         print_fsdata(parser)
     elif opts['lookup']:
-        parser.parse_mft(fullParse=True, quickstat=True)
-        lookup(parser, opts['lookup'])
+        parser.parse_mft(fullParse=True, quickstat=True, getFullPaths=True)
+        search(parser, opts['lookup'])
     elif opts['cluster']:
-        parser.parse_mft(fullParse=True, quickstat=False)
+        parser.parse_mft(fullParse=True, quickstat=False, getFullPaths=True)
         cluster_to_file(parser, opts['cluster'])

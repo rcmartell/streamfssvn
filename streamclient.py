@@ -23,8 +23,8 @@ MB = 1024 * 1024
 
 class StreamClient():
     def __init__(self, path, name, ns, daemon):
-        if not path.endswith(os.path.sep):
-            self.path = path + os.path.sep
+        if path.endswith(os.path.sep):
+            self.path = path[:-1]
         else:
             self.path = path
         self.name = name
@@ -82,7 +82,6 @@ class StreamClient():
         """
         Setup necessary data structures to process entries received from Image Server.
         """
-        count = 0
         if sys.platform == "win32":
             self.console.text(0, 2, "Processing file entries...")
         else:
@@ -91,14 +90,13 @@ class StreamClient():
             self.win.refresh()
         for entry in entries:
             try:
-                # Replace entry name with a full path
-                entry.name = "%sIncomplete/%s" % (self.path, str(entry.name))
+                entry.name = "%s/Incomplete/%s" % (self.path, str(entry.name).replace("/", "&"))
             except:
                 continue
-            if entry.name in self.files or entry.name in self.residentfiles:
-                # To try and prevent name collisions
-                entry.name = "%sIncomplete/[" % self.path + str(count) + "]%s" % entry.name.split("Incomplete/")[1]
-                count += 1
+#            if entry.name in self.files or entry.name in self.residentfiles:
+#                # To try and prevent name collisions
+#                entry.name = "%s/Incomplete/[" % self.path + str(count) + "]%s" % entry.name.split("Incomplete/")[1]
+#                count += 1
             if entry.res_data != None:
                 # File is resident
                 self.residentfiles[entry.name] = entry.res_data
@@ -357,7 +355,7 @@ def main():
         daemon.requestLoop()
     except KeyboardInterrupt:
         if sys.platform == "linux2":
-            curses.nocbreak(); curses.echo(); curses.endwin()
+            curses.nocbreak(); curses.echo(); curses.endwin(); os.system("reset")
         print 'User aborted'
         ns.remove(name=sys.argv[1])
         daemon.shutdown()

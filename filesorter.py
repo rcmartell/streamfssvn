@@ -4,7 +4,7 @@ class FileSorter():
     def __init__(self, path):
         self.count = 0
         self.fh = open(path + "/filemagicLog", "wb")
-        self.dirs = {
+        self.directories = {
             'Image'         : '%s/Complete/Image/' % path,
             'Video'         : '%s/Complete/Video/' % path,
             'Application'   : '%s/Complete/Application/' % path,
@@ -13,7 +13,7 @@ class FileSorter():
             'Text'          : '%s/Complete/Text/' % path,
             'Other'         : '%s/Complete/Other/' % path
         }
-        for val in self.dirs.values():
+        for val in self.directories.values():
             try:
                 os.mkdir(val)
             except:
@@ -48,11 +48,11 @@ class FileSorter():
         for _filter in self.filters:
             if os.path.splitext(f)[1][1:].upper() in self.filters[_filter]:
                 try:
-                    if not os.path.exists(self.dirs[_filter] + os.path.basename(f)):
-                        shutil.move(f, self.dirs[_filter])
+                    if not os.path.exists(self.directories[_filter] + os.path.basename(f)):
+                        shutil.move(f, self.directories[_filter])
                         return
                     else:
-                        shutil.move(f, self.dirs[_filter] + "[" + str(self.count) + "]" + os.path.basename(f))
+                        shutil.move(f, self.directories[_filter] + "[" + str(self.count) + "]" + os.path.basename(f))
                         self.count += 1
                         return
                 except:
@@ -60,11 +60,11 @@ class FileSorter():
                     return
         else:
             try:
-                if not os.path.exists(self.dirs['Other'] + os.path.basename(f)):
-                    shutil.move(f, self.dirs['Other'])
+                if not os.path.exists(self.directories['Other'] + os.path.basename(f)):
+                    shutil.move(f, self.directories['Other'])
                     return
                 else:
-                    shutil.move(f, self.dirs['Other'] + "[" + str(self.count) + "]" + os.path.basename(f))
+                    shutil.move(f, self.directories['Other'] + "[" + str(self.count) + "]" + os.path.basename(f))
                     self.count += 1
                     return
             except:

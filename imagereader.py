@@ -61,7 +61,6 @@ class ImageReader():
         #ofh = open(self.dest, 'wb+')
         self.finished = False
         self.thread_queue = [[[], []] for idx in range(len(self.streams))]
-        #threads = [Process(target=self.threaded_queue, args=(idx,)) for idx in range(len(self.streams))]
         threads = [Thread(target=self.threaded_queue, args=(idx,)) for idx in range(len(self.streams))]
         for stream in self.streams:
             stream.setup_clustermap()
