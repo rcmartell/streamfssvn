@@ -287,6 +287,7 @@ class MFTParser():
             except KeyboardInterrupt:
                 print "User aborted"
                 break
+        
         if self.getFullPaths:
             for directory in self.directories:
                 name = self.directories[directory][0]

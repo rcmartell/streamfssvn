@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from mftparser import MFTParser
 import time
 
@@ -237,17 +238,13 @@ if __name__ == "__main__":
                 res_data = parser.data[i].res_data
             print_data(parser.data[0], clusters, start_vcn, end_vcn, True)
     elif opts['files']:
-        print time.ctime()
         parser.parse_mft(fullParse=True, quickstat=True, getIDXEntries=False, getFullPaths=False)
         getFiletypeStats(parser)
-        print time.ctime()
     elif opts['info']:
         print_fsdata(parser)
-    """
-    elif opts['lookup']:
-        parser.parse_mft(fullParse=True, quickstat=True, getFullPaths=True)
-        search(parser, opts['lookup'])
+    elif opts['search']:
+        parser.parse_mft(fullParse=True, quickstat=True, getIDXEntries=False, getFullPaths=True)
+        search(parser, opts['search'])
     elif opts['cluster']:
-        parser.parse_mft(fullParse=True, quickstat=False, getFullPaths=True)
+        parser.parse_mft(fullParse=True, quickstat=False, getIDXEntries=False, getFullPaths=True)
         cluster_to_file(parser, opts['cluster'])
-    """
