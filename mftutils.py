@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from mftparser import MFTParser
-import time
+import itertools
 
 MFT_ENTRY_SIZE = 0x400  
 
@@ -110,10 +110,10 @@ def print_data(data, clusters, start_vcn, end_vcn, show_clusters=False):
     if data.end_vcn != None:
         print "Last Data VCN:                   %i" % end_vcn
     print "File fragmented:                 %s" % data.file_fragmented
-    if show_clusters and data.clusters != None:
+    if show_clusters and len(clusters):
         width = 0
         print "Data Clusters: "
-        for cluster in clusters:
+        for cluster in reduce(lambda x, y: x+y, [range(idx[0], idx[0] + idx[1]) for idx in clusters]):
             if width < 7:
                 print "%s" % cluster,
                 width += 1

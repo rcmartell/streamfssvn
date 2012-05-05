@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys, os, time, shutil
+import sys, os, time, shutil, itertools
 import threading, socket, collections, gc
 from filesorter import FileSorter
 import warnings, psutil
@@ -102,7 +102,7 @@ class StreamClient():
                 self.residentfiles[entry.name] = entry.res_data
             else:
                 # Nonresident
-                self.files[entry.name] = [entry.size, entry.clusters]
+                self.files[entry.name] = [entry.size, reduce(lambda x, y: x+y, [range(idx[0], idx[0] + idx[1]) for idx in entry.clusters])]
         del(entries)
         gc.collect()
         return

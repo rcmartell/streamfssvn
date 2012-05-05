@@ -659,7 +659,7 @@ class MFTParser():
                     else:
                         data_run_offset = prev_data_run_offset - ((max_sign[data_run_offset_bytes] + 2) -
                                                                (data_run_offset - max_sign[data_run_offset_bytes]))
-                clusters.extend(range(data_run_offset, data_run_offset + data_run_len))
+                clusters.append((data_run_offset, data_run_len))
                 if data[0] == DATA_RUN_END:
                     break
                 else:
@@ -681,9 +681,9 @@ class MFTParser():
                         end_vcn=end_vcn, alloc_size=alloc_size, data_size=real_size, clusters=clusters,
                         file_fragmented=file_fragmented, res_data=res_data, name=name)
         elif fullParse == False and quickstat == False:
-            return PDATA(data_size=real_size, clusters=clusters, res_data=res_data)
+            return DATA(data_size=real_size, clusters=clusters, res_data=res_data)
         else:
-            return PDATA(data_size=real_size, clusters=[], res_data=res_data)
+            return DATA(data_size=real_size, clusters=[], res_data=res_data)
 
     def parse_bitmap_attr(self, offset):
         self.offset += unpack("<I", self.entry[offset+4:offset+8])[0]
