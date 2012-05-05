@@ -2,7 +2,7 @@
 
 from __future__ import division
 from mft import *
-import os, time, math, gc
+import os, time, math, gc, cPickle
 from struct import unpack, pack
 from binascii import b2a_hex
 
@@ -542,12 +542,14 @@ class MFTParser():
         self.offset += idx_alloc_len
         return IDX_ALLOC(entries)
 
-
     def parse_idx_entry_nonresident(self, lcn):
         self.img.seek(lcn, os.SEEK_SET)
         idx_entry = self.img.read(self.cluster_size)
-        fixup_arr_off = unpack("<H", idx_entry[4:6])[0] + 2
-        fixup_arr_len = unpack("<H", idx_entry[6:8])[0] + 1
+        try:
+            fixup_arr_off = unpack("<H", idx_entry[4:6])[0] + 2
+            fixup_arr_len = unpack("<H", idx_entry[6:8])[0] + 1
+        except:
+            return []
         #logfile_seq_num = unpack("<Q", idx_entry[8:16])[0]
         #idx_stream_vcn = unpack("<Q", idx_entry[16:24])[0]
         sec_end = self.sector_size-2
