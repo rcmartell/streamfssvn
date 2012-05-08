@@ -18,10 +18,10 @@ class FileHandler():
                 os.mkdir(val)
             except:
                 pass
-        self.setup_filters()
+        self.setupFilters()
         self.running = True
 
-    def setup_filters(self):
+    def setupFilters(self):
         self.filters = {
             'Video'         :   ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV',
                                 'MOV', 'H.264', 'XVID', 'DIVX', 'MKV'],
@@ -32,14 +32,14 @@ class FileHandler():
             'System'        :   ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
         }
         
-    def process_files(self, queue):
+    def processFiles(self, queue):
         while self.running:
             f = queue.get()
-            self.sort_file(f)
+            self.processFile(f)
         return
 
 
-    def process_file(self, f):
+    def processFile(self, f):
         for _filter in self.filters:
             if os.path.splitext(f)[1][1:].upper() in self.filters[_filter]:
                 try:
