@@ -1,8 +1,7 @@
 #!/usr/bin/python
-import sys, os, time, shutil
+import sys, os, time, shutil, itertools
 import threading, socket, collections, gc
-from filehandler import FileHandler
-from streamClientStatus import StreamClientStatus
+from filesorter import FileSorter
 import warnings, psutil
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
@@ -33,7 +32,7 @@ class StreamClient():
         self.daemon = daemon
         self.cluster_size = 0
         self.files = {}
-        self.fileProgress = {}
+        self.file_progress = {}
         os.chdir(self.path)
         if os.path.isdir('Incomplete'):
             shutil.rmtree('Incomplete')
@@ -42,9 +41,9 @@ class StreamClient():
             shutil.rmtree('Complete')
         os.mkdir('Complete')
         os.chdir('Incomplete')
-        self.fileHandler = FileHandler(self.path)
-        self.fileQueue = Queue()
-        self.proc = Process(target=self.fileHandler.processFiles, args=(self.fileQueue,)).start()
+        self.sorter = FileSorter(self.path)
+        self.sortQueue = Queue()
+        self.proc = Process(target=self.sorter.sort_files, args=(self.sortQueue,)).start()
         self.queue = collections.deque()
         self.filenames = []
         self.residentfiles = {}
@@ -59,6 +58,7 @@ class StreamClient():
             self.win.addstr(0, 0, "Waiting for server...")
             self.win.refresh()
         self.process = psutil.Process(os.getpid())
+        self.totalmem = psutil.TOTAL_PHYMEM
         self.showCurrentStatus = True
         self.throttle = False
         self.finished = False
@@ -70,12 +70,12 @@ class StreamClient():
         self.cluster_size = int(size)
         return
 
-    def set_numClusters(self, num):
+    def set_num_clusters(self, num):
         """
         Set by Image Server
         """
-        self.numClusters = int(num)
-        self.clustermap = [-1] * self.numClusters
+        self.num_clusters = int(num)
+        self.clustermap = [-1] * self.num_clusters
         return
 
     def process_entries(self, entries):
@@ -90,9 +90,13 @@ class StreamClient():
             self.win.refresh()
         for entry in entries:
             try:
-                entry.name = "{0}{1}Incomplete{1}{2}".format(self.path, os.path.sep, str(entry.name).replace("/", "&"))
+                entry.name = "%s/Incomplete/%s" % (self.path, str(entry.name).replace("/", "&"))
             except:
                 continue
+#            if entry.name in self.files or entry.name in self.residentfiles:
+#                # To try and prevent name collisions
+#                entry.name = "%s/Incomplete/[" % self.path + str(count) + "]%s" % entry.name.split("Incomplete/")[1]
+#                count += 1
             if entry.res_data != None:
                 # File is resident
                 self.residentfiles[entry.name] = entry.res_data
@@ -119,7 +123,7 @@ class StreamClient():
         This will be used to determine if a file has been completely written to disk.
         """
         for f in self.files:
-            self.fileProgress[f] = len(self.files[f][1])
+            self.file_progress[f] = len(self.files[f][1])
         return
 
     def list_clusters(self):
@@ -162,9 +166,8 @@ class StreamClient():
         return
 
     def queue_showStatus(self):
-        self.clientStatus = StreamClientStatus()        
-        #self.statusThread = threading.Thread(target=self.showStatus)
-        #self.statusThread.start()
+        self.statusThread = threading.Thread(target=self.showStatus)
+        self.statusThread.start()
         return
 
     def set_finished(self):
@@ -181,7 +184,7 @@ class StreamClient():
         """
         try:
             # While incomplete files remain...
-            while len(self.fileProgress):
+            while len(self.file_progress):
                 # Sleep while the queue is empty.
                 if not len(self.queue):
                     time.sleep(1)
@@ -213,10 +216,10 @@ class StreamClient():
                     # Create individual lists of the file's clusters and data we've obtained from the qeueue.
                     clusters, data = zip(*filedb[f])
                     idx = 0
-                    numClusters = len(clusters)
+                    num_clusters = len(clusters)
                     buff = []
                     # For every cluster for this file we've received...
-                    while idx < numClusters:
+                    while idx < num_clusters:
                         # Create an initial offset using the current index into the cluster array.
                         seek = clusters[idx]
                         # Add the data at the index into the "to be written buffer".
@@ -247,26 +250,23 @@ class StreamClient():
                             fh.write("".join(buff))
                             fh.flush()
                         # Subtract the number of clusters written from the file's remaining clusters list.
-                        self.fileProgress[f] -= len(buff)
+                        self.file_progress[f] -= len(buff)
                         idx += 1
                         buff = []
                     fh.close()
                     # If the file's file_progress list is empty, then the entire file has been written to disk.
-                    if not self.fileProgress[f]:
+                    if not self.file_progress[f]:
                         del self.files[f]
-                        del self.fileProgress[f]
+                        del self.file_progress[f]
                         # Move file to appropriate folder based on its extension/sorter number.
-                        self.fileQueue.put_nowait(f)
+                        self.sortQueue.put_nowait(f)
             # Write resident files to disk.
             for f in self.residentfiles:
                 fh = open(file, 'wb')
                 fh.write(self.residentfiles[f])
                 fh.close()
-                self.fileQueue.put_nowait(f)
+                self.sortQueue.put_nowait(f)
             self.showCurrentStatus = False
-            if sys.platform != "win32":
-                curses.nocbreak(); self.win.keypad(0); curses.echo()
-                curses.endwin()
             self.sorter.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
@@ -274,14 +274,10 @@ class StreamClient():
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.showCurrentStatus = False
-            if sys.platform != "win32":
-                curses.nocbreak(); self.win.keypad(0); curses.echo()
-                curses.endwin()
-            self.fileHandler.running = False
+            self.sorter.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
-
 
     def showStatus(self):
         num_files = len(self.files)
@@ -296,13 +292,13 @@ class StreamClient():
                     self.throttle = False
                 cur_write_rate = (self.process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - starttime
-                self.console.text(0, 4, "{0} of {1} files remaining {2:<30}".format(len(self.fileProgress), num_files, ''))
-                self.console.text(0, 6, "Clusters in queue: {0:<30d}".format(len(self.queue)))
-                self.console.text(0, 8, "Client CPU usage: {0:<30d}".format(self.process.get_cpu_percent()))
-                self.console.text(0, 10, "Using {0} MB of {1} MB physical memory | {3} MB physical memory free {4:<20}".format(
+                self.console.text(0, 4, "{0} of {1} files remaining{2:<20d}".format(len(self.file_progress), num_files, ''))
+                self.console.text(0, 6, "Clusters in queue: {0:<20d}".format(len(self.queue)))
+                self.console.text(0, 8, "Client CPU usage: {0:<20d}".format(self.process.get_cpu_percent()))
+                self.console.text(0, 10, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free{3:<10d}".format(
                                   (self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB), ''))
-                self.console.text(0, 12, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
-                self.console.text(0, 14, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
+                self.console.text(0, 12, "Total bytes written to disk(MB): {0:<20d}".format(cur_write_rate))
+                self.console.text(0, 14, "Average write rate: {0} MB/s{1:<10d}".format((cur_write_rate / duration), ''))
                 self.console.text(0, 16, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
         else:
             while self.showCurrentStatus:
@@ -319,34 +315,32 @@ class StreamClient():
                 else:
                     cur_idle = 0
                 prev_bytes_written = cur_write_rate
-                self.win.addstr(0, 0, "{0} of {1} files remaining {2:<30}".format(len(self.fileProgress), num_files, ''))
-                self.win.addstr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
-                self.win.addstr(2, 0, "Client CPU usage: {0:<30d}".format(self.process.get_cpu_percent()))
-                self.win.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {3} MB physical memory free {4:<20}".format
-                                      ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), ((psutil.avail_phymem() +
-                                      psutil.cached_phymem() + psutil.phymem_buffers()) / MB), ''))
-                self.win.addstr(4, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
+                self.win.addstr(0, 0, "{0} of {1} files remaining{2:<20d}".format(len(self.file_progress), num_files, ''))
+                self.win.addstr(1, 0, "Clusters in queue: {0:<20d}".format(len(self.queue)))
+                self.win.addstr(2, 0, "Client CPU usage: {0:<20d}".format(self.process.get_cpu_percent()))
+                self.win.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free{3:<10d}".format(
+                                      (self.process.get_memory_info()[0] / MB), (self.totalmem / MB), ((psutil.avail_phymem() +
+                                      psutil.cached_phymem() + psutil.phymem_buffers()) / MB)))
+                self.win.addstr(4, 0, "Total bytes written to disk(MB): {0:<20d}".format(cur_write_rate))
                 try:
-                    self.win.addstr(5, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / (duration - total_idle)), ''))
+                    self.win.addstr(5, 0, "Average write rate: {0} MB/s{1:<10d}".format(cur_write_rate / (duration - total_idle)))
                 except:
-                    self.win.addstr(5, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
+                    self.win.addstr(5, 0, "Average write rate: {0} MB/s{1:<10d}".format(cur_write_rate / duration))
                 self.win.addstr(6, 0, "Current idle time: {0:02d}:{1:02d}:{2:02d}".format((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
-                self.win.addstr(7, 0, "Total idle time: {0:02d}:{1:02d}:{2:02d}".format((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
+                self.win.addstr(7, 0, "Total idle time:{0:02d}:{1:02d}:{2:02d}".format((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
                 self.win.addstr(8, 0, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
                 if self.throttle:
                     self.win.addstr(9, 0, "Throttling...")
                 else:
-                    self.win.addstr(9, 0, "{0:<30}".format(''))
+                    self.win.addstr(9, 0, "{0:<30s}".format(''))
                     self.win.move(9, 0)
                 self.win.refresh()
-
 
 def main():
     # Start Pyro daemon
     daemon = Pyro4.core.Daemon(socket.gethostname())
     ns = Pyro4.naming.locateNS()
     uri = daemon.register(StreamClient(name=sys.argv[1], path=sys.argv[2], ns=ns, daemon=daemon))
-    print "Host: {0}\t\tPort: {1}\t\tName: {2}".format(socket.gethostname(), uri.port, sys.argv[2])
     ns.register(sys.argv[1], uri)
     try:
         daemon.requestLoop()
