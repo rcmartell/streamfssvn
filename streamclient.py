@@ -1,7 +1,7 @@
 #!/usr/bin/python
-import sys, os, time, shutil, itertools
+import sys, os, time, shutil
 import threading, socket, collections, gc
-from filesorter import FileSorter
+from filehandler import FileHandler
 import warnings, psutil
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
@@ -41,9 +41,9 @@ class StreamClient():
             shutil.rmtree('Complete')
         os.mkdir('Complete')
         os.chdir('Incomplete')
-        self.sorter = FileSorter(self.path)
-        self.sortQueue = Queue()
-        self.proc = Process(target=self.sorter.sort_files, args=(self.sortQueue,)).start()
+        self.fileHandler = FileHandler(self.path)
+        self.processQueue = Queue()
+        self.proc = Process(target=self.fileHandler.processFiles, args=(self.processQueue,)).start()
         self.queue = collections.deque()
         self.filenames = []
         self.residentfiles = {}
@@ -90,13 +90,9 @@ class StreamClient():
             self.win.refresh()
         for entry in entries:
             try:
-                entry.name = "%s/Incomplete/%s" % (self.path, str(entry.name).replace("/", "&"))
+                entry.name = "{0}{1}Incomplete{1}{2}" % (self.path, os.path.sep, str(entry.name).replace("/", "&"))
             except:
                 continue
-#            if entry.name in self.files or entry.name in self.residentfiles:
-#                # To try and prevent name collisions
-#                entry.name = "%s/Incomplete/[" % self.path + str(count) + "]%s" % entry.name.split("Incomplete/")[1]
-#                count += 1
             if entry.res_data != None:
                 # File is resident
                 self.residentfiles[entry.name] = entry.res_data
@@ -259,22 +255,22 @@ class StreamClient():
                         del self.files[f]
                         del self.file_progress[f]
                         # Move file to appropriate folder based on its extension/sorter number.
-                        self.sortQueue.put_nowait(f)
+                        self.processQueue.put_nowait(f)
             # Write resident files to disk.
             for f in self.residentfiles:
                 fh = open(file, 'wb')
                 fh.write(self.residentfiles[f])
                 fh.close()
-                self.sortQueue.put_nowait(f)
+                self.processQueue.put_nowait(f)
             self.showCurrentStatus = False
-            self.sorter.running = False
+            self.fileHandler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.showCurrentStatus = False
-            self.sorter.running = False
+            self.fileHandler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
@@ -285,7 +281,7 @@ class StreamClient():
         prev_bytes_written, cur_idle, total_idle = 0, 0, 0
         if sys.platform == "win32":
             while self.showCurrentStatus:
-                time.sleep(1)
+                time.sleep(2)
                 if (psutil.avail_phymem() / MB) < 512:
                     self.throttle = True
                 else:
@@ -302,7 +298,7 @@ class StreamClient():
                 self.console.text(0, 16, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
         else:
             while self.showCurrentStatus:
-                time.sleep(1)
+                time.sleep(2)
                 if ((psutil.avail_phymem() + psutil.cached_phymem() + psutil.phymem_buffers()) / MB) < 512:
                     self.throttle = True
                 else:
