@@ -47,16 +47,16 @@ class StreamClient():
         self.queue = collections.deque()
         self.filenames = []
         self.residentfiles = {}
-        if sys.platform == "win32":
-            self.console = Console.getconsole()
-            self.console.page()
-            self.console.title("Running Stream Listener")
-            self.console.text(0, 0, "Waiting for server...")
-        else:
-            curses.initscr(); curses.noecho(); curses.cbreak()
-            self.win = curses.newwin(0,0)
-            self.win.addstr(0, 0, "Waiting for server...")
-            self.win.refresh()
+#        if sys.platform == "win32":
+#            self.console = Console.getconsole()
+#            self.console.page()
+#            self.console.title("Running Stream Listener")
+#            self.console.text(0, 0, "Waiting for server...")
+#        else:
+#            curses.initscr(); curses.noecho(); curses.cbreak()
+#            self.win = curses.newwin(0,0)
+#            self.win.addstr(0, 0, "Waiting for server...")
+#            self.win.refresh()
         self.process = psutil.Process(os.getpid())
         self.totalmem = psutil.TOTAL_PHYMEM
         self.showCurrentStatus = True
@@ -82,23 +82,39 @@ class StreamClient():
         """
         Setup necessary data structures to process entries received from Image Server.
         """
-        if sys.platform == "win32":
-            self.console.text(0, 2, "Processing file entries...")
-        else:
-            self.win.clear()
-            self.win.addstr(0, 0, "Processing file entries...")
-            self.win.refresh()
+#        if sys.platform == "win32":
+#            self.console.text(0, 2, "Processing file entries...")
+#        else:
+#            self.win.clear()
+#            self.win.addstr(0, 0, "Processing file entries...")
+#            self.win.refresh()
+        count = 0
         for entry in entries:
+<<<<<<< .mine
+            entry.name = "%s/Incomplete/%s" % (self.path, str(entry.name))
+            print entry.name
+            if entry.name in self.files or entry.name in self.residentfiles:
+                # To try and prevent name collisions
+               entry.name = "%s/Incomplete/[" % self.path + str(count) + "]%s" % entry.name.split("Incomplete/")[1]
+               count += 1
+            if entry.res_data != None and len(entry.res_data) > 0:
+=======
             try:
                 entry.name = "{0}{1}Incomplete{1}{2}" % (self.path, os.path.sep, str(entry.name).replace("/", "&"))
             except:
                 continue
             if entry.res_data != None:
+>>>>>>> .r290
                 # File is resident
                 self.residentfiles[entry.name] = entry.res_data
             else:
                 # Nonresident
+<<<<<<< .mine
                 self.files[entry.name] = [entry.size, reduce(lambda x, y: x+y, [range(idx[0], idx[0] + idx[1]) for idx in entry.clusters])]
+                print self.files[entry.name]
+=======
+                self.files[entry.name] = [entry.size, reduce(lambda x, y: x+y, [range(idx[0], idx[0] + idx[1]) for idx in entry.clusters])]
+>>>>>>> .r290
         del(entries)
         gc.collect()
         return
@@ -162,8 +178,19 @@ class StreamClient():
         return
 
     def queue_showStatus(self):
+<<<<<<< .mine
+<<<<<<< .mine
+        #self.statusThread = threading.Thread(target=self.showStatus)
+        #self.statusThread.start()
+=======
+        self.clientStatus = StreamClientStatus()        
+        #self.statusThread = threading.Thread(target=self.showStatus)
+        #self.statusThread.start()
+=======
         self.statusThread = threading.Thread(target=self.showStatus)
         self.statusThread.start()
+>>>>>>> .r294
+>>>>>>> .r290
         return
 
     def set_finished(self):
@@ -258,7 +285,7 @@ class StreamClient():
                         self.processQueue.put_nowait(f)
             # Write resident files to disk.
             for f in self.residentfiles:
-                fh = open(file, 'wb')
+                fh = open(f, 'wb')
                 fh.write(self.residentfiles[f])
                 fh.close()
                 self.processQueue.put_nowait(f)
@@ -275,6 +302,64 @@ class StreamClient():
             self.daemon.shutdown()
             return
 
+<<<<<<< .mine
+#    def showStatus(self):
+#        num_files = len(self.files)
+#        starttime = int(time.time())
+#        prev_bytes_written, cur_idle, total_idle = 0, 0, 0
+#        if sys.platform == "win32":
+#            while self.showCurrentStatus:
+#                time.sleep(1)
+#                if (psutil.avail_phymem() / MB) < 512:
+#                    self.throttle = True
+#                else:
+#                    self.throttle = False
+#                cur_write_rate = (self.process.get_io_counters()[3] / MB)
+#                duration = int(time.time()) - starttime
+#                self.console.text(0, 4, "%d of %d files remaining     " % (len(self.file_progress), num_files))
+#                self.console.text(0, 6, "Clusters in queue: %d           " % len(self.queue))
+#                self.console.text(0, 8, "Client CPU usage: %d  " % self.process.get_cpu_percent())
+#                self.console.text(0, 10, "Using %d MB of %d MB physical memory | %d MB physical memory free      " %
+#                                  ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB)))
+#                self.console.text(0, 12, "Total bytes written to disk(MB): %d   " % cur_write_rate)
+#                self.console.text(0, 14, "Average write rate: %d MB/s       " % (cur_write_rate / duration))
+#                self.console.text(0, 16, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
+#        else:
+#            while self.showCurrentStatus:
+#                time.sleep(1)
+#                if ((psutil.avail_phymem() + psutil.cached_phymem() + psutil.phymem_buffers()) / MB) < 512:
+#                    self.throttle = True
+#                else:
+#                    self.throttle = False
+#                cur_write_rate = (self.process.get_io_counters()[3] / MB)
+#                duration = int(time.time()) - starttime
+#                if cur_write_rate == prev_bytes_written:
+#                    cur_idle += 1
+#                    total_idle += 1
+#                else:
+#                    cur_idle = 0
+#                prev_bytes_written = cur_write_rate
+#                self.win.addstr(0, 0, "%d of %d files remaining              " % (len(self.file_progress), num_files))
+#                self.win.addstr(1, 0, "Clusters in queue: %d           " % len(self.queue))
+#                self.win.addstr(2, 0, "Client CPU usage: %d  " % self.process.get_cpu_percent())
+#                self.win.addstr(3, 0, "Using %d MB of %d MB physical memory | %d MB physical memory free        " %
+#                                      ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), ((psutil.avail_phymem() +
+#                                      psutil.cached_phymem() + psutil.phymem_buffers()) / MB)))
+#                self.win.addstr(4, 0, "Total bytes written to disk: %d MB          " % cur_write_rate)
+#                try:
+#                    self.win.addstr(5, 0, "Average write rate: %d MB/s          " % (cur_write_rate / (duration - total_idle)))
+#                except:
+#                    self.win.addstr(5, 0, "Average write rate: %d MB/s          " % (cur_write_rate / duration))
+#                self.win.addstr(6, 0, "Current idle time: %0.2d:%0.2d:%0.2d" % ((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
+#                self.win.addstr(7, 0, "Total idle time: %0.2d:%0.2d:%0.2d" % ((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
+#                self.win.addstr(8, 0, "Duration: %0.2d:%0.2d:%0.2d" % ((duration/3600), ((duration/60) % 60), (duration % 60)))
+#                if self.throttle:
+#                    self.win.addstr(9, 0, "Throttling...")
+#                else:
+#                    self.win.addstr(9, 0, "                       ")
+#                    self.win.move(9, 0)
+#                self.win.refresh()
+=======
     def showStatus(self):
         num_files = len(self.files)
         starttime = int(time.time())
@@ -331,6 +416,7 @@ class StreamClient():
                     self.win.addstr(9, 0, "{0:<30s}".format(''))
                     self.win.move(9, 0)
                 self.win.refresh()
+>>>>>>> .r290
 
 def main():
     # Start Pyro daemon
