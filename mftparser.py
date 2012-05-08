@@ -2,7 +2,7 @@
 
 from __future__ import division
 from mft import *
-import os, time, math, gc, cPickle
+import os, time, math, gc
 from struct import unpack, pack
 from binascii import b2a_hex
 
@@ -135,7 +135,7 @@ class MFTParser():
             except:
                 print 'Warning, error occurred while processing $MFT data, incomplete image perhaps?'
 
-    def parse_mft(self, start=0, end=None, fullParse=False, quickstat=False, cleanup=True, getFullPaths=False, getIDXEntries=False):
+    def parse_mft(self, start=0, end=None, fullParse=False, quickstat=False, cleanup=True, getFullPaths=True, getIDXEntries=False):
         """
         The main method/function of the parser. It accepts a 'start' entry if only a single MFT entry's data is desired (in which case the 'end' parameter is set to the same
         value as 'start'). The optional parameters 'fullParse', 'quickstat' and 'cleanup' are used to somewhat fine-tune the parser so that no more parsing/processing occurs
@@ -167,7 +167,7 @@ class MFTParser():
                 self.data = []
                 clusters = []
                 self.entry_num = 0
-                self.std_info, self.filename, self.attr_list, res_data = None, None, None, ""
+                self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
                 # ctime, mtime, atime = None, None, None
                 flags = []
                 name, parent, real_size, data_size, size = None, None, 0, 0, 0
@@ -260,10 +260,10 @@ class MFTParser():
                     for data in self.data:
                         if hasattr(data, 'clusters') and len(data.clusters):
                             clusters.extend(data.clusters)
-                        if hasattr(data, 'res_data') and data.res_data != None:
-                            res_data += data.res_data
                         if hasattr(data, 'data_size'):
                             data_size += data.data_size
+                        if hasattr(data, 'res_data') and data.res_data != None:
+                            res_data = data.res_data
 
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and 'DIRECTORY' in flags:
@@ -287,7 +287,7 @@ class MFTParser():
             except KeyboardInterrupt:
                 print "User aborted"
                 break
-        
+        """
         if self.getFullPaths:
             for directory in self.directories:
                 name = self.directories[directory][0]
@@ -304,6 +304,7 @@ class MFTParser():
                 parent = entry.parent
                 entry.name = self.directories[parent][0] + '/' + entry.name
         del(self.directories)
+        """
         gc.collect()
         self.img.close()
         return self.entries
@@ -695,5 +696,4 @@ class MFTParser():
     
     def main(self):
         self.setup_mft_data()
-        self.parse_mft()
-        return self.entries
+        return self.parse_mft()
