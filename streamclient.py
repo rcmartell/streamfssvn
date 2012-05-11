@@ -117,8 +117,8 @@ class StreamClient():
         Create a dictionary containing the number of clusters each file is composed of.
         This will be used to determine if a file has been completely written to disk.
         """
-        for f in self.files:
-            self.fileProgress[f] = len(self.files[f][1])
+        for _file in self.files:
+            self.fileProgress[_file] = len(self.files[_file][1])
         return
 
     def list_clusters(self):
@@ -127,7 +127,7 @@ class StreamClient():
         """
         #self.clusters = []
         return [x for v in self.files.itervalues() for x in v[1]]
-        """        
+        """
         for v in self.files.itervalues():
             try:
                 self.clusters.extend(v[1])
@@ -163,7 +163,7 @@ class StreamClient():
         self.thread.start()
         return
 
-    def queue_showStatus(self):  
+    def queue_showStatus(self):
         self.statusThread = threading.Thread(target=self.showStatus)
         self.statusThread.start()
         return
@@ -205,14 +205,14 @@ class StreamClient():
                     except:
                         filedb[self.clustermap[cluster]] = [(cluster, data)]
                 # For every file this iteration has data for...
-                for f in filedb:
+                for _file in filedb:
                     # Try to open the file if it exists, otherwise create it.
                     try:
-                        fh = open(f, 'r+b')
+                        fh = open(_file, 'r+b')
                     except:
-                        fh = open(f, 'wb')
+                        fh = open(_file, 'wb')
                     # Create individual lists of the file's clusters and data we've obtained from the qeueue.
-                    clusters, data = zip(*filedb[f])
+                    clusters, data = zip(*filedb[_file])
                     idx = 0
                     numClusters = len(clusters)
                     buff = []
@@ -233,13 +233,13 @@ class StreamClient():
                         except:
                             pass
                         # Seek to the initial offset
-                        fh.seek(self.files[f][1].index(seek) * self.cluster_size, os.SEEK_SET)
+                        fh.seek(self.files[_file][1].index(seek) * self.cluster_size, os.SEEK_SET)
                         # Check to see if (initial offset + data length) > size of the file. This
                         # normally occurs because the file's size is not an exact multiple of the
                         # cluster size and thus the final cluster is zero padded. If this is so,
                         # trim off the padding.
-                        if fh.tell() + len("".join(buff)) > int(self.files[f][0]):
-                            left = int(self.files[f][0] - fh.tell())
+                        if fh.tell() + len("".join(buff)) > int(self.files[_file][0]):
+                            left = int(self.files[_file][0] - fh.tell())
                             out = "".join(buff)
                             fh.write(out[:left])
                             fh.flush()
@@ -248,22 +248,22 @@ class StreamClient():
                             fh.write("".join(buff))
                             fh.flush()
                         # Subtract the number of clusters written from the file's remaining clusters list.
-                        self.fileProgress[f] -= len(buff)
+                        self.fileProgress[_file] -= len(buff)
                         idx += 1
                         buff = []
                     fh.close()
                     # If the file's file_progress list is empty, then the entire file has been written to disk.
-                    if not self.fileProgress[f]:
-                        del self.files[f]
-                        del self.fileProgress[f]
+                    if not self.fileProgress[_file]:
+                        del self.files[_file]
+                        del self.fileProgress[_file]
                         # Move file to appropriate folder based on its extension/sorter number.
-                        self.fileQueue.put_nowait(f)
+                        self.fileQueue.put_nowait(_file)
             # Write resident files to disk.
-            for f in self.residentfiles:
-                fh = open(file, 'wb')
-                fh.write(self.residentfiles[f])
+            for _file in self.residentfiles:
+                fh = open(_file, 'wb')
+                fh.write(self.residentfiles[_file])
                 fh.close()
-                self.fileQueue.put_nowait(f)
+                self.fileQueue.put_nowait(_file)
             self.showCurrentStatus = False
             if sys.platform != "win32":
                 curses.nocbreak(); self.win.keypad(0); curses.echo()
@@ -354,7 +354,7 @@ def main():
     daemon = Pyro4.core.Daemon(socket.gethostname())
     ns = Pyro4.naming.locateNS()
     uri = daemon.register(StreamClient(name=sys.argv[1], path=sys.argv[2], ns=ns, daemon=daemon))
-    print "Host: {0}\t\tPort: {1}\t\tName: {2}".format(socket.gethostname(), uri.port, sys.argv[2])
+    print "Host: {0:<8}Port: {1:<8}Name: {2}".format(socket.gethostname(), uri.port, sys.argv[2])
     ns.register(sys.argv[1], uri)
     try:
         daemon.requestLoop()
