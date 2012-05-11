@@ -1,67 +1,50 @@
-import os, shutil
+import os, shutil, json
 
 class FileHandler():
     def __init__(self, path):
         self.count = 0
-        self.fh = open(path + "/filemagicLog", "wb")
-        self.directories = {
-            'Image'         : '%s/Complete/Image/' % path,
-            'Video'         : '%s/Complete/Video/' % path,
-            'Application'   : '%s/Complete/Application/' % path,
-            'System'        : '%s/Complete/System/' % path,
-            'Audio'         : '%s/Complete/Audio/' % path,
-            'Text'          : '%s/Complete/Text/' % path,
-            'Other'         : '%s/Complete/Other/' % path
-        }
-        for val in self.directories.values():
+        self.errfile = open(path + os.path.sep + "filehandler.err", "wb")
+        config = json.load(open('config.json'))
+        for directory in config['directories']:
+            self.directories[directory] = "{0}{1}Complete{1}{2}".format(path, os.path.sep, config['directory'][directory])
+        for directory in self.directories.values():
             try:
-                os.mkdir(val)
+                os.mkdir(directory)
             except:
                 pass
-        self.setupFilters()
+        for idx in range(len(config['filetypes'])):
+            self.filters[config['filetypes'][idx].keys()[0]] = config['filetypes'][idx].values()[0]
         self.running = True
 
-    def setupFilters(self):
-        self.filters = {
-            'Video'         :   ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV',
-                                'MOV', 'H.264', 'XVID', 'DIVX', 'MKV'],
-            'Image'         :   ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX'],
-            'Audio'         :   ['MP3', 'M4A', 'M4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG'],
-            'Application'   :   ['PE32', 'BIN', 'EXE', 'APP', 'O'],
-            'Text'          :   ['TXT', 'XML', 'CHM', 'CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM', 'PDF', 'JAVA', 'LOG', 'PS', 'CSV', 'TSV'],
-            'System'        :   ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
-        }
-        
     def processFiles(self, queue):
         while self.running:
-            f = queue.get()
-            self.processFile(f)
+            _file = queue.get()
+            self.processFile(_file)
         return
 
-
-    def processFile(self, f):
+    def processFile(self, _file):
         for _filter in self.filters:
-            if os.path.splitext(f)[1][1:].upper() in self.filters[_filter]:
+            if os.path.splitext(_file)[1][1:].upper() in self.filters[_filter]:
                 try:
-                    if not os.path.exists(self.directories[_filter] + os.path.basename(f)):
-                        shutil.move(f, self.directories[_filter])
+                    if not os.path.exists(self.directories[_filter] + os.path.sep + os.path.basename(_file)):
+                        shutil.move(_file, self.directories[_filter])
                         return
                     else:
-                        shutil.move(f, self.directories[_filter] + "[" + str(self.count) + "]" + os.path.basename(f))
+                        shutil.move(_file, self.directories[_filter] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(_file))
                         self.count += 1
                         return
                 except:
-                    self.fh.write("Error moving file: %s\n" % f)
+                    self.errfile.write("Error moving file: {0}\n".format(_file))
                     return
         else:
             try:
-                if not os.path.exists(self.directories['Other'] + os.path.basename(f)):
-                    shutil.move(f, self.directories['Other'])
+                if not os.path.exists(self.directories['Other'] + os.path.sep + os.path.basename(_file)):
+                    shutil.move(_file, self.directories['Other'])
                     return
                 else:
-                    shutil.move(f, self.directories['Other'] + "[" + str(self.count) + "]" + os.path.basename(f))
+                    shutil.move(_file, self.directories['Other'] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(_file))
                     self.count += 1
                     return
             except:
-                self.fh.write("Error moving file: %s\n" % f)
+                self.errfile.write("Error moving file: {0}\n".format(_file))
                 return
