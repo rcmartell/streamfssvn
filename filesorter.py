@@ -35,9 +35,8 @@ class FileHandler():
     def process_files(self, queue):
         while self.running:
             f = queue.get()
-            self.sort_file(f)
+            self.process_file(f)
         return
-
 
     def process_file(self, f):
         for _filter in self.filters:
