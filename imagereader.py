@@ -41,11 +41,6 @@ class ImageReader():
             self.streams[idx]._pyroOneway.add("add_queue")
             self.streams[idx].set_cluster_size(self.cluster_size)
             self.streams[idx].set_num_clusters(self.num_clusters)
-            serializer = Pyro4.core.util.Serializer()
-            s = serializer.serialize(self.entries[idx::len(servers)])
-            fh = open("/home/rob/entriesObjectSerialized", "wb")
-            fh.write(s[0])
-            fh.close()
             self.streams[idx].process_entries(self.entries[idx::len(servers)])
             for cluster in self.streams[idx].list_clusters():
                 self.mapping[cluster] = idx
@@ -121,7 +116,7 @@ def main():
         os.system("cls")
     else:
         os.system("clear")
-    print "Starting Time: %s" % str(ctime().split(" ")[3])
+    print "Starting Time: %s" % str(ctime().split(" ")[4])
     reader = ImageReader(sys.argv[1], sys.argv[2])
     reader.init_fs_metadata()
     reader.setup_stream_listeners(sys.argv[3:])
@@ -129,6 +124,6 @@ def main():
         reader.image_drive()
     except KeyboardInterrupt:
         sys.exit(-1)
-    print "End Time: %s" % str(ctime().split(" ")[3])
+    print "End Time: %s" % str(ctime().split(" ")[4])
 if __name__ == "__main__":
     main()

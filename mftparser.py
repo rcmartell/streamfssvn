@@ -263,7 +263,10 @@ class MFTParser():
                         if hasattr(data, 'data_size'):
                             data_size += data.data_size
                         if hasattr(data, 'res_data') and data.res_data != None:
-                            res_data = data.res_data
+                            try:
+                                res_data += data.res_data
+                            except:
+                                res_data = data.res_data
 
                     # We're not interested in MFT specific files nor deleted ones...
                     if name != None and name[0] != '$' and 'DIRECTORY' in flags:

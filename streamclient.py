@@ -58,7 +58,6 @@ class StreamClient():
             self.win = curses.newwin(0,0)
             self.win.addstr(0, 0, "Waiting for server...")
             self.win.refresh()
-        self.process = psutil.Process(os.getpid())
         self.showCurrentStatus = True
         self.throttle = False
         self.finished = False
@@ -126,13 +125,16 @@ class StreamClient():
         """
         Create a list of all the clusters this client will be receiving.
         """
-        self.clusters = []
+        #self.clusters = []
+        return [x for v in self.files.itervalues() for x in v[1]]
+        """        
         for v in self.files.itervalues():
             try:
                 self.clusters.extend(v[1])
             except:
                 self.clusters.append(v[1])
         return self.clusters
+        """
 
     def clear_clusters(self):
         """
@@ -285,60 +287,66 @@ class StreamClient():
     def showStatus(self):
         num_files = len(self.files)
         starttime = int(time.time())
-        self.totalmem = psutil.TOTAL_PHYMEM / MB
+        process = psutil.Process(os.getpid())
+        totalmem = psutil.TOTAL_PHYMEM / MB
         prev_bytes_written, cur_idle, total_idle = 0, 0, 0
-        if sys.platform == "win32":
-            while self.showCurrentStatus:
-                time.sleep(1)
-                if (psutil.avail_phymem() / MB) < 512:
-                    self.throttle = True
-                else:
-                    self.throttle = False
-                cur_write_rate = (self.process.get_io_counters()[3] / MB)
-                duration = int(time.time()) - starttime
-                self.console.text(0, 4, "{0} of {1} files remaining {2:<30s}".format(len(self.fileProgress), num_files, ''))
-                self.console.text(0, 6, "Clusters in queue: {0:<30d}".format(len(self.queue)))
-                self.console.text(0, 8, "Client CPU usage: {0:<30d}".format(self.process.get_cpu_percent()))
-                self.console.text(0, 10, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format(
-                                  (self.process.get_memory_info()[0] / MB), (self.totalmem / MB), (psutil.avail_phymem() / MB), ''))
-                self.console.text(0, 12, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
-                self.console.text(0, 14, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / duration), ''))
-                self.console.text(0, 16, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
-        else:
-            while self.showCurrentStatus:
-                time.sleep(1)
-                if ((psutil.avail_phymem() + psutil.cached_phymem() + psutil.phymem_buffers()) / MB) < 512:
-                    self.throttle = True
-                else:
-                    self.throttle = False
-                cur_write_rate = (self.process.get_io_counters()[3] / MB)
-                duration = int(time.time()) - starttime
-                if cur_write_rate == prev_bytes_written:
-                    cur_idle += 1
-                    total_idle += 1
-                else:
-                    cur_idle = 0
-                prev_bytes_written = cur_write_rate
-                self.win.addstr(0, 0, "{0} of {1} files remaining {2:<30s}".format(len(self.fileProgress), num_files, ''))
-                self.win.addstr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
-                self.win.addstr(2, 0, "Client CPU usage: {0:<30d}".format(int(self.process.get_cpu_percent())))
-                self.win.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format
-                                      ((self.process.get_memory_info()[0] / MB), (self.totalmem / MB), ((psutil.avail_phymem() +
-                                      psutil.cached_phymem() + psutil.phymem_buffers()) / MB), ''))
-                self.win.addstr(4, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
-                try:
-                    self.win.addstr(5, 0, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration - total_idle)), ''))
-                except:
-                    self.win.addstr(5, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
-                self.win.addstr(6, 0, "Current idle time: {0:02d}:{1:02d}:{2:02d}".format((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
-                self.win.addstr(7, 0, "Total idle time: {0:02d}:{1:02d}:{2:02d}".format((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
-                self.win.addstr(8, 0, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
-                if self.throttle:
-                    self.win.addstr(9, 0, "Throttling...")
-                else:
-                    self.win.addstr(9, 0, "{0:<30s}".format(''))
-                    self.win.move(9, 0)
-                self.win.refresh()
+        avail_phymem = psutil.avail_phymem
+        cached_phymem = psutil.cached_phymem
+        phymem_buffers = psutil.phymem_buffers
+        get_cpu_percent = process.get_cpu_percent
+        get_memory_info = self.process.get_memory_info
+#        if sys.platform == "win32":
+#            while self.showCurrentStatus:
+#                time.sleep(1)
+#                if (psutil.avail_phymem() / MB) < 512:
+#                    self.throttle = True
+#                else:
+#                    self.throttle = False
+#                cur_write_rate = (self.process.get_io_counters()[3] / MB)
+#                duration = int(time.time()) - starttime
+#                self.console.text(0, 4, "{0} of {1} files remaining {2:<30s}".format(len(self.fileProgress), num_files, ''))
+#                self.console.text(0, 6, "Clusters in queue: {0:<30d}".format(len(self.queue)))
+#                self.console.text(0, 8, "Client CPU usage: {0:<30d}".format(get_cpu_percent()))
+#                self.console.text(0, 10, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format(
+#                                  (process.get_memory_info()[0] / MB), (totalmem / MB), (avail_phymem() / MB), ''))
+#                self.console.text(0, 12, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
+#                self.console.text(0, 14, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / duration), ''))
+#                self.console.text(0, 16, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
+#        else:
+        while self.showCurrentStatus:
+            time.sleep(1)
+            if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
+                self.throttle = True
+            else:
+                self.throttle = False
+            cur_write_rate = (process.get_io_counters()[3] / MB)
+            duration = int(time.time()) - starttime
+            if cur_write_rate == prev_bytes_written:
+                cur_idle += 1
+                total_idle += 1
+            else:
+                cur_idle = 0
+            prev_bytes_written = cur_write_rate
+            self.win.addstr(0, 0, "{0} of {1} files remaining {2:<30s}".format(len(self.fileProgress), num_files, ''))
+            self.win.addstr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
+            self.win.addstr(2, 0, "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
+            self.win.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format
+                                  ((get_memory_info()[0] / MB), (totalmem / MB), ((avail_phymem() +
+                                  cached_phymem() + phymem_buffers()) / MB), ''))
+            self.win.addstr(4, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
+            try:
+                self.win.addstr(5, 0, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration - total_idle)), ''))
+            except:
+                self.win.addstr(5, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
+            self.win.addstr(6, 0, "Current idle time: {0:02d}:{1:02d}:{2:02d}".format((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
+            self.win.addstr(7, 0, "Total idle time: {0:02d}:{1:02d}:{2:02d}".format((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
+            self.win.addstr(8, 0, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
+            if self.throttle:
+                self.win.addstr(9, 0, "Throttling...")
+            else:
+                self.win.addstr(9, 0, "{0:<30s}".format(''))
+                self.win.move(9, 0)
+            self.win.refresh()
 
 
 def main():
@@ -351,8 +359,8 @@ def main():
     try:
         daemon.requestLoop()
     except KeyboardInterrupt:
-        if sys.platform == "linux2":
-            curses.nocbreak(); curses.echo(); curses.endwin(); os.system("reset")
+#        if sys.platform == "linux2":
+        curses.nocbreak(); curses.echo(); curses.endwin(); os.system("reset")
         print 'User aborted'
         ns.remove(name=sys.argv[1])
         daemon.shutdown()
