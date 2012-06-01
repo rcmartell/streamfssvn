@@ -2,22 +2,10 @@
 import sys, os, time, shutil
 import threading, socket, collections, gc
 from filehandler import FileHandler
-from streamClientStatus import StreamClientStatus
-import warnings, psutil
+import warnings, psutil, curses
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
 from multiprocessing import Process, Queue
-
-if sys.platform == "win32":
-    try:
-        import Console #@UnresolvedImport
-    except:
-        pass
-else:
-    try:
-        import curses
-    except:
-        pass
 
 QUEUE_SIZE = 8192
 MB = 1024 * 1024
@@ -48,16 +36,10 @@ class StreamClient():
         self.queue = collections.deque()
         self.filenames = []
         self.residentfiles = {}
-        if sys.platform == "win32":
-            self.console = Console.getconsole()
-            self.console.page()
-            self.console.title("Running Stream Listener")
-            self.console.text(0, 0, "Waiting for server...")
-        else:
-            curses.initscr(); curses.noecho(); curses.cbreak()
-            self.win = curses.newwin(0,0)
-            self.win.addstr(0, 0, "Waiting for server...")
-            self.win.refresh()
+        curses.initscr(); curses.noecho(); curses.cbreak()
+        self.win = curses.newwin(0,0)
+        self.win.addstr(0, 0, "Waiting for server...")
+        self.win.refresh()
         self.showCurrentStatus = True
         self.throttle = False
         self.finished = False
@@ -295,24 +277,6 @@ class StreamClient():
         phymem_buffers = psutil.phymem_buffers
         get_cpu_percent = process.get_cpu_percent
         get_memory_info = self.process.get_memory_info
-#        if sys.platform == "win32":
-#            while self.showCurrentStatus:
-#                time.sleep(1)
-#                if (psutil.avail_phymem() / MB) < 512:
-#                    self.throttle = True
-#                else:
-#                    self.throttle = False
-#                cur_write_rate = (self.process.get_io_counters()[3] / MB)
-#                duration = int(time.time()) - starttime
-#                self.console.text(0, 4, "{0} of {1} files remaining {2:<30s}".format(len(self.fileProgress), num_files, ''))
-#                self.console.text(0, 6, "Clusters in queue: {0:<30d}".format(len(self.queue)))
-#                self.console.text(0, 8, "Client CPU usage: {0:<30d}".format(get_cpu_percent()))
-#                self.console.text(0, 10, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format(
-#                                  (process.get_memory_info()[0] / MB), (totalmem / MB), (avail_phymem() / MB), ''))
-#                self.console.text(0, 12, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
-#                self.console.text(0, 14, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / duration), ''))
-#                self.console.text(0, 16, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
-#        else:
         while self.showCurrentStatus:
             time.sleep(1)
             if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
@@ -359,7 +323,6 @@ def main():
     try:
         daemon.requestLoop()
     except KeyboardInterrupt:
-#        if sys.platform == "linux2":
         curses.nocbreak(); curses.echo(); curses.endwin(); os.system("reset")
         print 'User aborted'
         ns.remove(name=sys.argv[1])

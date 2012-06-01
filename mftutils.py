@@ -1,9 +1,11 @@
 #!/usr/bin/python
 from mftparser import MFTParser
 import itertools
+from summaryWriter import SummaryWriter
 
-MFT_ENTRY_SIZE = 0x400  
+MFT_ENTRY_SIZE = 0x400
 
+"""
 def getFiletypeStats(parser):
         filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'system' : [], 'compressed' : [], 'other' : []}
         video = ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV']
@@ -39,6 +41,14 @@ def getFiletypeStats(parser):
         print "compressed : %i" % len(filestats['compressed'])
         print "system     : %i" % len(filestats['system'])
         print "other      : %i" % len(filestats['other'])
+"""
+
+def getFiletypeStats(parser):
+    summary = SummaryWriter('/home/rob/Documents/streamfs/fsSummary.json')
+    for idx in range(len(parser.entries)-1):
+        summary.writeEntry(parser.entries[idx], False)
+    summary.writeEntry(parser.entries[-1], True)
+
 
 
 def print_header(parser):
@@ -134,6 +144,7 @@ def print_fsdata(parser):
     print "$MFT Offset(Clusters): %i" % (parser.mft_base_offset / parser.cluster_size)
     print "$MFTMIR Offset(Bytes): %i" % parser.mft_mir_base_offset
     print "$MFTMIR Offset(Clusters): %i" % (parser.mft_mir_base_offset / parser.cluster_size)
+
 
 def cluster_to_file(parser, cluster):
     for entry in parser.entries:
@@ -233,7 +244,7 @@ if __name__ == "__main__":
                 res_data = parser.data[i].res_data
             print_data(parser.data[0], clusters, start_vcn, end_vcn, True)
     elif opts['files']:
-        parser.parse_mft(fullParse=True, quickstat=True, getIDXEntries=False, getFullPaths=False)
+        parser.parse_mft(fullParse=True, quickstat=False, getIDXEntries=False, getFullPaths=True)
         getFiletypeStats(parser)
     elif opts['info']:
         print_fsdata(parser)

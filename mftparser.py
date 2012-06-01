@@ -290,7 +290,7 @@ class MFTParser():
             except KeyboardInterrupt:
                 print "User aborted"
                 break
-        """
+
         if self.getFullPaths:
             for directory in self.directories:
                 name = self.directories[directory][0]
@@ -307,7 +307,6 @@ class MFTParser():
                 parent = entry.parent
                 entry.name = self.directories[parent][0] + '/' + entry.name
         del(self.directories)
-        """
         gc.collect()
         self.img.close()
         return self.entries

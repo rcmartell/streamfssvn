@@ -5,15 +5,15 @@ class FileHandler():
         self.count = 0
         self.errfile = open(path + os.path.sep + "filehandler.err", "wb")
         config = json.load(open('config.json'))
-        for directory in config['directories']:
-            self.directories[directory] = "{0}{1}Complete{1}{2}".format(path, os.path.sep, config['directory'][directory])
+        for directory in config['Directories']:
+            self.directories[directory] = "{0}{1}Complete{1}{2}".format(path, os.path.sep, config['Directory'][directory])
         for directory in self.directories.values():
             try:
                 os.mkdir(directory)
             except:
                 pass
-        for idx in range(len(config['filetypes'])):
-            self.filters[config['filetypes'][idx].keys()[0]] = config['filetypes'][idx].values()[0]
+        for idx in range(len(config['Filetypes'])):
+            self.filters[config['Filetypes'][idx].keys()[0]] = config['Filetypes'][idx].values()[0]
         self.running = True
 
     def processFiles(self, queue):
