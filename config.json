@@ -7,6 +7,7 @@
         {"Text"         : ["TXT", "XML", "CHM", "CFG", "CONF", "RTF", "DOC", "XLS", "DOCX", "XLSX", "XLT", "DTD", "HTML", "ASP", "PHP", "CSS", "MHT", "MHTML", "HTM", "PDF", "JAVA", "LOG", "PS", "CSV", "TSV"]},
         {"System"       : ["DLL", "INI", "SYS", "INF", "OCX", "CPA", "LRC"]}
     ],
-    "Directories"       : {"Video" : "Videos", "Images" : "Images", "Audio" : "Audio", "Binary" : "Binaries", "Text": "Documents", "System": "Binaries", "Other" : "Other"}
+    "Directories"       : {"Video" : "Videos", "Images" : "Images", "Audio" : "Audio", "Binary" : "Binaries", "Text": "Documents", "System": "Binaries", "Other" : "Other"},
+    "Index"             : ["Text"]
 }
 

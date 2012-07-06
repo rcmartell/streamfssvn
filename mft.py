@@ -34,11 +34,12 @@ class MFT_STANDARD_HEADER():
 
 class STANDARD_INFO():
     """Standard MAC time info and flags"""
-    def __init__(self, ctime=None, mtime=None, atime=None, flags=None):
+    def __init__(self, ctime=None, mtime=None, atime=None, flags=None, sid=None):
         self.ctime = ctime
         self.mtime = mtime
         self.atime = atime
         self.flags = flags
+        self.sid = sid
 
 class FILENAME():
     """Standard filename entry info"""
@@ -83,14 +84,15 @@ class SECURE_FILE():
         self.sdh = sdh
         self.sds = sds
 
-class ATTR_LIST():
-    def __init__(self, attr_type=None, entry_len=None, entry_name_len=None, start_vcn=None, mft_entry=None, attr_id=None):
+class ATTR_LIST_ENTRY():
+    def __init__(self, attr_type=None, attr_len=None, name_len=None, start_vcn=None, mft_ref=None, attr_id=None, attr_name=None):
         self.attr_type = attr_type
-        self.entry_len = entry_len
-        self.entry_name_len = entry_name_len
+        self.attr_len = attr_len
+        self.name_len = name_len
         self.start_vcn = start_vcn
-        self.mft_entry = mft_entry
+        self.mft_ref = mft_ref
         self.attr_id = attr_id
+        self.attr_name = attr_name
 
 class DATA():
     def __init__(self, attr_type=None, nonresident=None, flags=None, attr_id=None, start_vcn=None, end_vcn=None,
@@ -108,12 +110,21 @@ class DATA():
         self.res_data = res_data
         self.name = name
 
-class PDATA():
-    def __init__(self, data_size=None, clusters=None, res_data=None):
-        self.data_size = data_size
-        self.clusters = clusters
-        self.res_data = res_data
-
 class BITMAP():
     def __init__(self, bmap=None):
         self.bmap = bmap
+
+class SECURITY_DESCRIPTOR():
+    def __init__(self, sacl=None, dacl=None, user_sid=None, group_sid=None):
+        self.sacl = sacl
+        self.dacl = dacl
+        self.user_sid = user_sid
+        self.group_sid = group_sid
+        
+class ACE():
+    def __init__(self, acetype=None, flags=None, size=None, access_mask=None, sid=None):
+        self.acetype = acetype
+        self.flags = flags
+        self.size = size
+        self.access_mask = access_mask
+        self.sid = sid

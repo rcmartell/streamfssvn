@@ -22,6 +22,8 @@ class StreamClient():
         self.cluster_size = 0
         self.files = {}
         self.fileProgress = {}
+        self.filenames = []
+        self.residentfiles = {}
         os.chdir(self.path)
         if os.path.isdir('Incomplete'):
             shutil.rmtree('Incomplete')
@@ -34,8 +36,6 @@ class StreamClient():
         self.fileQueue = Queue()
         self.proc = Process(target=self.fileHandler.processFiles, args=(self.fileQueue,)).start()
         self.queue = collections.deque()
-        self.filenames = []
-        self.residentfiles = {}
         curses.initscr(); curses.noecho(); curses.cbreak()
         self.win = curses.newwin(0,0)
         self.win.addstr(0, 0, "Waiting for server...")
@@ -43,7 +43,7 @@ class StreamClient():
         self.showCurrentStatus = True
         self.throttle = False
         self.finished = False
-
+        
     def set_cluster_size(self, size):
         """
         Set by Image Server
@@ -107,7 +107,6 @@ class StreamClient():
         """
         Create a list of all the clusters this client will be receiving.
         """
-        #self.clusters = []
         return [x for v in self.files.itervalues() for x in v[1]]
         """
         for v in self.files.itervalues():
@@ -122,9 +121,9 @@ class StreamClient():
         """
         Free up memory as this list is no longer necessary.
         """
-        self.clusters = []
-        del(self.clusters)
-        gc.collect()
+        #self.clusters = []
+        #del(self.clusters)
+        #gc.collect()
         return
 
     def add_queue(self, cluster, data):

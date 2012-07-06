@@ -5,43 +5,6 @@ from summaryWriter import SummaryWriter
 
 MFT_ENTRY_SIZE = 0x400
 
-"""
-def getFiletypeStats(parser):
-        filestats = {'image' : [], 'binaries' : [], 'video' : [], 'audio' : [], 'text' : [], 'system' : [], 'compressed' : [], 'other' : []}
-        video = ['AVI', 'MPEG', 'MPG', 'WMV', 'ASX', 'FLV', 'MPEG2', 'MPEG4', 'RMV', 'MOV', 'H.264', 'FFMPEG', 'XVID', 'DIVX', 'MKV']
-        image = ['JPG', 'JPEG', 'GIF', 'TIF', 'TIFF', 'PNG', 'BMP', 'RAW', 'TGA', 'PCX']
-        audio = ['MP3', 'M4A', 'M4P', 'WMA', 'FLAC', 'AAC', 'AIFF', 'WAV', 'OGG']
-        binaries = ['BIN', 'EXE', 'APP', 'O']
-        text = ['TXT', 'XML', 'CHM','CFG', 'CONF', 'RTF', 'DOC', 'XLS', 'DOCX', 'XLSX', 'XLT', 'DTD', 'JS', 'JAVA', 'C', 'H', 'PY',
-                'PL', 'CPP', 'XAML', 'VB', 'HLP', 'SH', 'HTML', 'ASP', 'PHP', 'CSS', 'MHT', 'MHTML', 'HTM', 'PDF']
-        system = ['DLL', 'INI', 'SYS', 'INF', 'OCX', 'CPA', 'LRC']
-        compressed = ['GZ', 'ZIP', 'BZ', '7Z', 'ACE', 'RAR', 'Z']
-        filetypes = video, image, audio, binaries, text, system, compressed
-        types = ['video', 'image', 'audio', 'binaries', 'text', 'system', 'compressed']
-        for entry in parser.entries:
-            try:
-                ext = entry.name.split('.')[-1]
-            except:
-                filestats['other'].append(entry.name)
-                continue
-            i = 0
-            for ftype in filetypes:
-                if ext.upper() in ftype:
-                    filestats[types[i]].append(entry.name)
-                    break
-                i += 1
-            else:
-                filestats['other'].append(entry.name)
-        print "Number of files: %i" % len(parser.entries)
-        print "video      : %i" % len(filestats['video'])
-        print "images     : %i" % len(filestats['image'])
-        print "audio      : %i" % len(filestats['audio'])
-        print "binaries   : %i" % len(filestats['binaries'])
-        print "text       : %i" % len(filestats['text'])
-        print "compressed : %i" % len(filestats['compressed'])
-        print "system     : %i" % len(filestats['system'])
-        print "other      : %i" % len(filestats['other'])
-"""
 
 def getFiletypeStats(parser):
     summary = SummaryWriter('/home/rob/Documents/streamfs/fsSummary.json')
@@ -68,6 +31,8 @@ def print_std_info(parser):
     print "****************STANDARD INFO****************"
     print "Flags:   ",
     print parser.std_info.flags
+    if parser.std_info.sid != None:
+        print "Security ID: %s" % str(parser.std_info.sid)
     print "Created:             %s" % parser.std_info.ctime
     print "File Modified:       %s" % parser.std_info.mtime
     print "Accessed:            %s" % parser.std_info.atime
@@ -92,15 +57,30 @@ def print_object_id(parser):
     print ''
 
 def print_idx_root(parser):
+    if not len(parser.idx_root.idx_entries):
+        return
     print "*****************INDEX ROOT**************"
-    print parser.idx_root.idx_entries
+    for idx in range(len(parser.idx_root.idx_entries[::4])):
+        entries = parser.idx_root.idx_entries[idx*4:idx*4+4]
+        for entry in entries[:-1]:
+            print entry.name + ', ',
+        print entries[-1].name
     print ''
 
 
 def print_idx_alloc(parser):
     print "*****************INDEX ALLOCATION**************"
-    print parser.idx_alloc.idx_entries
+    for idx in range(len(parser.idx_alloc.idx_entries[::4])):
+        entries = parser.idx_alloc.idx_entries[idx*4:idx*4+4]
+        for entry in entries[:-1]:
+            print entry.name + ', ',
+        print entries[-1].name
     print ''
+
+def print_attr_list(parser):
+    print "*****************ATTRIBUTE LIST****************"
+    for attr in parser.attr_list:
+        print "Type: {0}-{1}\tMFT Entry: {2}\tVCN: {3}".format(attr.attr_type, attr.attr_id, attr.mft_ref, attr.start_vcn)
 
 
 def print_data(data, clusters, start_vcn, end_vcn, show_clusters=False):
@@ -126,7 +106,7 @@ def print_data(data, clusters, start_vcn, end_vcn, show_clusters=False):
         for idx in range(len(_clusters[::7])):
             print _clusters[idx*7:idx*7 + 7]
     if data.res_data != None:
-        print "ADS Data: "
+        print "Resident Data: "
         print data.res_data
     print ''
 
@@ -167,7 +147,9 @@ def search(parser, name):
 if __name__ == "__main__":
     import argparse, sys
     argparser = argparse.ArgumentParser(description="""
-    Parses the MFT of an NTFS filesystem. The data returned depends on the flags selected by the user. Optional functionality similar to Sleuthkit's fsstat/istat is possible, as well as a tentative count of various file-types found throughout the system. Note: When using this option, the file-type is determined exclusively by extension, so counts may not truly reflect the contents of the system. The command-line functions are only "extra-functionality", as the main purpose of this tool is to be used by an "image reader", to parse and return serializable MFT entry objects, each representing a unique file on the file-system. Each object can be used, in conjunction with its raw data blocks, to recreate the file it represents on the fly.
+    Parses the MFT of an NTFS filesystem. The data returned depends on the flags selected by the user. 
+    Functionality similar to Sleuthkit's fsstat/istat is possible, as well as a tentative count of various file-types found throughout the system. 
+    Note: When using this option, the file-type is determined exclusively by extension, so counts may not truly reflect the contents of the system. 
     """)
     argparser.add_argument('-t', '--target', help="Target image/drive to be parsed.", required=True)
     group = argparser.add_mutually_exclusive_group(required=True)
@@ -200,9 +182,11 @@ if __name__ == "__main__":
             print_filename(parser)
         if hasattr(parser, 'object_id'):
             print_object_id(parser)
-        if hasattr(parser, 'idx_root'):
+        if hasattr(parser, 'attr_list') and parser.attr_list != None:
+            print_attr_list(parser)
+        if hasattr(parser, 'idx_root') and parser.idx_root != None:
             print_idx_root(parser)
-        if hasattr(parser, 'idx_alloc'):
+        if hasattr(parser, 'idx_alloc') and parser.idx_alloc != None:
             print_idx_alloc(parser)
         if len(parser.data):
             start_vcn = parser.data[0].start_vcn
@@ -226,9 +210,11 @@ if __name__ == "__main__":
             print_filename(parser)
         if hasattr(parser, 'object_id'):
             print_object_id(parser)
-        if hasattr(parser, 'idx_root'):
+        if hasattr(parser, 'attr_list') and parser.attr_list != None:
+            print_attr_list(parser)
+        if hasattr(parser, 'idx_root') and parser.idx_root != None:
             print_idx_root(parser)
-        if hasattr(parser, 'idx_alloc'):
+        if hasattr(parser, 'idx_alloc') and parser.idx_alloc != None:
             print_idx_alloc(parser)
         if len(parser.data):
             start_vcn = parser.data[0].start_vcn
