@@ -10,7 +10,7 @@ import Pyro4.core
 QUEUE_SIZE = 8192
 Pyro4.config.ONEWAY_THREADED=True
 
-class ImageReader():
+class StreamServer():
     def __init__(self, src=None, dest=None):
         self.cluster_size = 0
         self.src = src
@@ -27,6 +27,7 @@ class ImageReader():
             self.num_clusters = parser.get_num_clusters()
             self.entries = parser.main()
             self.mapping = [-1] * self.num_clusters
+            print self.mapping.__sizeof__()
         del(parser)
         print 'Done.'
         sys.stdout.flush()
