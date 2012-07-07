@@ -121,9 +121,9 @@ def print_fsdata(parser):
     print "Number of Clusters: %i" % parser.num_clusters
     print "MFT Entry Size(Bytes): %i" % MFT_ENTRY_SIZE
     print "$MFT Offset(Bytes): %i" % parser.mft_base_offset
-    print "$MFT Offset(Clusters): %i" % (parser.mft_base_offset / parser.cluster_size)
-    print "$MFTMIR Offset(Bytes): %i" % parser.mft_mir_base_offset
-    print "$MFTMIR Offset(Clusters): %i" % (parser.mft_mir_base_offset / parser.cluster_size)
+    print "$MFT Offset(Clusters): %i" % (parser.mft_baseoffset / parser.cluster_size)
+    print "$MFTMIR Offset(Bytes): %i" % parser.mft_baseoffset
+    print "$MFTMIR Offset(Clusters): %i" % (parser.mft_mir_baseoffset / parser.cluster_size)
 
 
 def cluster_to_file(parser, cluster):
