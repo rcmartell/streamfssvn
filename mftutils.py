@@ -104,7 +104,7 @@ def print_data(data, clusters, start_vcn, end_vcn, show_clusters=False):
         print "Data Clusters: "
         _clusters = reduce(lambda x, y: x+y, [range(idx[0], idx[0] + idx[1]) for idx in clusters])
         for idx in range(len(_clusters[::7])):
-            print _clusters[idx*7:idx*7 + 7]
+            print str(_clusters[idx*7:idx*7 + 7]).replace(",", "")
     if data.res_data != None:
         print "Resident Data: "
         print data.res_data

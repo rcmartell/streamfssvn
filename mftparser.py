@@ -194,8 +194,7 @@ class MFTParser():
 
                         elif self.entry[self.offset:self.offset+4] == ATTR_LIST_SIG:
                             self.attr_list = self.parse_attr_list(self.offset)
-                            #if self.attr_list != None:
-                            #    self.parse_attr_list_entries(self.attr_list, inode)
+                            self.parse_attr_list_entries(count)
 
                         elif self.entry[self.offset:self.offset+4] == FILENAME_SIG:
                             filename = self.parse_filename(self.offset)
@@ -356,11 +355,29 @@ class MFTParser():
         """Parse the Attribute List attribute of an entry. Entries only have an attribute list if a single entry is too small
            to hold all the metadata of the entry's attributes."""
         attrs = []
-        #self.offset += 64
-        #return
         attr_list_len = unpack("<I", self.entry[offset+4:offset+8])[0]
-        print attr_list_len
         non_resident = unpack("<B", self.entry[offset+8])[0]
+        if non_resident == 0:
+            attr_id = unpack("<H", self.entry[offset+14:offset+16])[0]
+            attr_list = self.entry[offset + 24:offset + 24 + attr_list_len]
+            offset = 0
+            attr_entries = []
+            while offset < attr_list_len - 24:
+                attr_type = unpack("<I", attr_list[offset:offset+4])[0]
+                if attr_type == 0:
+                    break
+                attr_len = unpack("<H", attr_list[offset+4:offset+6])[0]
+                name_len = unpack("<B", attr_list[offset+6])[0]
+                name_off = unpack("<B", attr_list[offset+7])[0]
+                start_vcn = unpack("<Q", attr_list[offset+8:offset+16])[0]
+                mft_ref = unpack("<Q", attr_list[offset+16:offset+24])[0] & 0xFFFFFFFF
+                attr_id = unpack("<B", attr_list[offset+24])[0]
+                name = attr_list[offset+name_off: offset+name_off + (2 * name_len)].replace('\x00', '')
+                attr_entries.append(ATTR_LIST_ENTRY(attr_type = attr_type, attr_len = attr_len, 
+                    name_len = name_len, start_vcn = start_vcn, mft_ref = mft_ref, attr_id = attr_id, attr_name=name))
+                offset += attr_len
+            self.offset += attr_list_len
+            return attr_entries
         attr_id = unpack("<H", self.entry[offset+14:offset+16])[0]
         start_vcn = unpack("<Q", self.entry[offset+16:offset+24])[0]
         end_vcn = unpack("<Q", self.entry[offset+24:offset+32])[0]
@@ -392,9 +409,8 @@ class MFTParser():
                     else:
                         data_runoffset = prev_data_runoffset - ((max_sign[data_runoffset_bytes] + 2) -
                                                                (data_runoffset - max_sign[data_runoffset_bytes]))
-            
             for i in range(data_run_len):
-                attrs.extend(self.parse_attr_entries((data_runoffset + i) * self.cluster_size))
+                attrs.extend(self.parse_nonresident_attr_entries((data_runoffset + i) * self.cluster_size))
             if data[0] == DATA_RUN_END:
                 break
             else:
@@ -405,17 +421,20 @@ class MFTParser():
         self.offset += attr_list_len
         return attrs
 
-    def parse_attr_entries(self, lcn):
-        oldoffset = self.img.tell()
+    def parse_nonresident_attr_entries(self, lcn):
+        old_offset = self.img.tell()
         self.img.seek(lcn, os.SEEK_SET)
         attr_entry = self.img.read(self.cluster_size)
-        self.img.seek(oldoffset, os.SEEK_SET)
+        self.img.seek(old_offset, os.SEEK_SET)
         attr_entries = []
         offset = 0
         while True:
-            attr_type = unpack("<I", attr_entry[offset:offset+4])[0]
-            if attr_type == 0:
-                break
+            try:
+                attr_type = unpack("<I", attr_entry[offset:offset+4])[0]
+                if attr_type == 0:
+                    break
+            except:
+                return attr_entries
             attr_len = unpack("<H", attr_entry[offset+4:offset+6])[0]
             name_len = unpack("<B", attr_entry[offset+6])[0]
             name_off = unpack("<B", attr_entry[offset+7])[0]
@@ -428,15 +447,12 @@ class MFTParser():
             offset += attr_len
         return attr_entries
 
-    def parse_attr_list_entries(self, attr_list, count):
-        oldoffset = self.offset
+    def parse_attr_list_entries(self, count):
+        old_offset = self.offset
         old_entry = self.entry
         img_off = self.img.tell()
         entry_off = {}
-        for attr in attr_list:
-            if attr.mft_ref not in entry_off:
-                entry_off[attr.mft_ref] = MFT_HEADER_LEN
-            #if attr.attr_type == 128 or attr.attr_type == 48:
+        for attr in self.attr_list:
             if attr.mft_ref != count:
                 idx, vcn = math.modf((attr.mft_ref * MFT_ENTRY_SIZE) / self.cluster_size)
                 idx = self.pos.index(idx)
@@ -445,22 +461,16 @@ class MFTParser():
                 self.img.seek(address, os.SEEK_SET)
                 self.entry = self.img.read(MFT_ENTRY_SIZE)
                 self.parse_header()
-                offset = entry_off[attr.mft_ref]
-                if self.entry[offset:offset+4] == FILENAME_SIG:
-                    self.filename = self.parse_filename(offset)
-                    entry_off[attr.mft_ref] = self.offset
-                elif self.entry[offset:offset+4] == DATA_SIG:
-                    self.data.append(self.parse_data(offset))
-                    entry_off[attr.mft_ref] = self.offset
-                elif self.entry[offset:offset+4] == INDEX_ROOT_SIG:
-                    self.idx_root = self.parse_idx_root(self.offset)
-                    entry_off[attr.mft_ref] = self.offset
-                elif self.entry[offset:offset+4] == INDEX_ALLOC_SIG:
-                    self.idx_alloc = self.parse_idx_alloc(offset)
-                    entry_off[attr.mft_ref] = self.offset
-        self.img.seek(img_off, os.SEEK_SET)
-        self.offset = oldoffset
-        self.entry = old_entry
+                offset = MFT_HEADER_LEN
+                if self.entry[offset:offset+4] == DATA_SIG:
+                    self.data.append(self.parse_data(offset, quickstat=False, fullParse=True))
+                self.img.seek(img_off, os.SEEK_SET)
+                self.offset = old_offset
+                self.entry = old_entry
+            else:
+                offset = self.offset
+                if self.entry[offset:offset+4] == DATA_SIG:
+                    self.data.append(self.parse_data(offset, quickstat=False, fullParse=True))
         return 
 
     #def parse_attr_def(self, offset):
@@ -537,6 +547,9 @@ class MFTParser():
 
     def parse_idx_root(self, offset):
         entry_len = unpack("<I", self.entry[offset+4:offset+8])[0]
+        if not self.getIDXEntries or "INDEX_VIEW" in self.std_info.flags:
+            self.offset += entry_len
+            return
         idx_root = self.entry[offset+32:offset+32+entry_len]
         attr_type = idx_root[0:4]
         coll_sort_rule = unpack("<I", idx_root[4:8])[0]
@@ -554,7 +567,6 @@ class MFTParser():
             idx_entry_len = unpack("<H", idx_entry[offset+8:offset+10])[0]
             filename_len = unpack("<H", idx_entry[offset+10:offset+12])[0]
             flags = unpack("<I", idx_entry[offset+12:offset+16])[0]
-            print mft_ref
             if mft_ref == 0:
                 break
             if filename_len:
@@ -573,13 +585,13 @@ class MFTParser():
 
     def parse_idx_alloc(self, offset):
         idx_alloc_len = unpack("<I", self.entry[offset+4:offset+8])[0]
+        if not self.getIDXEntries or "INDEX_VIEW" in self.std_info.flags:
+            self.offset += idx_alloc_len
+            return
         name_len = unpack("<B", self.entry[offset+9])[0]
         name_off = unpack("<H", self.entry[offset+10:offset+12])[0]
         flags = unpack("<H", self.entry[offset+12:offset+14])[0]
         attr_id = unpack("<H", self.entry[offset+14:offset+16])[0]
-        if not self.getIDXEntries:
-            self.offset += idx_alloc_len
-            return
         start_vcn = unpack("<Q", self.entry[offset+16:offset+24])[0]
         end_vcn = unpack("<Q", self.entry[offset+24:offset+32])[0]
         data_run_off = unpack("<H", self.entry[offset+32:offset+34])[0]
