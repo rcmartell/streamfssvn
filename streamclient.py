@@ -249,7 +249,7 @@ class StreamClient():
             if sys.platform != "win32":
                 curses.nocbreak(); self.win.keypad(0); curses.echo()
                 curses.endwin()
-            self.sorter.running = False
+            self.fileHander.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
@@ -275,7 +275,7 @@ class StreamClient():
         cached_phymem = psutil.cached_phymem
         phymem_buffers = psutil.phymem_buffers
         get_cpu_percent = process.get_cpu_percent
-        get_memory_info = self.process.get_memory_info
+        get_memory_info = process.get_memory_info
         while self.showCurrentStatus:
             time.sleep(1)
             if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
