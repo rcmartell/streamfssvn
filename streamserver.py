@@ -72,20 +72,22 @@ class StreamServer():
         print 'Imaging drive...'
         sys.stdout.flush()
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
-        for idx in xrange(len(self.mapping)):
-            target = self.mapping[idx]
-            if target == None:
-                ifh.read(self.cluster_size)
-                #ofh.write(ifh.read(self.cluster_size))
-                pbar.update(idx * self.cluster_size)
-                continue
-            data = ifh.read(self.cluster_size)
-            self.lock[target].acquire()
-            self.thread_queue[target][0].append(idx)
-            self.thread_queue[target][1].append(data)
-            self.lock[target].release()
-            #ofh.write(data)
-            pbar.update(idx * self.cluster_size)
+        for idx in xrange(0, len(self.mapping), 2048):
+            data = ifh.read(self.cluster_size * 2048)
+            for clidx in xrange(len(data[0::self.cluster_size]))::
+                target = self.mapping[idx + clidx]
+                if target == None:
+                    #tmp = ifh.read(self.cluster_size)
+                    #ofh.write(data[clidx:clidx+self.cluster_size])
+                    pbar.update((idx+clidx) * self.cluster_size)
+                    continue
+                #data = ifh.read(self.cluster_size)
+                self.lock[target].acquire()
+                self.thread_queue[target][0].append(idx + clidx)
+                self.thread_queue[target][1].append(data[clidx:clidx+self.cluster_size])
+                self.lock[target].release()
+                #ofh.write(data)
+                pbar.update((idx+clidx) * self.cluster_size)
         self.finished = True
         for thread in threads:
             thread.join()
