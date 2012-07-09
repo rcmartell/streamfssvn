@@ -783,4 +783,4 @@ class MFTParser():
 
     def main(self):
         self.setup_mft_data()
-        return self.parse_mft()
+        return self.parse_mft(getFullPaths=False)

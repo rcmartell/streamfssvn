@@ -36,7 +36,6 @@ class FileHandler():
             try:
                 self.solr.extract(open(_file), extractOnly = False)
             except:
-                print "FAIL"
                 pass
         for _filter in self.filters:
             if os.path.splitext(_file)[1][1:].upper() in self.filters[_filter]:

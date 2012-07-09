@@ -23,7 +23,6 @@ class StreamServer():
         config = json.load(open('config.json'))
         for idx in range(len(config['Filetypes'])):
             self.types.extend(config['Filetypes'][idx].values()[0])
-        print self.types
 
     def parse_fs_metadata(self, fstype = 'ntfs'):
         print 'Parsing filesystem metadata...',
