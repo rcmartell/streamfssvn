@@ -75,8 +75,8 @@ class StreamServer():
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             if target == None:
-                ifh.read(self.cluster_size)
-                #ofh.write(ifh.read(self.cluster_size))
+                data = ifh.read(self.cluster_size)
+                ofh.write(data)
                 pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
@@ -84,7 +84,7 @@ class StreamServer():
             self.thread_queue[target][0].append(idx)
             self.thread_queue[target][1].append(data)
             self.lock[target].release()
-            #ofh.write(data)
+            ofh.write(data)
             pbar.update(idx * self.cluster_size)
         self.finished = True
         for thread in threads:
