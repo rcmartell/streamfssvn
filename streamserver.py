@@ -103,7 +103,7 @@ class StreamServer():
         tid = idx
         while True:
             while len(self.thread_queue[tid][0]) < QUEUE_SIZE:
-                sleep(0.5)
+                sleep(1)
                 if self.finished:
                     return
             self.lock[tid].acquire()

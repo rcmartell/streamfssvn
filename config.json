@@ -4,7 +4,7 @@
         {"Image"        : ["JPG", "JPEG", "GIF", "TIF", "TIFF", "PNG", "BMP", "RAW", "TGA", "PCX"]},
         {"Audio"        : ["MP3", "M4A", "M4P", "WMA", "FLAC", "AAC", "AIFF", "WAV", "OGG"]},
         {"Binary"		: ["PE32", "BIN", "EXE", "APP", "O", "SWF"]},
-        {"Text"         : ["TXT", "XML", "TEXT", "WP", "CHM", "CFG", "CONF", "RTF", "DOC", "XLS", "DOCX", "XLSX", "XLT", "DTD", "HTML", "ASP", "PHP", "CSS", "MHT", "MHTML", "HTM", "PDF", "JAVA", "LOG", "PS", "CSV", "TSV"]}
+        {"Text"         : ["TXT", "XML", "TEXT", "WP", "CHM", "CFG", "CONF", "RTF", "DOC", "XLS", "PPT", "DOCX", "XLSX", "XLT", "DTD", "HTML", "ASP", "PHP", "CSS", "MHT", "MHTML", "HTM", "PDF", "JAVA", "LOG", "PS", "CSV", "TSV"]}
     ],
     "Directories"       : {"Video" : "Videos", "Image" : "Images", "Audio" : "Audio", "Binary" : "Binaries", "Text": "Documents"},
     "Index"             : ["Text"]
