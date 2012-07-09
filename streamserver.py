@@ -58,7 +58,7 @@ class StreamServer():
     def image_drive(self):
         self.lock = [Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
-        #ofh = open(self.dest, 'wb+')
+        ofh = open(self.dest, 'wb+')
         self.finished = False
         self.thread_queue = [[[], []] for idx in range(len(self.streams))]
         threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
