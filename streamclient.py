@@ -249,7 +249,7 @@ class StreamClient():
             if sys.platform != "win32":
                 curses.nocbreak(); self.win.keypad(0); curses.echo()
                 curses.endwin()
-            self.fileHander.running = False
+            self.fileHandler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
