@@ -3,23 +3,28 @@ from mftparser import MFTParser
 from time import ctime, sleep
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 from threading import Thread, Lock
-import warnings, gc, sys, os
+import warnings, gc, sys, json
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
 QUEUE_SIZE = 8192
-Pyro4.config.ONEWAY_THREADED=True
+Pyro4.config.ONEWAY_THREADED = True
 
 class StreamServer():
-    def __init__(self, src=None, dest=None):
+    def __init__(self, src = None, dest = None):
         self.cluster_size = 0
         self.src = src
         self.dest = dest
         self.entries = None
-        self.types = 'xls', 'pdf', 'rtf'
+        self.types = []
         self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
 
-    def parse_fs_metadata(self, fstype='ntfs'):
+    def get_types(self):
+        config = json.load(open('config.json'))
+        for idx in range(len(config['Filetypes'])):
+            self.types.extend(config['Filetypes'][idx].values()[0])
+
+    def parse_fs_metadata(self, fstype = 'ntfs'):
         print 'Parsing filesystem metadata...',
         if fstype.lower() == 'ntfs':
             parser = MFTParser(self.src)
@@ -55,7 +60,7 @@ class StreamServer():
         #ofh = open(self.dest, 'wb+')
         self.finished = False
         self.thread_queue = [[[], []] for idx in range(len(self.streams))]
-        threads = [Thread(target=self.threaded_queue, args=(idx,)) for idx in range(len(self.streams))]
+        threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
@@ -65,7 +70,7 @@ class StreamServer():
             thread.start()
         print 'Imaging drive...'
         sys.stdout.flush()
-        pbar = ProgressBar(widgets=self.widgets, maxval=len(self.mapping) * self.cluster_size).start()
+        pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             if target == None:
@@ -113,6 +118,7 @@ class StreamServer():
 def main():
     print "Starting Time: %s" % str(ctime().split(" ")[4])
     server = StreamServer(sys.argv[1], sys.argv[2])
+    server.get_types()
     server.parse_fs_metadata()
     server.setup_stream_listeners(sys.argv[3:])
     try:
