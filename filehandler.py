@@ -16,7 +16,7 @@ class FileHandler():
                 os.mkdir(directory)
             except:
                 pass
-        os.mkdir("Other")
+        os.mkdir("{0}{1}Complete{1}{2}".format(path, os.path.sep, "Other"))
         for idx in range(len(config['Filetypes'])):
             self.filters[config['Filetypes'][idx].keys()[0]] = config['Filetypes'][idx].values()[0]
         for val in config['Index']:
