@@ -294,7 +294,7 @@ class StreamClient():
             self.win.addstr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
             self.win.addstr(2, 0, "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
             self.win.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format
-                                  ((get_memory_info()[0] / MB), (totalmem / MB), ((avail_phymem() +
+                                  ((get_memory_info()[0] / MB), totalmem, ((avail_phymem() +
                                   cached_phymem() + phymem_buffers()) / MB), ''))
             self.win.addstr(4, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
             try:
