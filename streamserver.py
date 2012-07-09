@@ -31,8 +31,8 @@ class StreamServer():
             parser = MFTParser(self.src)
             self.cluster_size = parser.get_cluster_size()
             self.num_clusters = parser.get_num_clusters()
-            #self.entries = filter(lambda x : x.name.split('.')[1] in self.types, parser.main())
-            self.entries = parser.main()
+            self.entries = filter(lambda x : x.name.split('.')[1].upper() in self.types, parser.main())
+            #self.entries = parser.main()
             self.mapping = [None] * self.num_clusters
         del(parser)
         print 'Done.'

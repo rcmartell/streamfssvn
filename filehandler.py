@@ -22,7 +22,7 @@ class FileHandler():
         for val in config['Index']:
             for key in self.filters:
                 if val == key:
-                    self.index.append(self.filters[key])
+                    self.index.extend(self.filters[key])
         self.running = True
 
     def processFiles(self, queue):
@@ -32,12 +32,13 @@ class FileHandler():
         return
 
     def processFile(self, _file):
+        if os.path.splitext(_file)[1][1:].upper() in self.index:
+            try:
+                self.solr.extract(open(_file), extractOnly = False)
+            except:
+                print "FAIL"
+                pass
         for _filter in self.filters:
-            if os.path.splitext(_file)[1][1:].upper() in self.index:
-                try:
-                    self.solr.extract(open(_file), extractOnly = False)
-                except:
-                    pass
             if os.path.splitext(_file)[1][1:].upper() in self.filters[_filter]:
                 try:
                     if not os.path.exists(self.directories[_filter] + os.path.sep + os.path.basename(_file)):
