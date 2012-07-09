@@ -8,7 +8,7 @@ class FileHandler():
         self.directories = {}
         self.filters = {}
         self.solr = pysolr.Solr("http://localhost:8983/solr")
-        config = json.load(open('config.json'))
+        config = json.load(open(path + os.path.sep + 'config.json'))
         for directory in config['Directories']:
             self.directories[directory] = "{0}{1}Complete{1}{2}".format(path, os.path.sep, config['Directory'][directory])
         for directory in self.directories.values():
