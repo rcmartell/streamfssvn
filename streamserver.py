@@ -2,7 +2,7 @@
 from mftparser import MFTParser
 from time import ctime, sleep
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
-from streamconnection import StreamClientConnection
+from streamclientconnection import StreamClientConnection
 import warnings, gc, sys, json
 from multiprocessing import Queue, Process
 warnings.filterwarnings("ignore")
