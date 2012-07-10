@@ -223,11 +223,11 @@ class StreamClient():
                             left = int(self.files[_file][0] - fh.tell())
                             out = "".join(buff)
                             fh.write(out[:left])
-                            fh.flush()
+                            #fh.flush()
                         # Otherwise just append the data.
                         else:
                             fh.write("".join(buff))
-                            fh.flush()
+                            #fh.flush()
                         # Subtract the number of clusters written from the file's remaining clusters list.
                         self.fileProgress[_file] -= len(buff)
                         idx += 1
@@ -246,23 +246,21 @@ class StreamClient():
                 fh.close()
                 self.fileQueue.put_nowait(_file)
             self.showCurrentStatus = False
-            if sys.platform != "win32":
-                curses.nocbreak(); self.win.keypad(0); curses.echo()
-                curses.endwin()
+            curses.nocbreak(); self.win.keypad(0); curses.echo(); curses.endwin()
             self.fileHandler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
-            return
+            os.system("reset")
+            sys.exit(0)
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.showCurrentStatus = False
-            if sys.platform != "win32":
-                curses.nocbreak(); self.win.keypad(0); curses.echo()
-                curses.endwin()
+            curses.nocbreak(); self.win.keypad(0); curses.echo(); curses.endwin()
             self.fileHandler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
-            return
+            os.system("reset")
+            sys.exit(0)
 
 
     def showStatus(self):
@@ -277,7 +275,7 @@ class StreamClient():
         get_cpu_percent = process.get_cpu_percent
         get_memory_info = process.get_memory_info
         while self.showCurrentStatus:
-            time.sleep(1)
+            time.sleep(2)
             if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
                 self.throttle = True
             else:

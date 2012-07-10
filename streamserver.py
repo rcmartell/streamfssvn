@@ -1,8 +1,8 @@
 #!/usr/bin/python
 from mftparser import MFTParser
-from time import ctime, sleep
+from time import ctime
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
-from streamclientconnection import StreamClientConnection
+from clienthandler import ClientHandler
 import warnings, gc, sys, json
 from multiprocessing import Queue, Process
 warnings.filterwarnings("ignore")
@@ -57,7 +57,7 @@ class StreamServer():
     def image_drive(self):
         ifh = open(self.src, 'rb')
         self.finished = False
-        conns = []
+        handlers = []
         queues = [Queue() for idx in range(len(self.streams))]
         procs = []
         for stream in self.streams:
@@ -65,23 +65,24 @@ class StreamServer():
             stream.setup_file_progress()
             stream.queue_writes()
             stream.queue_showStatus()
-            conns.append(StreamClientConnection(stream))
-        for idx in range(len(conns)):
-            procs.append(Process(target=conns[idx].process_data, args=(queues[idx],)).start())
+            handlers.append(ClientHandler(stream))
+        for idx in range(len(handlers)):
+            procs.append(Process(target=handlers[idx].process_data, args=(queues[idx],)).start())
         print 'Imaging drive...'
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
-        for idx in xrange(len(self.mapping)):
-            target = self.mapping[idx]
-            if target == None:
-                data = ifh.read(self.cluster_size)
-                pbar.update(idx * self.cluster_size)
-                continue
-            data = ifh.read(self.cluster_size)
-            queues[target].put_nowait((idx, data))
-            pbar.update(idx * self.cluster_size)
+        count = len(self.mapping)
+        for i in xrange(0, count, 4096):
+            data = ifh.read(self.cluster_size * 4096)
+            for idx in xrange(i, i + (len(data) / self.cluster_size)):
+                target = self.mapping[idx]
+                if target == None:
+                    continue
+                queues[target].put_nowait((idx, data[idx:idx + self.cluster_size]))
+                if not idx % 100:
+                    pbar.update(idx * self.cluster_size)
         self.finished = True
-        for conn in conns:
-            conn.running = False
+        for handler in handlers:
+            handler.running = False
         for proc in procs:
             proc.join()
         pbar.finish()

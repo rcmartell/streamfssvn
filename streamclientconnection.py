@@ -1,6 +1,7 @@
 from time import sleep
+QUEUE_SIZE = 8192
 
-class StreamClientConnection():
+class ClientConnectionHelper():
     def __init__(self, stream):
         self.stream = stream
         self.running = True
@@ -12,6 +13,13 @@ class StreamClientConnection():
                 item = queue.get()
                 clusters.append(item[0])
                 data.append(item[1])
+                if len(data) >= QUEUE_SIZE:
+                    if self.stream.add_queue(clusters, data):
+                        while self.stream.throttle_needed():
+                            sleep(2)
+                    del(clusters)
+                    del(data)
+                    clusters, data = [],[]
             if self.stream.add_queue(clusters, data):
                 while self.stream.throttle_needed():
                     sleep(2)
