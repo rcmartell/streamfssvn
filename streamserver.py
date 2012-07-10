@@ -57,9 +57,9 @@ class StreamServer():
     def image_drive(self):
         ifh = open(self.src, 'rb')
         self.finished = False
-        conns = [] * len(self.streams)
+        conns = []
         queues = [Queue() for idx in range(len(self.streams))]
-        procs = [] * len(self.streams)
+        procs = []
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
@@ -67,7 +67,7 @@ class StreamServer():
             stream.queue_showStatus()
             conns.append(StreamClientConnection(stream))
         for idx in range(len(conns)):
-            procs[idx] = Process(target=conns[idx].process_data, args=(queues[idx],)).start()
+            procs.append(Process(target=conns[idx].process_data, args=(queues[idx],)).start())
         print 'Imaging drive...'
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
