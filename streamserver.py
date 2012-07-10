@@ -2,8 +2,9 @@
 from mftparser import MFTParser
 from time import ctime, sleep
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
-from threading import Thread, Lock
+from streamconnection import StreamClientConnection
 import warnings, gc, sys, json
+from multiprocessing import Queue, Process
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
@@ -38,7 +39,6 @@ class StreamServer():
 
     def setup_stream_listeners(self, servers):
         print 'Setting up stream listeners...',
-        sys.stdout.flush()
         self.streams = []
         for idx in range(len(servers)):
             self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % servers[idx]))
@@ -53,70 +53,39 @@ class StreamServer():
         del(self.entries)
         gc.collect()
         print 'Done.'
-        sys.stdout.flush()
 
     def image_drive(self):
-        self.lock = [Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
-        ofh = open(self.dest, 'wb+')
         self.finished = False
-        self.thread_queue = [[[], []] for idx in range(len(self.streams))]
-        threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
+        conns = [] * len(self.streams)
+        queues = [Queue() for idx in range(len(self.streams))]
+        procs = [] * len(self.streams)
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
             stream.queue_writes()
             stream.queue_showStatus()
-        for thread in threads:
-            thread.start()
+            conns.append(StreamClientConnection(stream))
+        for idx in range(len(conns)):
+            procs[idx] = Process(target=conns[idx].process_data, args=(queues[idx],)).start()
         print 'Imaging drive...'
-        sys.stdout.flush()
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             if target == None:
                 data = ifh.read(self.cluster_size)
-                ofh.write(data)
                 pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
-            self.lock[target].acquire()
-            self.thread_queue[target][0].append(idx)
-            self.thread_queue[target][1].append(data)
-            self.lock[target].release()
-            ofh.write(data)
+            queues[target].put_nowait((idx, data))
             pbar.update(idx * self.cluster_size)
         self.finished = True
-        for thread in threads:
-            thread.join()
-        for idx in range(len(self.streams)):
-            try:
-                self.streams[idx].add_queue(self.thread_queue[idx][0], self.thread_queue[idx][1])
-            except:
-                print "Error sending data to client: %d" % idx
-                pass
+        for conn in conns:
+            conn.running = False
+        for proc in procs:
+            proc.join()
         pbar.finish()
         ifh.close()
-        #ofh.close()
-
-    def threaded_queue(self, idx):
-        tid = idx
-        while True:
-            while len(self.thread_queue[tid][0]) < QUEUE_SIZE:
-                sleep(1)
-                if self.finished:
-                    return
-            self.lock[tid].acquire()
-            clusters = self.thread_queue[tid][0]
-            data = self.thread_queue[tid][1]
-            del(self.thread_queue[tid][:])
-            self.thread_queue[tid] = [[], []]
-            self.lock[tid].release()
-            if self.streams[tid].add_queue(clusters, data):
-                self.lock[tid].acquire()
-                while self.streams[tid].throttle_needed():
-                    sleep(2)
-                self.lock[tid].release()
 
 def main():
     print "Starting Time: %s" % str(ctime().split(" ")[4])
