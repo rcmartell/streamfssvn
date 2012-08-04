@@ -15,7 +15,7 @@ class FileHandler():
                 filetype = elem.get('name')
                 self.dirs[filetype] = elem.get('directory')
                 try:
-                    os.mkdir('{0}{1}Complete{1}{2}'.format(self.path, os.path.sep, self.dirs[filetype])
+                    os.mkdir('{0}{1}Complete{1}{2}'.format(self.path, os.path.sep, self.dirs[filetype]))
                 except:
                     pass
                 with open(elem.text) as fh:
