@@ -4,12 +4,11 @@ from xml.etree import ElementTree as tree
 class FileHandler():
     def __init__(self, path):
         self.count = 0
-        os.chdir(path)
-        with open('config.xml') as fh:
+        with open('{0}{1}config.xml'.format(self.path, os.path.sep)) as fh:
             config = tree.fromstring(fh.read())
         self.types = {}
         self.dirs = {}
-        os.chdir('Complete')
+        os.chdir('{0}{1}Complete'.format(self.path, os.path.sep))
         for elem in config.getchildren()[0].findall('type'):
             if elem.get('include') == 'true':
                 filetype = elem.get('name')
