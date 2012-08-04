@@ -27,8 +27,6 @@ class StreamClient():
         self.setup_folders()
         self.setup_file_handler()
         self.setup_status_ui()
-        self.thread = threading.Thread(target=self.write_data)
-        self.thread.start()
 
     def setup_status_ui(self):
         self.stdscr.clear()
@@ -252,7 +250,7 @@ class StreamClient():
             #if sys.platform != "stdscr32":
             #    curses.nocbreak(); self.stdscr.keypad(0); curses.echo()
             #    curses.endstdscr()
-            self.sorter.running = False
+            self.file_handler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
             return
