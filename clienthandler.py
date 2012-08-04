@@ -20,7 +20,7 @@ class ClientHandler():
                     del(clusters)
                     del(data)
                     clusters, data = [],[]
-            if len(clusters) != 0:
+            if len(clusters):
                 if self.stream.add_queue(clusters, data):
                     while self.stream.throttle_needed():
                         sleep(2)
@@ -34,4 +34,3 @@ class ClientHandler():
         self.stream.add_queue(clusters, data)
         return
         
-            

@@ -4,15 +4,20 @@ from xml.etree import ElementTree as tree
 class FileHandler():
     def __init__(self, path):
         self.count = 0
-	os.chdir(path)
+        os.chdir(path)
         with open('config.xml') as fh:
             config = tree.fromstring(fh.read())
         self.types = {}
         self.dirs = {}
+        os.chdir('Complete')
         for elem in config.getchildren()[0].findall('type'):
             if elem.get('include') == 'true':
                 filetype = elem.get('name')
                 self.dirs[filetype] = elem.get('directory')
+                try:
+                    os.mkdir(self.dirs[filetype])
+                except:
+                    pass
                 with open(elem.text) as fh:
                     self.types[filetype] = fh.read().split()
         self.running = True
