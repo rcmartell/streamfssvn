@@ -20,12 +20,13 @@ class ClientHandler():
                     del(clusters)
                     del(data)
                     clusters, data = [],[]
-            if self.stream.add_queue(clusters, data):
-                while self.stream.throttle_needed():
-                    sleep(2)
-            del(clusters)
-            del(data)
-            clusters, data = [],[]
+            if len(clusters) != 0:
+                if self.stream.add_queue(clusters, data):
+                    while self.stream.throttle_needed():
+                        sleep(2)
+                del(clusters)
+                del(data)
+                clusters, data = [],[]
         while not queue.empty():
             item = queue.get()
             clusters.append(item[0])

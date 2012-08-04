@@ -1,66 +1,50 @@
-import os, shutil, json, pysolr
+import os, shutil
+from xml.etree import ElementTree as tree
 
 class FileHandler():
     def __init__(self, path):
         self.count = 0
-        self.errfile = open(path + os.path.sep + "filehandler.err", "wb")
-        self.index = []
-        self.directories = {}
-        self.filters = {}
-        config = json.load(open(path + os.path.sep + 'config.json'))
-        for directory in config['Directories']:
-            self.directories[directory] = "{0}{1}Complete{1}{2}".format(path, os.path.sep, config['Directories'][directory])
-        for directory in self.directories.values():
-            try:
-                os.mkdir(directory)
-            except:
-                pass
-        try:
-            os.mkdir("{0}{1}Complete{1}{2}".format(path, os.path.sep, "Other"))
-        except:
-            pass
-        for idx in range(len(config['Filetypes'])):
-            self.filters[config['Filetypes'][idx].keys()[0]] = config['Filetypes'][idx].values()[0]
-        #for val in config['Index']:
-        #    for key in self.filters:
-        #        if val == key:
-        #            self.index.extend(self.filters[key])
+        with open('config.xml') as fh:
+            config = tree.fromstring(fh.read())
+        self.types = {}
+        self.dirs = {}
+        for elem in config.getchildren()[0].findall('type'):
+            if elem.get('include') == 'true':
+                filetype = elem.get('name')
+                self.dirs[filetype] = elem.get('directory')
+                with open(elem.text) as fh:
+                    self.types[filetype] = fh.read().split()
         self.running = True
 
-    def processFiles(self, queue):
+    def handler_queue(self, queue):
         while self.running:
-            _file = queue.get()
-            self.processFile(_file)
+            target = queue.get()
+            self.process_file(target)
         return
 
-    def processFile(self, _file):
-        #if os.path.splitext(_file)[1][1:].upper() in self.index:
-        #    try:
-        #        self.solr.extract(open(_file), extractOnly = False)
-        #    except:
-        #        pass
-        for _filter in self.filters:
-            if os.path.splitext(_file)[1][1:].upper() in self.filters[_filter]:
+    def process_file(self, target):
+        for filetype in self.types:
+            if os.path.splitext(target)[1][1:].upper() in self.types[filetype]:
                 try:
-                    if not os.path.exists(self.directories[_filter] + os.path.sep + os.path.basename(_file)):
-                        shutil.move(_file, self.directories[_filter])
+                    if not os.path.exists(self.dirs[filetype] + os.path.sep + os.path.basename(target)):
+                        shutil.move(target, self.dirs[filetype])
                         return
                     else:
-                        shutil.move(_file, self.directories[_filter] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(_file))
+                        shutil.move(target, self.dirs[filetype] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(target))
                         self.count += 1
                         return
                 except:
-                    self.errfile.write("Error moving file: {0}\n".format(_file))
+                    self.errfile.write("Error moving file: {0}\n".format(target))
                     return
         else:
             try:
-                if not os.path.exists(self.directories['Other'] + os.path.sep + os.path.basename(_file)):
-                    shutil.move(_file, self.directories['Other'])
+                if not os.path.exists(self.dirs['Misc'] + os.path.sep + os.path.basename(target)):
+                    shutil.move(target, self.dirs['Misc'])
                     return
                 else:
-                    shutil.move(_file, self.directories['Other'] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(_file))
+                    shutil.move(target, self.dirs['Misc'] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(target))
                     self.count += 1
                     return
             except:
-                self.errfile.write("Error moving file: {0}\n".format(_file))
+                self.errfile.write("Error moving file: {0}\n".format(target))
                 return

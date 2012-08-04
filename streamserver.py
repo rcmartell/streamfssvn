@@ -2,8 +2,9 @@
 from mftparser import MFTParser
 from time import ctime
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
-from clienthandler import ClientHandler
-import warnings, gc, sys, json
+from streamclientconnection import StreamClientConnection
+import warnings, gc, sys
+from xml.etree import ElementTree as tree
 from multiprocessing import Queue, Process
 warnings.filterwarnings("ignore")
 import Pyro4.core
@@ -21,9 +22,12 @@ class StreamServer():
         self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
 
     def get_types(self):
-        config = json.load(open('config.json'))
-        for idx in range(len(config['Filetypes'])):
-            self.types.extend(config['Filetypes'][idx].values()[0])
+        with open('config.xml') as fh:
+            config = tree.fromstring(fh.read())
+        for elem in config.getchildren()[0].findall('type'):
+            if elem.get('include') == 'true':
+                with open(elem.text) as fh:
+                    self.types.extend(fh.read().split())
 
     def parse_fs_metadata(self, fstype = 'ntfs'):
         print 'Parsing filesystem metadata...',
@@ -31,8 +35,7 @@ class StreamServer():
             parser = MFTParser(self.src)
             self.cluster_size = parser.get_cluster_size()
             self.num_clusters = parser.get_num_clusters()
-            #self.entries = filter(lambda x : x.name.split('.')[1].upper() in self.types, parser.main())
-            self.entries = parser.main()
+            self.entries = filter(lambda x : x.name.split('.')[1].upper() in self.types, parser.main())
             self.mapping = [None] * self.num_clusters
         del(parser)
         print 'Done.'
@@ -49,12 +52,12 @@ class StreamServer():
             self.streams[idx].process_entries(self.entries[idx::len(servers)])
             for cluster in self.streams[idx].list_clusters():
                 self.mapping[cluster] = idx
-            self.streams[idx].clear_clusters()
+            #self.streams[idx].clear_clusters()
         del(self.entries)
         gc.collect()
         print 'Done.'
 
-    def image_drive(self):
+    def process_image(self):
         ifh = open(self.src, 'rb')
         self.finished = False
         handlers = []
@@ -65,21 +68,22 @@ class StreamServer():
             stream.setup_file_progress()
             stream.queue_writes()
             stream.queue_showStatus()
-            handlers.append(ClientHandler(stream))
+            handlers.append(StreamClientConnection(stream))
         for idx in range(len(handlers)):
             procs.append(Process(target=handlers[idx].process_data, args=(queues[idx],)).start())
         print 'Imaging drive...'
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
-        count = len(self.mapping)
-        for i in xrange(0, count, 4096):
-            data = ifh.read(self.cluster_size * 4096)
-            for idx in xrange(i, i + (len(data) / self.cluster_size)):
-                target = self.mapping[idx]
-                if target == None:
-                    continue
-                queues[target].put_nowait((idx, data[idx:idx + self.cluster_size]))
-                if not idx % 100:
-                    pbar.update(idx * self.cluster_size)
+        for idx in xrange(len(self.mapping)):
+            target = self.mapping[idx]
+            if target == None:
+                data = ifh.read(self.cluster_size)
+                #pbar.update(idx * self.cluster_size)
+                continue
+            data = ifh.read(self.cluster_size)
+            queues[target].put_nowait((idx, data))
+            #pbar.update(idx * self.cluster_size)
+            if not idx % 10000:
+                pbar.update(idx * self.cluster_size)
         self.finished = True
         for handler in handlers:
             handler.running = False
@@ -95,7 +99,7 @@ def main():
     server.parse_fs_metadata()
     server.setup_stream_listeners(sys.argv[3:])
     try:
-        server.image_drive()
+        server.process_image()
     except KeyboardInterrupt:
         sys.exit(-1)
     print "End Time: %s" % str(ctime().split(" ")[4])
