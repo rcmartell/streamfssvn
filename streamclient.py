@@ -321,13 +321,15 @@ class StreamClient():
 
 def main(stdscr):
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('-p', '--path', help = "Root directory for client. Files will be written and processed here. Defaults to the current working directory if no value is specified.", required = False, default=os.path.abspath(os.path.curdir))
+    argparser.add_argument('-p', '--path', help = "Root directory for client. Files will be written and processed here. Defaults to the current working directory if no value is specified.", required = False)
     argparser.add_argument('-i', '--id', help = "Unique name/identifier used to register the client with the Pyro nameserver.", required = True)
     args = argparser.parse_args()
     opts = vars(args)
     name = opts['id']
     path = opts['path']
-    if not os.path.lexists(path):
+    if path == None:
+        path = os.path.abspath(os.path.curdir)
+    elif not os.path.lexists(path):
         print "Invalid path specified."
         sys.exit(-1)
     if path.endswith(os.path.sep):
