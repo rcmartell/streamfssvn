@@ -4,6 +4,7 @@ from xml.etree import ElementTree as tree
 class FileHandler():
     def __init__(self, path):
         self.count = 0
+        self.path = path
         with open('{0}{1}config.xml'.format(self.path, os.path.sep)) as fh:
             config = tree.fromstring(fh.read())
         self.types = {}
