@@ -40,16 +40,16 @@ class StreamServer():
         del(parser)
         print 'Done.'
 
-    def setup_stream_listeners(self, servers):
+    def setup_stream_listeners(self, clients):
         print 'Setting up stream listeners...',
         self.streams = []
-        for idx in range(len(servers)):
-            self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % servers[idx]))
+        for idx in range(len(clients)):
+            self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % clients[idx]))
             self.streams[idx]._pyroBind()
             self.streams[idx]._pyroOneway.add("add_queue")
             self.streams[idx].set_cluster_size(self.cluster_size)
             self.streams[idx].set_num_clusters(self.num_clusters)
-            self.streams[idx].process_entries(self.entries[idx::len(servers)])
+            self.streams[idx].process_entries(self.entries[idx::len(clients)])
             for cluster in self.streams[idx].list_clusters():
                 self.mapping[cluster] = idx
             #self.streams[idx].clear_clusters()
@@ -97,7 +97,12 @@ def main():
     server = StreamServer(sys.argv[1], sys.argv[2])
     server.get_types()
     server.parse_fs_metadata()
-    server.setup_stream_listeners(sys.argv[3:])
+    ns = Pyro4.locateNS()
+    clients = []
+    for entry in ns.list():
+        if entry != "Pyro.NameServer":
+            clients.append(entry)
+    server.setup_stream_listeners(clients)
     try:
         server.process_image()
     except KeyboardInterrupt:
