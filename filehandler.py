@@ -5,17 +5,17 @@ class FileHandler():
     def __init__(self, path):
         self.count = 0
         self.path = path
-        with open('{0}{1}config.xml'.format(self.path, os.path.sep)) as fh:
+        os.chdir(path)
+        with open('config.xml') as fh:
             config = tree.fromstring(fh.read())
         self.types = {}
         self.dirs = {}
-        os.chdir('{0}{1}Complete'.format(self.path, os.path.sep))
         for elem in config.getchildren()[0].findall('type'):
             if elem.get('include') == 'true':
                 filetype = elem.get('name')
                 self.dirs[filetype] = elem.get('directory')
                 try:
-                    os.mkdir(self.dirs[filetype])
+                    os.mkdir('{0}{1}Complete{1}{2}'.format(self.path, os.path.sep, self.dirs[filetype])
                 except:
                     pass
                 with open(elem.text) as fh:
