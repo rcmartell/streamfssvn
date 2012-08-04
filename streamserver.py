@@ -31,6 +31,7 @@ class StreamServer():
 
     def parse_fs_metadata(self, fstype = 'ntfs'):
         print 'Parsing filesystem metadata...',
+        sys.stdout.flush()
         if fstype.lower() == 'ntfs':
             parser = MFTParser(self.src)
             self.cluster_size = parser.get_cluster_size()
@@ -42,6 +43,7 @@ class StreamServer():
 
     def setup_stream_listeners(self, clients):
         print 'Setting up stream listeners...',
+        sys.stdout.flush()
         self.streams = []
         for idx in range(len(clients)):
             self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % clients[idx]))
@@ -67,11 +69,10 @@ class StreamServer():
             stream.setup_clustermap()
             stream.setup_file_progress()
             stream.queue_writes()
-            stream.queue_showStatus()
+            stream.queue_show_status()
             handlers.append(ClientHandler(stream))
         for idx in range(len(handlers)):
             procs.append(Process(target=handlers[idx].process_data, args=(queues[idx],)).start())
-        print 'Imaging drive...'
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
