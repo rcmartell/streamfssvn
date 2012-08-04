@@ -2,7 +2,7 @@
 from mftparser import MFTParser
 from time import ctime
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
-from streamclientconnection import StreamClientConnection
+from clienthandler import ClientHandler
 import warnings, gc, sys
 from xml.etree import ElementTree as tree
 from multiprocessing import Queue, Process
@@ -68,7 +68,7 @@ class StreamServer():
             stream.setup_file_progress()
             stream.queue_writes()
             stream.queue_showStatus()
-            handlers.append(StreamClientConnection(stream))
+            handlers.append(ClientHandler(stream))
         for idx in range(len(handlers)):
             procs.append(Process(target=handlers[idx].process_data, args=(queues[idx],)).start())
         print 'Imaging drive...'
