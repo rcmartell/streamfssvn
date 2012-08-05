@@ -6,6 +6,7 @@ class FileHandler():
         self.count = 0
         self.path = path
         os.chdir(path)
+        self.errfile = open('filehandler.err', 'wb')
         with open('config.xml') as fh:
             config = tree.fromstring(fh.read())
         self.types = {}
