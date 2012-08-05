@@ -1,6 +1,6 @@
 import sys
 from time import sleep
-QUEUE_SIZE = 8192
+QUEUE_SIZE = 4096
 
 class ClientHandler():
     def __init__(self, stream):

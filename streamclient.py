@@ -7,7 +7,7 @@ warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
 from multiprocessing import Process, Queue
 
-QUEUE_SIZE = 8192
+QUEUE_SIZE = 4096
 MB = 1024 * 1024
 
 class StreamClient():
@@ -109,23 +109,7 @@ class StreamClient():
         """
         Create a list of all the clusters this client will be receiving.
         """
-        #self.clusters = []
         return [x for v in self.files.itervalues() for x in v[1]]
-        #for v in self.files.itervalues():
-        #    try:
-        #        self.clusters.extend(v[1])
-        #    except:
-        #        self.clusters.append(v[1])
-        #return self.clusters
-
-    #def clear_clusters(self):
-        """
-        Free up memory as this list is no longer necessary.
-        """
-    #    self.clusters = []
-    #    del(self.clusters)
-    #    gc.collect()
-    #    return
 
     def add_queue(self, cluster, data):
         """
@@ -239,17 +223,15 @@ class StreamClient():
                         del self.files[_file]
                         del self.file_progress[_file]
                         # Move file to appropriate folder based on its extension/sorter number.
-                        #self.file_queue.put_nowait(_file)
+                        self.file_queue.put_nowait(_file)
             # Write resident files to disk.
             for res_file in self.residentfiles:
                 fh = open(res_file, 'wb')
                 fh.write(self.residentfiles[res_file])
                 fh.close()
-                #self.file_queue.put_nowait(res_file)
+                self.file_queue.put_nowait(res_file)
             self.show_status = False
-            #if sys.platform != "stdscr32":
-            #    curses.nocbreak(); self.stdscr.keypad(0); curses.echo()
-            #    curses.endstdscr()
+            curses.nocbreak(); self.stdscr.keypad(0); curses.echo(); curses.endstdscr()
             self.file_handler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
@@ -257,9 +239,7 @@ class StreamClient():
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.show_status = False
-            #if sys.platform == "linux2":
-            #    curses.nocbreak(); self.stdscr.keypad(0); curses.echo(); curses.endstdscr()
-            #    curses.reset_prog_mode()
+            curses.nocbreak(); self.stdscr.keypad(0); curses.echo(); curses.endstdscr()
             self.file_handler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()

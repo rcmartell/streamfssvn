@@ -9,7 +9,7 @@ from multiprocessing import Queue, Process
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
-QUEUE_SIZE = 8192
+QUEUE_SIZE = 4096
 Pyro4.config.ONEWAY_THREADED = True
 
 class StreamServer():
@@ -54,7 +54,6 @@ class StreamServer():
             self.streams[idx].process_entries(self.entries[idx::len(clients)])
             for cluster in self.streams[idx].list_clusters():
                 self.mapping[cluster] = idx
-            #self.streams[idx].clear_clusters()
         del(self.entries)
         gc.collect()
         print 'Done.'
@@ -78,11 +77,9 @@ class StreamServer():
             target = self.mapping[idx]
             if target == None:
                 data = ifh.read(self.cluster_size)
-                #pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
             queues[target].put_nowait((idx, data))
-            #pbar.update(idx * self.cluster_size)
             if not idx % 10000:
                 pbar.update(idx * self.cluster_size)
         self.finished = True
