@@ -28,6 +28,7 @@ class ClientHandler():
                     del(clusters)
                     del(data)
                     clusters, data = [],[]
+                sleep(2)
             while not queue.empty():
                 item = queue.get()
                 clusters.append(item[0])
