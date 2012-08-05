@@ -239,13 +239,13 @@ class StreamClient():
                         del self.files[_file]
                         del self.file_progress[_file]
                         # Move file to appropriate folder based on its extension/sorter number.
-                        self.file_queue.put_nowait(_file)
+                        #self.file_queue.put_nowait(_file)
             # Write resident files to disk.
             for res_file in self.residentfiles:
                 fh = open(res_file, 'wb')
                 fh.write(self.residentfiles[res_file])
                 fh.close()
-                self.file_queue.put_nowait(res_file)
+                #self.file_queue.put_nowait(res_file)
             self.show_status = False
             #if sys.platform != "stdscr32":
             #    curses.nocbreak(); self.stdscr.keypad(0); curses.echo()
