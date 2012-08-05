@@ -279,7 +279,7 @@ class StreamClient():
             phymem_buffers = psutil.phymem_buffers
             cached_phymem = psutil.cached_phymem
             while self.show_status:
-                time.sleep(5)
+                time.sleep(2)
                 if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
                     self.throttle = True
                 else:
