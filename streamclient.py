@@ -279,7 +279,7 @@ class StreamClient():
             phymem_buffers = psutil.phymem_buffers
             cached_phymem = psutil.cached_phymem
             while self.show_status:
-                time.sleep(1)
+                time.sleep(5)
                 if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
                     self.throttle = True
                 else:
@@ -314,8 +314,8 @@ class StreamClient():
                 self.stdscr.refresh()
             threading.thread.exit()
         except KeyboardInterrupt:
-            #if sys.platform == "linux2":
-            #    curses.nocbreak(); curses.echo(); curses.endstdscr()
+            if sys.platform == "linux2":
+                curses.nocbreak(); curses.echo(); curses.endstdscr()
             print 'User aborted'
             threading.thread.exit()
 
