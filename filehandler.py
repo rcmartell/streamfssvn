@@ -5,22 +5,19 @@ class FileHandler():
     def __init__(self, path):
         self.count = 0
         self.path = path
-        os.chdir(path)
-        self.errfile = open('filehandler.err', 'wb')
-        with open('config.xml') as fh:
+        self.errfile = open(self.path + os.path.sep + 'filehandler.err', 'wb')
+        with open(self.path + os.path.sep + 'config.xml') as fh:
             config = tree.fromstring(fh.read())
         self.types = {}
         self.dirs = {}
         for elem in config.getchildren()[0].findall('type'):
             if elem.get('include') == 'true':
                 filetype = elem.get('name')
-                self.dirs[filetype] = elem.get('directory')
-                try:
-                    os.mkdir('{0}{1}Complete{1}{2}'.format(self.path, os.path.sep, self.dirs[filetype]))
-                except:
-                    pass
-                with open(elem.text) as fh:
+                self.dirs[filetype] = '{0}{1}Complete{1}{2}'.format(self.path, os.path.sep, elem.get('directory'))
+                os.mkdir(self.dirs[filetype])
+                with open(self.path + os.path.sep + elem.text) as fh:
                     self.types[filetype] = fh.read().split()
+        os.mkdir('{0}{1}Complete{1}{2}'.format(self.path, os.path.sep, 'Misc'))
         self.running = True
 
     def handler_queue(self, queue):
