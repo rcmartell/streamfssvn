@@ -72,7 +72,7 @@ class StreamServer():
             stream.queue_show_status()
             handlers.append(ClientHandler(stream))
         for idx in range(len(handlers)):
-            procs.append(Process(target=handlers[idx].process_data, args=(queues[idx],)).start())
+            procs.append(Process(target=handlers[idx].process_data, args=(queues[idx],self.finished)).start())
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
