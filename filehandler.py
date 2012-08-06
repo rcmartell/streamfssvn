@@ -1,6 +1,7 @@
 import os, shutil
+from multiprocessing import Process, Queue
 from xml.etree import ElementTree as tree
-from pysolr import Solr
+from textindexer import TextIndexer
 
 class FileHandler():
     def __init__(self, path):
@@ -20,7 +21,11 @@ class FileHandler():
                     self.types[filetype] = fh.read().split()
         os.mkdir('{0}{1}Complete{1}{2}'.format(self.path, os.path.sep, 'Misc'))
         self.running = True
-        self.solr = Solr(url='http://localhost:8983/solr')
+        self.queue = Queue()
+        self.indexer = TextIndexer()
+        self.proc = Process(target=self.indexer.index_queue, args=(self.queue,))
+        self.proc.daemon = True
+        self.proc.start()
 
     def handler_queue(self, queue):
         while self.running:
@@ -29,6 +34,7 @@ class FileHandler():
         while len(queue):
             target = queue.get()
             self.process_file(target)
+        self.indexer.running = False
         return
 
     def process_file(self, target):
@@ -41,8 +47,7 @@ class FileHandler():
                         path = self.dirs[filetype] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(target)
                         self.count += 1
                     shutil.move(target, path)
-                    with open(path, 'rb') as fh:
-                        self.solr.extract(fh)
+                    self.queue.put_nowait(path)
                     return
                 except:
                     self.errfile.write("Error moving file: {0}\n".format(target))

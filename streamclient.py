@@ -235,15 +235,11 @@ class StreamClient():
                 self.file_queue.put_nowait(res_file)
             self.show_status = False
             self.file_handler.running = False
-            self.ns.remove(name=sys.argv[1])
-            self.daemon.shutdown()
             return
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.show_status = False
             self.file_handler.running = False
-            self.ns.remove(name=sys.argv[1])
-            self.daemon.shutdown()
             return
 
 
@@ -293,10 +289,12 @@ class StreamClient():
                     self.stdscr.addstr(9, 0, "{0:<30s}".format(''))
                     self.stdscr.move(9, 0)
                 self.stdscr.refresh()
-            curses.nocbreak(); curses.echo()
+            curses.nocbreak(); stdscr.keypad(0); curses.echo()
+            curses.endwin()
         except KeyboardInterrupt:
             if sys.platform == "linux2":
-                curses.nocbreak(); curses.echo()
+                curses.nocbreak(); stdscr.keypad(0); curses.echo()
+                curses.endwin()
             print 'User aborted'
             return
 
