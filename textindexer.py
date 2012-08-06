@@ -8,8 +8,10 @@ class TextIndexer:
     def indexer_queue(self, queue):
         while self.running:
             target = queue.get()
-            self.solr.extract(target)
+            with open(target, 'rb') as fh:
+                self.solr.extract(fh)
         while len(queue):
             target = queue.get()
-            self.solr.extract(target)
+            with open(target, 'rb') as fh:
+                self.solr.extract(fh)
         return
