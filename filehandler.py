@@ -1,5 +1,6 @@
 import os, shutil
 from xml.etree import ElementTree as tree
+from pysolr import Solr
 
 class FileHandler():
     def __init__(self, path):
@@ -19,6 +20,7 @@ class FileHandler():
                     self.types[filetype] = fh.read().split()
         os.mkdir('{0}{1}Complete{1}{2}'.format(self.path, os.path.sep, 'Misc'))
         self.running = True
+        self.solr = Solr(url='http://localhost:8983/solr')
 
     def handler_queue(self, queue):
         while self.running:
@@ -27,6 +29,11 @@ class FileHandler():
         return
 
     def process_file(self, target):
+        with open(target, 'rb') as fh:
+            try:
+                self.solr.extract(fh)
+            except:
+                pass
         for filetype in self.types:
             if os.path.splitext(target)[1][1:].upper() in self.types[filetype]:
                 try:

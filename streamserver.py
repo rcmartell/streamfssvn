@@ -1,15 +1,14 @@
 #!/usr/bin/python
 from mftparser import MFTParser
-from time import ctime
+from time import ctime, sleep
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
-from clienthandler import ClientHandler
-import warnings, gc, sys
+from threading import Thread, Lock
+import warnings, gc, sys, os
 from xml.etree import ElementTree as tree
-from multiprocessing import Queue, Process
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
-QUEUE_SIZE = 4096
+QUEUE_SIZE = 8192
 Pyro4.config.ONEWAY_THREADED = True
 
 class StreamServer():
@@ -22,11 +21,11 @@ class StreamServer():
         self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
 
     def get_types(self):
-        with open('config.xml') as fh:
+         with open('config/config.xml') as fh:
             config = tree.fromstring(fh.read())
-        for elem in config.getchildren()[0].findall('type'):
+         for elem in config.getchildren()[0].findall('type'):
             if elem.get('include') == 'true':
-                with open(elem.text) as fh:
+                with open('config' + os.path.sep + elem.text) as fh:
                     self.types.extend(fh.read().split())
 
     def parse_fs_metadata(self, fstype = 'ntfs'):
@@ -59,36 +58,67 @@ class StreamServer():
         print 'Done.'
 
     def process_image(self):
+        self.lock = [Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
+        #ofh = open(self.dest, 'wb+')
         self.finished = False
-        handlers = []
-        queues = [Queue() for idx in range(len(self.streams))]
-        procs = []
+        self.thread_queue = [[[], []] for idx in range(len(self.streams))]
+        threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
             stream.queue_writes()
-            stream.queue_show_status()
-            handlers.append(ClientHandler(stream))
-        for idx in range(len(handlers)):
-            procs.append(Process(target=handlers[idx].process_data, args=(queues[idx],self.finished)).start())
+            stream.queue_showStatus()
+        for thread in threads:
+            thread.start()
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             if target == None:
                 data = ifh.read(self.cluster_size)
+                #ofh.write(data)
+                #pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
-            queues[target].put_nowait((idx, data))
+            self.lock[target].acquire()
+            self.thread_queue[target][0].append(idx)
+            self.thread_queue[target][1].append(data)
+            self.lock[target].release()
+            #ofh.write(data)
             if not idx % 10000:
                 pbar.update(idx * self.cluster_size)
         self.finished = True
-        for handler in handlers:
-            handler.running = False
-        for proc in procs:
-            proc.join()
+        for thread in threads:
+            thread.join()
+        for idx in range(len(self.streams)):
+            try:
+                self.streams[idx].add_queue(self.thread_queue[idx][0], self.thread_queue[idx][1])
+            except:
+                print "Error sending data to client: %d" % idx
+                pass
         pbar.finish()
         ifh.close()
+        print 'Done.'
+        #ofh.close()
+
+    def threaded_queue(self, idx):
+        tid = idx
+        while True:
+            while len(self.thread_queue[tid][0]) < QUEUE_SIZE:
+                sleep(1)
+                if self.finished:
+                    return
+            self.lock[tid].acquire()
+            clusters = self.thread_queue[tid][0]
+            data = self.thread_queue[tid][1]
+            del(self.thread_queue[tid][:])
+            self.thread_queue[tid] = [[], []]
+            self.lock[tid].release()
+            if self.streams[tid].add_queue(clusters, data):
+                self.lock[tid].acquire()
+                while self.streams[tid].throttle_needed():
+                    sleep(2)
+                self.lock[tid].release()
 
 def main():
     print "Starting Time: %s" % str(ctime().split(" ")[4])
@@ -106,5 +136,6 @@ def main():
     except KeyboardInterrupt:
         sys.exit(-1)
     print "End Time: %s" % str(ctime().split(" ")[4])
+
 if __name__ == "__main__":
     main()
