@@ -233,8 +233,9 @@ class StreamClient():
                 fh.write(self.residentfiles[res_file])
                 fh.close()
                 self.file_queue.put_nowait(res_file)
-            self.show_status = False
             self.file_handler.running = False
+            self.proc.join()
+            self.show_status = False
             return
         except KeyboardInterrupt:
             print 'User cancelled execution...'
