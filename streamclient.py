@@ -23,15 +23,15 @@ class StreamClient():
         self.show_current_status = True
         self.throttle = False
         self.finished = False
-	self.queue = collections.deque()
+        self.queue = collections.deque()
         self.setup_status_ui()
-	self.setup_folders()
+        self.setup_folders()
         self.setup_file_handler()
 
     def setup_status_ui(self):
         curses.initscr(); curses.noecho(); curses.cbreak()
         self.stdscr = curses.newwin(0,0)
-	self.stdscr.clear()
+        self.stdscr.clear()
         self.stdscr.addstr(0, 0, "Waiting for server...")
         self.stdscr.refresh()
 
@@ -64,8 +64,8 @@ class StreamClient():
         self.file_handler = FileHandler(self.path)
         self.file_queue = Queue()
         self.proc = Process(target=self.file_handler.handler_queue, args=(self.file_queue,))
-	self.proc.daemon = True
-	self.proc.start()
+        self.proc.daemon = True
+        self.proc.start()
 
     def process_entries(self, entries):
         """
@@ -234,7 +234,6 @@ class StreamClient():
                 fh.close()
                 self.file_queue.put_nowait(res_file)
             self.show_status = False
-            curses.nocbreak(); self.stdscr.keypad(0); curses.echo()
             self.file_handler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
@@ -242,7 +241,6 @@ class StreamClient():
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.show_status = False
-            curses.nocbreak(); self.stdscr.keypad(0); curses.echo()
             self.file_handler.running = False
             self.ns.remove(name=sys.argv[1])
             self.daemon.shutdown()
@@ -295,12 +293,12 @@ class StreamClient():
                     self.stdscr.addstr(9, 0, "{0:<30s}".format(''))
                     self.stdscr.move(9, 0)
                 self.stdscr.refresh()
-            threading.thread.exit()
+            curses.nocbreak(); curses.echo()
         except KeyboardInterrupt:
             if sys.platform == "linux2":
                 curses.nocbreak(); curses.echo()
             print 'User aborted'
-            threading.thread.exit()
+            return
 
 def main():
     argparser = argparse.ArgumentParser()
@@ -326,8 +324,6 @@ def main():
     try:
         daemon.requestLoop()
     except KeyboardInterrupt:
-        #if sys.platform == "linux2":
-        #    curses.nocbreak(); curses.echo(); curses.endstdscr(); os.system("reset")
         print 'User aborted'
         ns.remove(name=name)
         daemon.shutdown()

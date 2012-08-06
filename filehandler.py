@@ -26,6 +26,9 @@ class FileHandler():
         while self.running:
             target = queue.get()
             self.process_file(target)
+        while len(queue):
+            target = queue.get()
+            self.process_file(target)
         return
 
     def process_file(self, target):
