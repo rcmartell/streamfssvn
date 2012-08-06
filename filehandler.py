@@ -23,7 +23,7 @@ class FileHandler():
         self.running = True
         self.queue = Queue()
         self.indexer = TextIndexer()
-        self.proc = Process(target=self.indexer.index_queue, args=(self.queue,))
+        self.proc = Process(target=self.indexer.indexer_queue, args=(self.queue,))
         self.proc.daemon = True
         self.proc.start()
 
