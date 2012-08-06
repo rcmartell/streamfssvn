@@ -9,9 +9,15 @@ class TextIndexer:
         while self.running:
             target = queue.get()
             with open(target, 'rb') as fh:
-                self.solr.extract(fh)
+                try:
+                    self.solr.extract(fh)
+                except:
+                    pass
         while len(queue):
             target = queue.get()
             with open(target, 'rb') as fh:
-                self.solr.extract(fh)
+                try:
+                    self.solr.extract(fh)
+                except:
+                    pass
         return
