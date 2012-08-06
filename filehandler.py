@@ -29,21 +29,18 @@ class FileHandler():
         return
 
     def process_file(self, target):
-        with open(target, 'rb') as fh:
-            try:
-                self.solr.extract(fh)
-            except:
-                pass
         for filetype in self.types:
             if os.path.splitext(target)[1][1:].upper() in self.types[filetype]:
                 try:
                     if not os.path.exists(self.dirs[filetype] + os.path.sep + os.path.basename(target)):
-                        shutil.move(target, self.dirs[filetype])
-                        return
+                        path = self.dirs[filetype] + os.path.sep + os.path.basename(target)
                     else:
-                        shutil.move(target, self.dirs[filetype] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(target))
+                        path = self.dirs[filetype] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(target)
                         self.count += 1
-                        return
+                    shutil.move(target, path)
+                    with open(path, 'rb') as fh:
+                        self.solr.extract(fh)
+                    return
                 except:
                     self.errfile.write("Error moving file: {0}\n".format(target))
                     return
