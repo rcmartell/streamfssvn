@@ -587,7 +587,7 @@ class MFTParser():
                 break
         self.offset += entry_len
         return IDX_ROOT(attr_type = attr_type, idx_entries = idx_entries)
-
+        
     def parse_idx_alloc(self, offset):
         idx_alloc_len = unpack("<I", self.entry[offset + 4:offset + 8])[0]
         if not self.getIDXEntries:
