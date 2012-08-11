@@ -118,7 +118,6 @@ class StreamServer():
                 self.lock[tid].release()
 
 def main():
-    print "Starting Time: %s" % str(ctime().split(" ")[3])
     server = StreamServer(sys.argv[1], sys.argv[2])
     server.get_types()
     server.parse_fs_metadata()
@@ -132,7 +131,6 @@ def main():
         server.process_image()
     except KeyboardInterrupt:
         sys.exit(-1)
-    print "End Time: %s" % str(ctime().split(" ")[3])
 
 if __name__ == "__main__":
     main()
