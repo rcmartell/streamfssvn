@@ -6,6 +6,7 @@ import warnings, psutil
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
 from multiprocessing import Process, Queue
+from time import ctime
 
 QUEUE_SIZE = 4096
 MB = 1024 * 1024
@@ -21,9 +22,8 @@ class StreamClient():
         self.filenames = []
         self.residentfiles = {}
         self.show_current_status = True
-        self.throttle = False
         self.finished = False
-        self.queue = collections.deque()
+        self.queue = Queue(maxsize=262144)
         self.setup_status_ui()
         self.setup_folders()
         self.setup_file_handler()
@@ -118,11 +118,7 @@ class StreamClient():
         """
         Method used by Image Server to transfer cluster/data to client.
         """
-        self.queue.extend(zip(cluster, data))
-        return self.throttle
-
-    def throttle_needed(self):
-        return self.throttle
+        [self.queue.put(item) for item in zip(cluster, data)]
 
     def queue_writes(self):
         """
@@ -131,6 +127,9 @@ class StreamClient():
         self.thread = threading.Thread(target=self.write_data)
         self.thread.start()
         return
+
+    def setup_queue(self, queue):
+        self.queue = queue
 
     def queue_show_status(self):
         self.statusThread = threading.Thread(target=self.show_status)
@@ -159,14 +158,8 @@ class StreamClient():
                 # QUEUE_SIZE is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
                 for idx in xrange(QUEUE_SIZE):
-                    # This breaks us out of the loop if we weren't able to grab
-                    # QUEUE_SIZE entries in one go. We're not using break so that
-                    # we can hopefully fill up filedb which helps in consolidating
-                    # writes to disk.
-                    if len(self.queue) == 0:
-                        continue
                     # Grab the front cluster/data set from the queue
-                    cluster, data = self.queue.popleft()
+                    cluster, data = self.queue.get(block=True)
                     # Create an in-memory db of mappings between files and their
                     # clusters/data that we've pulled off the queue.
                     try:
@@ -234,8 +227,10 @@ class StreamClient():
                 fh.close()
                 self.file_queue.put_nowait(res_file)
             self.file_handler.running = False
-            self.proc.join()
             self.show_status = False
+            print "{0}: All files written to disk, waiting for indexing to complete...".format(str(ctime().split(" ")[4]))
+            self.proc.join()
+            print "{0}: Indexing completed".format(str(ctime().split(" ")[4]))
             return
         except KeyboardInterrupt:
             print 'User cancelled execution...'
@@ -258,10 +253,6 @@ class StreamClient():
             cached_phymem = psutil.cached_phymem
             while self.show_status:
                 time.sleep(2)
-                if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
-                    self.throttle = True
-                else:
-                    self.throttle = False
                 cur_write_rate = (process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - start_time
                 if cur_write_rate == prev_bytes_written:
