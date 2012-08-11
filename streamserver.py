@@ -5,8 +5,6 @@ from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 from threading import Thread, Lock
 import warnings, gc, sys, os
 from xml.etree import ElementTree as tree
-from multiprocessing import Process, Queue
-from clienthandler import ClientHandler
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
@@ -64,18 +62,16 @@ class StreamServer():
         ifh = open(self.src, 'rb')
         #ofh = open(self.dest, 'wb+')
         self.finished = False
-        #self.thread_queue = [[[], []] for idx in range(len(self.streams))]
-        #threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
+        self.thread_queue = [[[], []] for idx in range(len(self.streams))]
+        threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
             stream.queue_writes()
-            stream.queue_showStatus()
-        #for thread in threads:
-        #    thread.start()
-        self.queues = [Queue(maxsize=262144) for i in range(len(self.streams))]
-        self.handlers = [ClientHandler(stream) for stream in self.streams]
-        self.procs = [Process(target=handler.process_data, args=(queue,)) for handler in self.handlers for queue in self.queues]
+            stream.queue_show_status()
+        for thread in threads:
+	    thread.setDaemon(True)
+            thread.start()
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
@@ -85,17 +81,41 @@ class StreamServer():
                 #pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
-            self.queues[target].put((idx, data))
+            self.lock[target].acquire()
+            self.thread_queue[target][0].append(idx)
+            self.thread_queue[target][1].append(data)
+            self.lock[target].release()
             #ofh.write(data)
             if not idx % 10000:
                 pbar.update(idx * self.cluster_size)
         self.finished = True
-        for handler in self.handlers:
-            handler.running = False
+        for thread in threads:
+            thread.join()
         pbar.finish()
         ifh.close()
         print 'Done.'
         #ofh.close()
+
+    def threaded_queue(self, idx):
+        tid = idx
+        while True:
+            while len(self.thread_queue[tid][0]) < QUEUE_SIZE:
+                sleep(1)
+                if self.finished:
+		    if len(self.thread_queue[tid][0]) > 0:
+			self.streams[tid].add_queue(self.thread_queue[tid][0], self.thread_queue[tid][1])
+                    return
+            self.lock[tid].acquire()
+            clusters = self.thread_queue[tid][0]
+            data = self.thread_queue[tid][1]
+            del(self.thread_queue[tid][:])
+            self.thread_queue[tid] = [[], []]
+            self.lock[tid].release()
+            if self.streams[tid].add_queue(clusters, data):
+                self.lock[tid].acquire()
+                while self.streams[tid].throttle_needed():
+                    sleep(2)
+                self.lock[tid].release()
 
 def main():
     print "Starting Time: %s" % str(ctime().split(" ")[3])
