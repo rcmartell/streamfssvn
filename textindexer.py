@@ -1,23 +1,22 @@
 from pysolr import Solr
+import threading
 
 class TextIndexer:
     def __init__(self):
-        self.solr = Solr(url='http://localhost:8983/solr')
         self.running = True
 
-    def indexer_queue(self, queue):
-        while self.running:
+    def init_threads(self, queue):
+        threads = [threading.Thread(target=self.index_text, args=(queue,)) for i in range(12)]
+        for thread in threads:
+            thread.setDaemon(True)
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+    def index_text(self, queue):
+        solr = Solr(url='http://localhost:8983/solr')
+        while self.running or not queue.empty():
             target = queue.get()
-            with open(target, 'rb') as fh:
-                try:
-                    self.solr.extract(fh)
-                except:
-                    pass
-        while len(queue):
-            target = queue.get()
-            with open(target, 'rb') as fh:
-                try:
-                    self.solr.extract(fh)
-                except:
-                    pass
-        return
+            fh = open(target, 'rb')
+            solr.extract(fh)
+            fh.close()
