@@ -1,5 +1,11 @@
 #!/usr/bin/python
-import sys, os, time, shutil, argparse, curses
+import sys, os, time, shutil, argparse
+try:
+    import curses
+except:
+    import _minimal_curses
+    sys.modules['_curses'] = _minimal_curses
+    import curses
 import threading, socket, collections, gc
 from filehandler import FileHandler
 import warnings, psutil
