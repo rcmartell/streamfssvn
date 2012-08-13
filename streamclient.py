@@ -1,11 +1,5 @@
 #!/usr/bin/python
-import sys, os, time, shutil, argparse
-try:
-    import curses
-except:
-    import _minimal_curses
-    sys.modules['_curses'] = _minimal_curses
-    import curses
+import sys, os, time, shutil, argparse, curses
 import threading, socket, collections, gc
 from filehandler import FileHandler
 import warnings, psutil
@@ -125,7 +119,9 @@ class StreamClient():
         Method used by Image Server to transfer cluster/data to client.
         """
         self.queue.extend(zip(cluster, data))
-        return self.throttle
+        
+    def get_queue_size(self):
+        return len(self.queue)
 
     def throttle_needed(self):
         return self.throttle
@@ -135,12 +131,12 @@ class StreamClient():
         Helper method to spawn write_data in a seperate thread.
         """
         self.thread = threading.Thread(target=self.write_data)
-	self.thread.start()
+        self.thread.start()
         return
 
     def queue_show_status(self):
         self.statusThread = threading.Thread(target=self.show_status)
-	self.statusThread.setDaemon(True)
+        self.statusThread.setDaemon(True)
         self.statusThread.start()
         return
 
@@ -265,10 +261,12 @@ class StreamClient():
             cached_phymem = psutil.cached_phymem
             while self.show_status:
                 time.sleep(2)
+                """
                 if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
                     self.throttle = True
                 else:
                     self.throttle = False
+                """
                 cur_write_rate = (process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - start_time
                 if cur_write_rate == prev_bytes_written:
@@ -276,7 +274,7 @@ class StreamClient():
                     total_idle += 1
                 else:
                     cur_idle = 0
-                prev_bytes_written = cur_write_rate
+                
                 self.stdscr.addstr(0, 0, "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
                 self.stdscr.addstr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
                 self.stdscr.addstr(2, 0, "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
@@ -297,6 +295,7 @@ class StreamClient():
                     self.stdscr.addstr(9, 0, "{0:<30s}".format(''))
                     self.stdscr.move(9, 0)
                 self.stdscr.refresh()
+            prev_bytes_written = cur_write_rate
             curses.nocbreak(); stdscr.keypad(0); curses.echo()
             curses.endwin()
         except KeyboardInterrupt:
