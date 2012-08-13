@@ -5,6 +5,8 @@ from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 from threading import Thread, Lock
 import warnings, gc, sys, os
 from xml.etree import ElementTree as tree
+from multiprocessing import Process, Queue
+from clienthandler import ClientHandler
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
@@ -35,7 +37,8 @@ class StreamServer():
             parser = MFTParser(self.src)
             self.cluster_size = parser.get_cluster_size()
             self.num_clusters = parser.get_num_clusters()
-            self.entries = filter(lambda x : x.name.split('.')[1].upper() in self.types, parser.main())
+            #self.entries = filter(lambda x : x.name.split('.')[1].upper() in self.types, parser.main())
+            self.entries = parser.main()
             self.mapping = [None] * self.num_clusters
         del(parser)
         print 'Done.'
@@ -62,35 +65,42 @@ class StreamServer():
         ifh = open(self.src, 'rb')
         #ofh = open(self.dest, 'wb+')
         self.finished = False
-        self.thread_queue = [[[], []] for idx in range(len(self.streams))]
-        threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
+        self.queues = [Queue(maxsize=524288) for idx in range(len(self.streams))]
+        self.handlers = [ClientHandler(stream) for stream in self.streams]
+        self.procs = [Process(target=self.handlers[idx].process_data, args=(self.queues[idx],)) for idx in range(len(self.queues))]
+        #self.thread_queue = [[[], []] for idx in range(len(self.streams))]
+        #threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
             stream.queue_writes()
             stream.queue_show_status()
-        for thread in threads:
-	    thread.setDaemon(True)
-            thread.start()
+        #for thread in threads:
+	    #thread.setDaemon(True)
+        #    thread.start()
+        for proc in self.procs:
+            proc.start()
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             if target == None:
                 data = ifh.read(self.cluster_size)
                 #ofh.write(data)
-                #pbar.update(idx * self.cluster_size)
                 continue
             data = ifh.read(self.cluster_size)
-            self.lock[target].acquire()
-            self.thread_queue[target][0].append(idx)
-            self.thread_queue[target][1].append(data)
-            self.lock[target].release()
+            self.queues[target].put((idx, data), block=True)
+            #self.lock[target].acquire()
+            #self.thread_queue[target][0].append(idx)
+            #self.thread_queue[target][1].append(data)
+            #self.lock[target].release()
             #ofh.write(data)
             if not idx % 10000:
                 pbar.update(idx * self.cluster_size)
         self.finished = True
-        for thread in threads:
-            thread.join()
+        for handler in self.handlers:
+            handler.running = False
+        #for thread in threads:
+        #    thread.join()
         pbar.finish()
         ifh.close()
         print 'Done.'
@@ -102,20 +112,22 @@ class StreamServer():
             while len(self.thread_queue[tid][0]) < QUEUE_SIZE:
                 sleep(1)
                 if self.finished:
-		    if len(self.thread_queue[tid][0]) > 0:
-			self.streams[tid].add_queue(self.thread_queue[tid][0], self.thread_queue[tid][1])
+                    clusters = self.thread_queue[tid][0]
+                    data = self.thread_queue[tid][1]
+                    if len(clusters):
+                        self.streams[tid].add_queue(clusters, data)
                     return
             self.lock[tid].acquire()
             clusters = self.thread_queue[tid][0]
             data = self.thread_queue[tid][1]
-            del(self.thread_queue[tid][:])
-            self.thread_queue[tid] = [[], []]
+            self.thread_queue[tid][:] = [[],[]]
             self.lock[tid].release()
-            if self.streams[tid].add_queue(clusters, data):
-                self.lock[tid].acquire()
-                while self.streams[tid].throttle_needed():
-                    sleep(2)
-                self.lock[tid].release()
+            self.streams[tid].add_queue(clusters, data)
+            #if self.streams[tid].throttle_needed():
+            #    self.lock[tid].acquire()
+            #    while self.streams[tid].throttle_needed():
+            #        sleep(2)
+            #    self.lock[tid].release()
 
 def main():
     server = StreamServer(sys.argv[1], sys.argv[2])
