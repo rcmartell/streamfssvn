@@ -11,14 +11,16 @@ class ClientHandler():
         try:
             clusters, data = [],[]
             while self.running:
-                item = queue.get()
+                item = queue.get(block=True)
                 clusters.append(item[0])
                 data.append(item[1])
-                if len(data) >= QUEUE_SIZE:
-                    self.stream.add_queue(clusters, data):
+                if len(clusters) >= QUEUE_SIZE:
+                    while self.stream.get_queue_size() + len(clusters) >= 524288:
+                        sleep(2)
+                    self.stream.add_queue(clusters, data)
                     clusters, data = [],[]
             while not queue.empty():
-                item = queue.get()
+                item = queue.get(block=True)
                 clusters.append(item[0])
                 data.append(item[1])
             self.stream.add_queue(clusters, data)
