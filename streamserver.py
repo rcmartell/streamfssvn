@@ -72,7 +72,7 @@ class StreamServer():
             stream.queue_writes()
             stream.queue_show_status()
         for thread in threads:
-	        thread.setDaemon(True)
+            thread.setDaemon(True)
             thread.start()
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
@@ -108,9 +108,10 @@ class StreamServer():
                         self.streams[tid].add_queue(self.thread_queue[tid])
                     return
             self.lock[tid].acquire()
-            self.streams[tid].add_queue(self.thread_queue[tid])
+            items = list(self.thread_queue[tid])
             self.thread_queue[tid].clear()
             self.lock[tid].release()
+            self.streams[tid].add_queue(items)
             if self.streams[tid].throttle_needed():
                 self.lock[tid].acquire()
                 while self.streams[tid].throttle_needed():
