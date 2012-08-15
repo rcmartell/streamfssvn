@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
 from multiprocessing import Process, Queue
 
-QUEUE_SIZE = 16384
+QUEUE_SIZE = 8192
 MB = 1024 * 1024
 
 class StreamClient():
@@ -27,7 +27,7 @@ class StreamClient():
         self.queue = deque()
         self.setup_status_ui()
         self.setup_folders()
-        #self.setup_file_handler()
+        self.setup_file_handler()
 
     def setup_status_ui(self):
         curses.initscr(); curses.noecho(); curses.cbreak()
@@ -230,21 +230,23 @@ class StreamClient():
                         del self.files[_file]
                         del self.file_progress[_file]
                         # Move file to appropriate folder based on its extension/sorter number.
-                        #self.file_queue.put_nowait(_file)
+                        self.file_queue.put_nowait(_file)
             # Write resident files to disk.
             for res_file in self.residentfiles:
                 fh = open(res_file, 'wb')
                 fh.write(self.residentfiles[res_file])
                 fh.close()
-                #self.file_queue.put_nowait(res_file)
+                self.file_queue.put_nowait(res_file)
             self.file_handler.running = False
             self.proc.join()
             self.show_status = False
+            self.ns.remove(name=name)
             return
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.show_status = False
             self.file_handler.running = False
+            self.ns.remove(name=name)
             return
 
 
@@ -298,11 +300,13 @@ class StreamClient():
                 #prev_bytes_written = cur_write_rate
             curses.nocbreak(); stdscr.keypad(0); curses.echo()
             curses.endwin()
+            self.ns.remove(name=name)
         except KeyboardInterrupt:
             if sys.platform == "linux2":
                 curses.nocbreak(); stdscr.keypad(0); curses.echo()
                 curses.endwin()
             print 'User aborted'
+            self.ns.remove(name=name)
             return
 
 def main():
@@ -330,6 +334,8 @@ def main():
         daemon.requestLoop()
     except KeyboardInterrupt:
         print 'User aborted'
+        curses.nocbreak(); stdscr.keypad(0); curses.echo()
+        curses.endwin()
         ns.remove(name=name)
         daemon.shutdown()
         sys.exit(-1)
