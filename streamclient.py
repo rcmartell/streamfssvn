@@ -1,13 +1,14 @@
 #!/usr/bin/python
 import sys, os, time, shutil, argparse, curses
-import threading, socket, collections, gc
+import threading, socket, gc
+from collections import deque
 from filehandler import FileHandler
 import warnings, psutil
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
 from multiprocessing import Process, Queue
 
-QUEUE_SIZE = 4096
+QUEUE_SIZE = 16384
 MB = 1024 * 1024
 
 class StreamClient():
@@ -23,10 +24,10 @@ class StreamClient():
         self.show_current_status = True
         self.throttle = False
         self.finished = False
-        self.queue = collections.deque()
+        self.queue = deque()
         self.setup_status_ui()
         self.setup_folders()
-        self.setup_file_handler()
+        #self.setup_file_handler()
 
     def setup_status_ui(self):
         curses.initscr(); curses.noecho(); curses.cbreak()
@@ -114,11 +115,11 @@ class StreamClient():
         """
         return [x for v in self.files.itervalues() for x in v[1]]
 
-    def add_queue(self, cluster, data):
+    def add_queue(self, items):
         """
         Method used by Image Server to transfer cluster/data to client.
         """
-        self.queue.extend(zip(cluster, data))
+        self.queue.extend(items)
         
     def get_queue_size(self):
         return len(self.queue)
@@ -156,8 +157,8 @@ class StreamClient():
             # While incomplete files remain...
             while len(self.file_progress):
                 # Sleep while the queue is empty.
-                #if not len(self.queue):
-                #    time.sleep(1)
+                if not len(self.queue):
+                    time.sleep(1)
                 filedb = {}
                 # QUEUE_SIZE is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
@@ -229,13 +230,13 @@ class StreamClient():
                         del self.files[_file]
                         del self.file_progress[_file]
                         # Move file to appropriate folder based on its extension/sorter number.
-                        self.file_queue.put_nowait(_file)
+                        #self.file_queue.put_nowait(_file)
             # Write resident files to disk.
             for res_file in self.residentfiles:
                 fh = open(res_file, 'wb')
                 fh.write(self.residentfiles[res_file])
                 fh.close()
-                self.file_queue.put_nowait(res_file)
+                #self.file_queue.put_nowait(res_file)
             self.file_handler.running = False
             self.proc.join()
             self.show_status = False
@@ -260,34 +261,33 @@ class StreamClient():
             phymem_buffers = psutil.phymem_buffers
             cached_phymem = psutil.cached_phymem
             while self.show_status:
-                time.sleep(2)
-                """
-                if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
+                time.sleep(3)
+                #if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
+                if len(self.queue) >= 524288:
                     self.throttle = True
                 else:
                     self.throttle = False
-                """
                 cur_write_rate = (process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - start_time
-                if cur_write_rate == prev_bytes_written:
-                    cur_idle += 1
-                    total_idle += 1
-                else:
-                    cur_idle = 0
+                #if cur_write_rate == prev_bytes_written:
+                #    cur_idle += 1
+                #    total_idle += 1
+                #else:
+                #    cur_idle = 0
                 
                 self.stdscr.addstr(0, 0, "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
                 self.stdscr.addstr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
                 self.stdscr.addstr(2, 0, "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
-                self.stdscr.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format
-                                      ((get_memory_info()[0] / MB), (total_mem / MB), ((avail_phymem() +
-                                      cached_phymem() + phymem_buffers()) / MB), ''))
+                #self.stdscr.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format
+                #                      ((get_memory_info()[0] / MB), (total_mem / MB), ((avail_phymem() +
+                #                      cached_phymem() + phymem_buffers()) / MB), ''))
                 self.stdscr.addstr(4, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
                 try:
-                    self.stdscr.addstr(5, 0, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration - total_idle)), ''))
+                    self.stdscr.addstr(5, 0, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
                 except:
                     self.stdscr.addstr(5, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
-                self.stdscr.addstr(6, 0, "Current idle time: {0:02d}:{1:02d}:{2:02d}".format((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
-                self.stdscr.addstr(7, 0, "Total idle time: {0:02d}:{1:02d}:{2:02d}".format((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
+                #self.stdscr.addstr(6, 0, "Current idle time: {0:02d}:{1:02d}:{2:02d}".format((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
+                #self.stdscr.addstr(7, 0, "Total idle time: {0:02d}:{1:02d}:{2:02d}".format((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
                 self.stdscr.addstr(8, 0, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
                 if self.throttle:
                     self.stdscr.addstr(9, 0, "Throttling...")
@@ -295,7 +295,7 @@ class StreamClient():
                     self.stdscr.addstr(9, 0, "{0:<30s}".format(''))
                     self.stdscr.move(9, 0)
                 self.stdscr.refresh()
-            prev_bytes_written = cur_write_rate
+                #prev_bytes_written = cur_write_rate
             curses.nocbreak(); stdscr.keypad(0); curses.echo()
             curses.endwin()
         except KeyboardInterrupt:

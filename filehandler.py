@@ -31,7 +31,7 @@ class FileHandler():
             target = queue.get()
             self.process_file(target)
         self.indexer.running = False
-        self.proc.join()
+        #self.proc.join()
         return
 
     def process_file(self, target):
