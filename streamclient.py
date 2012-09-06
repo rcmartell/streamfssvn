@@ -264,19 +264,13 @@ class StreamClient():
             cached_phymem = psutil.cached_phymem
             while self.show_status:
                 time.sleep(3)
-                #if ((avail_phymem() + cached_phymem() + phymem_buffers()) / MB) < 512:
                 if len(self.queue) >= 524288:
                     self.throttle = True
+                    time.sleep(3)
                 else:
                     self.throttle = False
                 cur_write_rate = (process.get_io_counters()[3] / MB)
                 duration = int(time.time()) - start_time
-                #if cur_write_rate == prev_bytes_written:
-                #    cur_idle += 1
-                #    total_idle += 1
-                #else:
-                #    cur_idle = 0
-                
                 self.stdscr.addstr(0, 0, "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
                 self.stdscr.addstr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
                 self.stdscr.addstr(2, 0, "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))

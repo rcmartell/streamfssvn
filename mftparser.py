@@ -2,7 +2,7 @@
 
 from __future__ import division
 from mft import *
-import os, time, math, gc
+import os, time, math, gc, sys
 from struct import unpack, pack
 from binascii import b2a_hex
 
@@ -46,19 +46,21 @@ NTFS_EPOCH = 0x19DB1DED53E8000
 NTFS_OEM_ID = 0x4E54465320202020
 
 class MFTParser():
-    def __init__(self, img = None):
+    def __init__(self, img = None, partition = 0):
         self.img = open(img, 'rb')
         self.entries = []
         self.mft_data = None
-        self.partoffset = None
-        # Is the target a partition or an entire disk
-        if unpack(">Q", self.img.read(0xB)[3:])[0] == NTFS_OEM_ID:
-            # Partition
-            self.partoffset = 0
+        self.partoffset = 0
+        if partition == 0:
+            if unpack(">Q", self.img.read(0xB)[3:])[0] != NTFS_OEM_ID:
+                print "Invalid partition specified."
+                sys.exit(-1)
         else:
-            # Raw Disk:
-            # Read starting sector for first partition from MBR
-            self.partoffset = unpack("I", self.img.read(0x1BF)[-4:])[0] * 512
+            self.partoffset = unpack("I", self.img.read(0x1CA + ((partition - 1) * 0x10))[-4:])[0] * 512
+            self.img.seek(self.partoffset)
+            if unpack(">Q", self.img.read(0xB)[3:])[0] != NTFS_OEM_ID:
+                print "Invalid partition specified."
+                sys.exit(-1)
         self.img.seek(self.partoffset)
         """
         Grab FS data from the MBR
@@ -262,7 +264,7 @@ class MFTParser():
                         parent = self.filename.parent
                     # And of course, for data attributes
                     for data in self.data:
-                        if data.name == None:
+                        if data != None and data.name == None:
                             if hasattr(data, 'clusters') and len(data.clusters):
                                 clusters = data.clusters
                             if hasattr(data, 'data_size'):
@@ -415,7 +417,7 @@ class MFTParser():
                         data_runoffset = prev_data_runoffset - ((max_sign[data_runoffset_bytes] + 2) -
                                                                (data_runoffset - max_sign[data_runoffset_bytes]))
             for i in range(data_run_len):
-                attrs.extend(self.parse_nonresident_attr_entries((data_runoffset + i) * self.cluster_size))
+                attrs.extend(self.parse_nonresident_attr_entries((data_runoffset + i)))
             if data[0] == DATA_RUN_END:
                 break
             else:
@@ -429,7 +431,7 @@ class MFTParser():
 
     def parse_nonresident_attr_entries(self, lcn):
         old_offset = self.img.tell()
-        self.img.seek(lcn, os.SEEK_SET)
+        self.img.seek((lcn * self.cluster_size) + self.partoffset, os.SEEK_SET)
         attr_entry = self.img.read(self.cluster_size)
         self.img.seek(old_offset, os.SEEK_SET)
         attr_entries = []
@@ -555,12 +557,16 @@ class MFTParser():
         if not self.getIDXEntries:
             self.offset += entry_len
             return
-        idx_root = self.entry[offset + 32:offset + 32 + entry_len]
+        idx_root = self.entry[offset:offset + entry_len]
         attr_type = idx_root[0:4]
+        name_len = unpack("<B", idx_root[9])[0]
+        name_off = unpack("<H", idx_root[10:12])[0]
+        attr_id = unpack("<H", idx_root[14:16])[0]
         #coll_sort_rule = unpack("<I", idx_root[4:8])[0]
         #clusters_per_entry = int(b2a_hex(unpack("<c", idx_root[12])[0]), 16)
         idx_off = unpack("<I", idx_root[16:20])[0]
         idx_end = unpack("<I", idx_root[20:24])[0]
+        attr_name = idx_root[name_off:name_off + (2 * name_len)]
         #idx_alloc = unpack("<I", idx_root[24:28])[0]
         flags = unpack("<I", idx_root[28:32])[0]
         idx_entries = []
@@ -590,17 +596,19 @@ class MFTParser():
         
     def parse_idx_alloc(self, offset):
         idx_alloc_len = unpack("<I", self.entry[offset + 4:offset + 8])[0]
+        idx_alloc = self.entry[offset:offset + idx_alloc_len]
         if not self.getIDXEntries:
             self.offset += idx_alloc_len
             return
-        #name_len = unpack("<B", self.entry[offset + 9])[0]
-        #name_off = unpack("<H", self.entry[offset + 10:offset + 12])[0]
-        #flags = unpack("<H", self.entry[offset + 12:offset + 14])[0]
-        #attr_id = unpack("<H", self.entry[offset + 14:offset + 16])[0]
-        #start_vcn = unpack("<Q", self.entry[offset + 16:offset + 24])[0]
-        #end_vcn = unpack("<Q", self.entry[offset + 24:offset + 32])[0]
-        data_run_off = unpack("<H", self.entry[offset + 32:offset + 34])[0]
-        data_run_len = unpack("<Q", self.entry[offset + 40:offset + 48])[0]
+        name_len = unpack("<B", idx_alloc[9])[0]
+        name_off = unpack("<H", idx_alloc[10:12])[0]
+        flags = unpack("<H", idx_alloc[12:14])[0]
+        attr_id = unpack("<H", idx_alloc[14:16])[0]
+        start_vcn = unpack("<Q", idx_alloc[16:24])[0]
+        end_vcn = unpack("<Q", idx_alloc[24:32])[0]
+        data_run_off = unpack("<H", idx_alloc[32:34])[0]
+        data_run_len = unpack("<Q", idx_alloc[40:48])[0]
+        attr_name = idx_alloc[name_off:name_off + (2 * name_len)]
         if data_run_len == 0:
             self.offset += idx_alloc_len
             return
@@ -628,7 +636,7 @@ class MFTParser():
                         data_runoffset = prev_data_runoffset - ((max_sign[data_runoffset_bytes] + 2) -
                                                                (data_runoffset - max_sign[data_runoffset_bytes]))
             for i in range(data_run_len):
-                entries.extend(self.parse_idx_block((data_runoffset + i) * self.cluster_size))
+                entries.extend(self.parse_idx_record((data_runoffset + i)))
             if data[0] == DATA_RUN_END:
                 break
             else:
@@ -639,28 +647,27 @@ class MFTParser():
         self.offset += idx_alloc_len
         return IDX_ALLOC(entries)
 
-    def parse_idx_block(self, lcn):
+    def parse_idx_record(self, lcn):
         old_offset = self.img.tell()
-        self.img.seek(lcn, os.SEEK_SET)
-        idx_block = self.img.read(self.cluster_size)
-        self.img.seek(old_offset, os.SEEK_SET)
-        fixup_arr_off = unpack("<H", idx_block[4:6])[0] + 2
-        fixup_arr_len = unpack("<H", idx_block[6:8])[0] + 1
+        self.img.seek((lcn * self.cluster_size) + self.partoffset, os.SEEK_SET)
+        idx_record = self.img.read(self.cluster_size)
+        self.img.seek(old_offset)
+        fixup_arr_off = unpack("<H", idx_record[4:6])[0] + 2
+        fixup_arr_len = unpack("<H", idx_record[6:8])[0] + 1
         #logfile_seq_num = unpack("<Q", idx_buffer[8:16])[0]
-        #vcn = unpack("<Q", idx_block[16:24])[0]
+        vcn = unpack("<Q", idx_record[16:24])[0]
         sec_end = self.sector_size - 2
-        idx_block = list(idx_block)
+        idx_record = list(idx_record)
         for i in range(0, fixup_arr_len, 2):
-            idx_block[sec_end] = idx_block[fixup_arr_off + i]
-            idx_block[sec_end + 1] = idx_block[fixup_arr_off + i + 1]
+            idx_record[sec_end] = idx_record[fixup_arr_off + i]
+            idx_record[sec_end + 1] = idx_record[fixup_arr_off + i + 1]
             sec_end += self.sector_size
-        idx_block = pack("<%dc" % len(idx_block), *idx_block)
-        idx_off = unpack("<I", idx_block[24:28])[0] + 24
-        idx_end = unpack("<I", idx_block[28:32])[0] + 24
-        #idx_alloc = unpack("<I", idx_block[32:36])[0] + 24
-        #flags = unpack("<I", idx_block[36:40])[0]
+        idx_record = pack("<%dc" % len(idx_record), *idx_record)
+        idx_off = unpack("<I", idx_record[24:28])[0] + 24
+        idx_end = unpack("<I", idx_record[28:32])[0] + 24
+        #flags = unpack("<I", idx_record[36:40])[0]
         idx_entries = []
-        entry = idx_block[idx_off:]
+        entry = idx_record[idx_off:]
         offset = 0
         while offset < idx_end - 24:
             mft_ref = unpack("<Q", entry[offset:offset + 8])[0] & 0xFFFFFFFF
@@ -708,22 +715,26 @@ class MFTParser():
 
     def parse_data(self, offset, fullParse = False, quickstat = True):
         clusters = []
-        res_data = None
         name = None
+        res_data = None
         start_vcn = None
         end_vcn = None
         file_fragmented = False
         prev_data_runoffset = 0
         max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
         data_len = unpack("<I", self.entry[offset + 4:offset + 8])[0]
-        if quickstat:
-            self.offset += data_len
-            return
         data = self.entry[offset:offset + data_len]
         nonresident = int(b2a_hex(unpack("<c", data[8])[0]), 16)
+        name_len = unpack("<B", data[9])[0]
+        name_off = unpack("<H", data[10:12])[0]
+        if name_len != 0:
+            name = data[name_off:name_off + name_len]
         flags = unpack("<H", data[12:14])[0]
         attrs = [key for key in ATTRIBUTES if flags & ATTRIBUTES[key]]
         attr_id = unpack("<H", data[14:16])[0]
+        if quickstat:
+            self.offset += data_len
+            return
         if nonresident:
             start_vcn = unpack("<Q", data[16:24])[0]
             end_vcn = unpack("<Q", data[24:32])[0]
@@ -756,12 +767,9 @@ class MFTParser():
                     prev_data_runoffset = data_runoffset
                     continue
         else:
-            name_len = unpack("<B", data[9])[0]
-            name_off = unpack("<H", data[10:12])[0]
             real_size = unpack("<I", data[12:16])[0]
             alloc_size = unpack("<I", data[16:20])[0]
             content_off = unpack("<H", data[20:22])[0]
-            name = data[name_off:name_off + name_len]
             res_data = data[content_off:]
         self.offset += data_len
         if fullParse == True:

@@ -120,7 +120,7 @@ def print_fsdata(parser):
     print "Number of Sectors: %i" % parser.num_sectors
     print "Number of Clusters: %i" % parser.num_clusters
     print "MFT Entry Size(Bytes): %i" % MFT_ENTRY_SIZE
-    print "$MFT Offset(Bytes): %i" % parser.mft_base_offset
+    print "$MFT Offset(Bytes): %i" % parser.mft_baseoffset
     print "$MFT Offset(Clusters): %i" % (parser.mft_baseoffset / parser.cluster_size)
     print "$MFTMIR Offset(Bytes): %i" % parser.mft_baseoffset
     print "$MFTMIR Offset(Clusters): %i" % (parser.mft_mir_baseoffset / parser.cluster_size)
@@ -152,15 +152,16 @@ if __name__ == "__main__":
     Note: When using this option, the file-type is determined exclusively by extension, so counts may not truly reflect the contents of the system. 
     """)
     argparser.add_argument('-t', '--target', help = "Target image/drive to be parsed.", required = True)
+    argparser.add_argument('-p', '--partition', type = int, help = "Specify which partition is to be parsed. If none is specified target assumed to be a partition.", default = 0) 
     group = argparser.add_mutually_exclusive_group(required = True)
     group.add_argument('-e', '--entry', type = int, help = "Get basic MFT entry data for supplied entry number. Similar to Sleuthkit's istat sans datarun info for ease of viewing. See -d/--data for datarun listings.")
     group.add_argument('-d', '--data', type = int, help = "Get data blocks belonging to file in specified MFT entry.")
     group.add_argument('-f', '--files', help = "Get a summary count of various file-types found on the filesystem.", action = 'store_true')
     group.add_argument('-i', '--info', help = "Get basic volume information. Similar to Sleuthkit's fsstat.", action = 'store_true')
-    group.add_argument('-s', '--search', help = "Find MFT Entry number(s) belonging to files whose names contain the supplied string.")
-    group.add_argument('-c', '--cluster', help = "Map supplied cluster to it's owning file if allocated.")
+    group.add_argument('-s', '--search', type = str, help = "Find MFT Entry number(s) belonging to files whose names contain the supplied string.")
+    group.add_argument('-c', '--cluster', type = int, help = "Map supplied cluster to it's owning file if allocated.")
     args = argparser.parse_args()
-    parser = MFTParser(args.target)
+    parser = MFTParser(args.target, args.partition)
     parser.setup_mft_data()
     opts = vars(args)
 
