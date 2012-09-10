@@ -6,7 +6,7 @@ from summaryWriter import SummaryWriter
 MFT_ENTRY_SIZE = 0x400
 
 
-def getFiletypeStats(parser):
+def get_filesystem_summary(parser):
     summary = SummaryWriter('/home/rob/Documents/streamfs/fsSummary.json')
     for idx in range(len(parser.entries) - 1):
         summary.writeEntry(parser.entries[idx], False)
@@ -70,11 +70,10 @@ def print_idx_root(parser):
 
 def print_idx_alloc(parser):
     print "*****************INDEX ALLOCATION**************"
-    for idx in range(len(parser.idx_alloc.idx_entries[::4])):
-        entries = parser.idx_alloc.idx_entries[idx * 4:idx * 4 + 4]
-        for entry in entries[:-1]:
-            print entry.name + ', ',
-        print entries[-1].name
+    for block in parser.idx_alloc.idx_blocks:
+        for entry in block.idx_entries:
+            print entry.name, entry.mft_ref, entry.parent_ref, entry.real_size
+
     print ''
 
 def print_attr_list(parser):
@@ -170,7 +169,7 @@ if __name__ == "__main__":
             entry_num = int(opts['entry'])
         except:
             entry_num = int(opts['data'])
-        parser.parse_mft(start = entry_num, end = entry_num, fullParse = True, cleanup = False, getFullPaths = False, getIDXEntries = True)
+        parser.parse_mft(start = entry_num, end = entry_num, full_parse = True, cleanup = False, resolve_filepaths = False, parse_index_records = True)
     if opts['entry'] != None:
         if not hasattr(parser, 'data'):
             print "Invalid MFT Entry"
@@ -215,13 +214,13 @@ if __name__ == "__main__":
                 res_data = parser.data[i].res_data
                 print_data(parser.data[i], parser.data[i].clusters, parser.data[i].start_vcn, parser.data[i].end_vcn, True)
     elif opts['files']:
-        parser.parse_mft(fullParse = True, quickstat = False, getIDXEntries = False, getFullPaths = True)
-        getFiletypeStats(parser)
+        parser.parse_mft(full_parse = True, quickstat = False, parse_index_records = False, resolve_filepaths = True)
+        get_filesystem_summary(parser)
     elif opts['info']:
         print_fsdata(parser)
     elif opts['search']:
-        parser.parse_mft(fullParse = True, quickstat = True, getIDXEntries = False, getFullPaths = True)
+        parser.parse_mft(full_parse = True, quickstat = True, parse_index_records = False, resolve_filepaths = True)
         search(parser, opts['search'])
     elif opts['cluster']:
-        parser.parse_mft(fullParse = True, quickstat = False, getIDXEntries = False, getFullPaths = True)
+        parser.parse_mft(full_parse = True, quickstat = False, parse_index_records = False, resolve_filepaths = True)
         cluster_to_file(parser, opts['cluster'])
