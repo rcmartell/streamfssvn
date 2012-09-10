@@ -125,11 +125,12 @@ def print_fsdata(parser):
 def cluster_to_file(parser, cluster):
     for entry in parser.entries:
         if int(cluster) == entry.entry_num:
-            print "Cluster: %s => MFT Entry: %s => File: %s" % (cluster, entry.entry_num, entry.name)
+            print "Cluster: %s, MFT Entry: %s, File: %s" % (cluster, entry.entry_num, entry.name)
             return
-        if int(cluster) in entry.clusters:
-            print "Cluster: %s => File: %s => MFT Entry: %s" % (cluster, entry.name, entry.entry_num)
-            return
+        if len(entry.clusters):
+            if int(cluster) in reduce(lambda x, y: x + y, [range(idx[0], idx[0] + idx[1]) for idx in entry.clusters]):
+                print "Cluster: %s, File: %s, MFT Entry: %s" % (cluster, entry.name, entry.entry_num)
+                return
     else:
         print "Cluster: %s unallocated" % cluster
 
@@ -219,5 +220,5 @@ if __name__ == "__main__":
         parser.parse_mft(full_parse = True, quickstat = True, parse_index_records = False, resolve_filepaths = True)
         search(parser, opts['search'])
     elif opts['cluster']:
-        parser.parse_mft(full_parse = True, quickstat = False, parse_index_records = False, resolve_filepaths = True)
+        parser.parse_mft(full_parse = True, parse_index_records = False, resolve_filepaths = True)
         cluster_to_file(parser, opts['cluster'])
