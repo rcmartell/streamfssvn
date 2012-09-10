@@ -1,13 +1,13 @@
 #!/usr/bin/python
 from mftparser import MFTParser
 import itertools
-from summaryWriter import SummaryWriter
+from summarywriter import SummaryWriter
 
 MFT_ENTRY_SIZE = 0x400
 
 
-def get_filesystem_summary(parser):
-    summary = SummaryWriter('/home/rob/Documents/streamfs/fsSummary.json')
+def get_filesystem_summary(parser, path):
+    summary = SummaryWriter(path)
     for idx in range(len(parser.entries) - 1):
         summary.writeEntry(parser.entries[idx], False)
     summary.writeEntry(parser.entries[-1], True)
@@ -60,11 +60,8 @@ def print_idx_root(parser):
     if not len(parser.idx_root.idx_entries):
         return
     print "*****************INDEX ROOT**************"
-    for idx in range(len(parser.idx_root.idx_entries[::4])):
-        entries = parser.idx_root.idx_entries[idx * 4:idx * 4 + 4]
-        for entry in entries[:-1]:
-            print entry.name + ', ',
-        print entries[-1].name
+    for entry in parser.idx_root.idx_entries:
+        print entry.name, entry.file_flags, entry.mft_ref, entry.parent_ref, entry.real_size
     print ''
 
 
@@ -72,8 +69,7 @@ def print_idx_alloc(parser):
     print "*****************INDEX ALLOCATION**************"
     for block in parser.idx_alloc.idx_blocks:
         for entry in block.idx_entries:
-            print entry.name, entry.mft_ref, entry.parent_ref, entry.real_size
-
+            print entry.name, entry.file_flags, entry.mft_ref, entry.parent_ref, entry.real_size
     print ''
 
 def print_attr_list(parser):
@@ -85,7 +81,8 @@ def print_attr_list(parser):
 def print_data(data, clusters, start_vcn, end_vcn, show_clusters = False):
     print "******************DATA INFO******************"
     print "Attribute ID:                    %i" % data.attr_id
-    print "Attribute Name:                  %s" % data.name
+    if hasattr(data, 'name') and data.name != None:
+        print "Attribute Name:                  %s" % data.name
     print "Flags:                           %s" % data.flags
     print "Allocated size:                  %i" % data.alloc_size
     print "Actual size:                     %i" % data.data_size
@@ -155,7 +152,7 @@ if __name__ == "__main__":
     group = argparser.add_mutually_exclusive_group(required = True)
     group.add_argument('-e', '--entry', type = int, help = "Get basic MFT entry data for supplied entry number. Similar to Sleuthkit's istat sans datarun info for ease of viewing. See -d/--data for datarun listings.")
     group.add_argument('-d', '--data', type = int, help = "Get data blocks belonging to file in specified MFT entry.")
-    group.add_argument('-f', '--files', help = "Get a summary count of various file-types found on the filesystem.", action = 'store_true')
+    group.add_argument('-f', '--files', type = str, help = "Writes filesystem summary containing basic info (entry num, filename, parent path, mac times, filesize, data clusters and resident data if present) for every file on the filesystem to the specified output filename.")
     group.add_argument('-i', '--info', help = "Get basic volume information. Similar to Sleuthkit's fsstat.", action = 'store_true')
     group.add_argument('-s', '--search', type = str, help = "Find MFT Entry number(s) belonging to files whose names contain the supplied string.")
     group.add_argument('-c', '--cluster', type = int, help = "Map supplied cluster to it's owning file if allocated.")
@@ -214,8 +211,8 @@ if __name__ == "__main__":
                 res_data = parser.data[i].res_data
                 print_data(parser.data[i], parser.data[i].clusters, parser.data[i].start_vcn, parser.data[i].end_vcn, True)
     elif opts['files']:
-        parser.parse_mft(full_parse = True, quickstat = False, parse_index_records = False, resolve_filepaths = True)
-        get_filesystem_summary(parser)
+        parser.parse_mft(full_parse = True, quickstat = False, parse_index_records = False, resolve_filepaths = True, get_mactimes = True)
+        get_filesystem_summary(parser, opts['files'])
     elif opts['info']:
         print_fsdata(parser)
     elif opts['search']:
