@@ -136,8 +136,8 @@ def cluster_to_file(parser, cluster):
 def search(parser, name):
     for entry in parser.entries:
         if entry.name.__contains__(name):
-            print "MFT Entry: %d" % entry.entry_num
-            print "Entry Name: %s" % entry.name
+            print "MFT Entry: %d" % entry.entry_num, "Entry Name: %s" % entry.name
+            #print "Entry Name: %s" % entry.name
 
 
 if __name__ == "__main__":
