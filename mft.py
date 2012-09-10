@@ -14,10 +14,13 @@ class MFT_ENTRY():
         self.bitmap = bitmap
 
 class FILE_RECORD(object):
-    def __init__(self, name=None, entry_num=0, parent=None, size=None, clusters=None, res_data=None):
+    def __init__(self, name=None, entry_num=0, parent=None, ctime=None, mtime=None, atime=None, size=None, clusters=None, res_data=None):
         self.name = name
         self.entry_num = entry_num
         self.parent = parent
+        self.ctime = ctime
+        self.mtime = mtime
+        self.atime = atime
         self.size = size
         self.clusters = clusters
         self.res_data = res_data
@@ -61,22 +64,48 @@ class OBJECT_ID():
     def __init__(self, object_id=None):
         self.object_id = object_id
 
-class IDX_ROOT():
-    def __init__(self, attr_type=None, idx_entries=None):
+class INDEX_ROOT():
+    def __init__(self, attr_name=None, attr_flags=None, attr_id=None, attr_type=None, idx_size=None, header_flags=None, idx_entries=[]):
+        self.attr_name = attr_name
+        self.attr_flags = attr_flags
+        self.attr_id = attr_id
         self.attr_type = attr_type
+        self.idx_size = idx_size
+        self.header_flags = header_flags
         self.idx_entries = idx_entries
 
-class IDX_ALLOC():
-    def __init__(self, idx_entries=None):
+class INDEX_ALLOC():
+    def __init__(self, attr_name=None, attr_flags=None, attr_id=None, start_vcn=None, end_vcn=None, data_size=None, idx_blocks=[]):
+        self.attr_name = attr_name
+        self.attr_flags = attr_flags
+        self.attr_id = attr_id
+        self.start_vcn = start_vcn
+        self.end_vcn = end_vcn
+        self.data_size = data_size
+        self.idx_blocks = idx_blocks
+        
+
+class INDEX_BLOCK():
+    def __init__(self, log_seq = None, idx_block_vcn = None, idx_size = None, alloc_size = None, header_flags = None, idx_entries=[]):
+        self.log_seq = log_seq
+        self.idx_block_vcn = idx_block_vcn
+        self.idx_size = idx_size
+        self.alloc_size = alloc_size
+        self.header_flags = header_flags
         self.idx_entries = idx_entries
 
-class IDX_ENTRY():
-    def __init__(self, entry_len=None, content_len=None, flags=None, content=None, vcn=None):
-        self.entry_len = entry_len
-        self.content_len = content_len
+class INDEX_ENTRY():
+    def __init__(self, mft_ref=None, flags=None, parent_ref=None, ctime=None, mtime=None, atime=None, alloc_size=None, real_size=None, file_flags=None, name=None):
+        self.mft_ref = mft_ref
         self.flags = flags
-        self.content = content
-        self.vcn = vcn
+        self.parent_ref = parent_ref
+        self.ctime = ctime
+        self.mtime = mtime
+        self.atime = atime
+        self.alloc_size = alloc_size
+        self.real_size = real_size
+        self.file_flags = file_flags
+        self.name = name
 
 class SECURE_FILE():
     def __init__(self, sii=None, sdh=None, sds=None):
@@ -96,7 +125,7 @@ class ATTR_LIST_ENTRY():
 
 class DATA():
     def __init__(self, attr_type=None, nonresident=None, flags=None, attr_id=None, start_vcn=None, end_vcn=None,
-                 alloc_size=None, data_size=None, clusters=None, file_fragmented=False, res_data=None, name=None):
+                 alloc_size=None, data_size=None, clusters=None, file_fragmented=False, res_data=None, attr_name=None):
         self.attr_type = attr_type
         self.nonresident = nonresident
         self.flags = flags
@@ -108,7 +137,7 @@ class DATA():
         self.clusters = clusters
         self.file_fragmented = file_fragmented
         self.res_data = res_data
-        self.name = name
+        self.attr_name = attr_name
 
 class BITMAP():
     def __init__(self, bmap=None):
