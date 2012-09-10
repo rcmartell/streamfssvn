@@ -141,7 +141,7 @@ class MFTParser():
     def create_SecurityDescriptorTable(self):
         pass
 
-    def parse_mft(self, start = 0, end = None, full_parse = False, quickstat = False, cleanup = True, resolve_filepaths = True, parse_index_records = False):
+    def parse_mft(self, start = 0, end = None, full_parse = False, quickstat = False, cleanup = True, resolve_filepaths = True, parse_index_records = False, get_mactimes = False):
         """
         The main method/function of the parser. It accepts a 'start' entry if only a single MFT entry's data is desired (in which case the 'end' parameter is set to the same
         value as 'start'). The optional parameters 'full_parse', 'quickstat' and 'cleanup' are used to somewhat fine-tune the parser so that no more parsing/processing occurs
@@ -159,6 +159,7 @@ class MFTParser():
         self.resolve_filepaths = resolve_filepaths
         self.parse_index_records = parse_index_records
         self.cleanup = cleanup
+        self.get_mactimes = get_mactimes
         while True:
             try:
                 idx, vcn = math.modf((count * MFT_ENTRY_SIZE) / self.cluster_size)
@@ -174,7 +175,7 @@ class MFTParser():
                 clusters = []
                 self.entry_num = 0
                 self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
-                # ctime, mtime, atime = None, None, None
+                ctime, mtime, atime = None, None, None
                 flags = []
                 name, parent, real_size, data_size, size = None, None, 0, 0, 0
                 if self.entry[0:4] == MFT_ENTRY_SIG:
@@ -244,16 +245,15 @@ class MFTParser():
 
                     # To Prevent NoneType Errors if a
                     # standard info attribute is not present.
-                    """
-                    if hasattr(self.std_info, 'ctime'):
-                        ctime = self.std_info.ctime
-                    if hasattr(self.std_info, 'mtime'):
-                        mtime = self.std_info.mtime
-                    if hasattr(self.std_info, 'atime'):
-                        atime = self.std_info.atime
-                    """
-                    # Likewise for filename attributes
+                    if self.get_mactimes:
+                        if hasattr(self.std_info, 'ctime'):
+                            ctime = self.std_info.ctime
+                        if hasattr(self.std_info, 'mtime'):
+                            mtime = self.std_info.mtime
+                        if hasattr(self.std_info, 'atime'):
+                            atime = self.std_info.atime
 
+                    # Likewise for filename attributes
                     if hasattr(self.filename, 'name'):
                         name = self.filename.name
                     if hasattr(self.filename, 'flags'):
@@ -264,7 +264,7 @@ class MFTParser():
                         parent = self.filename.parent
                     # And of course, for data attributes
                     for data in self.data:
-                        if data != None and data.name == None:
+                        if data != None and data.attr_name == None:
                             if hasattr(data, 'clusters') and len(data.clusters):
                                 clusters = data.clusters
                             if hasattr(data, 'data_size'):
@@ -281,7 +281,7 @@ class MFTParser():
                             size = data_size
                         else:
                             size = real_size
-                        self.entries.append(FILE_RECORD(name = name, entry_num = self.entry_num, parent = parent, size = size, clusters = clusters, res_data = res_data))
+                        self.entries.append(FILE_RECORD(name = name, entry_num = self.entry_num, parent = parent, ctime = ctime, mtime = mtime, atime = atime, size = size, clusters = clusters, res_data = res_data))
                     inode += 1
                     count += 1
                     if self.cleanup:
@@ -558,43 +558,46 @@ class MFTParser():
         attr_type = idx_root[0:4]
         name_len = unpack("<B", idx_root[9])[0]
         name_off = unpack("<H", idx_root[10:12])[0]
+        attr_name = idx_root[name_off:name_off + (2 * name_len)].replace('\x00', '')
         attr_flags = unpack("<H", idx_root[12:14])[0]
         attr_id = unpack("<H", idx_root[14:16])[0]
+        attr_data_size = unpack("<I", idx_root[16:20])[0]
+        attr_data_offset = unpack("<H", idx_root[20:22])[0]
+        idx_root = idx_root[attr_data_offset:]
         #coll_sort_rule = unpack("<I", idx_root[4:8])[0]
         #clusters_per_entry = int(b2a_hex(unpack("<c", idx_root[12])[0]), 16)
         first_idx_offset = unpack("<I", idx_root[16:20])[0]
         index_size = unpack("<I", idx_root[20:24])[0]
         index_alloc_size = unpack("<I", idx_root[24:28])[0]
-        attr_name = idx_root[name_off:name_off + (2 * name_len)]
         header_flags = unpack("<I", idx_root[28:32])[0]
         idx_entries = []
         idx_buffer = idx_root[first_idx_offset + 16:]
-        if len(idx_buffer) == 16:
-            self.entry_offset += attr_len
-            return INDEX_ROOT(attr_name, attr_flags, attr_id, attr_type, index_size, header_flags)
         offset = 0
         while True:
+            flags = unpack("<I", idx_buffer[offset + 12:offset + 16])[0]
+            if flags & 0x2:
+                break
             mft_ref = unpack("<Q", idx_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
             entry_len = unpack("<H", idx_buffer[offset + 8:offset + 10])[0]
             key_len = unpack("<H", idx_buffer[offset + 10:offset + 12])[0]
-            flags = unpack("<I", idx_buffer[offset + 12:offset + 16])[0]
             parent_ref = unpack("<Q", idx_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
-            if not flags & 0x1:
-                entry_ctime = time.ctime((unpack("<Q", idx_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
-                entry_mtime = time.ctime((unpack("<Q", idx_buffer[offset + 32:offset + 40])[0] - NTFS_EPOCH) / 10 ** (7))
-                entry_atime = time.ctime((unpack("<Q", idx_buffer[offset + 40:offset + 48])[0] - NTFS_EPOCH) / 10 ** (7))
-                entry_alloc_size = unpack("<Q", idx_buffer[offset + 48:offset + 56])[0]
-                entry_real_size = unpack("<Q", idx_buffer[offset + 56:offset + 64])[0]
-                entry_flags = [key for key in ATTRIBUTES if unpack("<I", idx_buffer[offset + 64:offset + 68])[0] & ATTRIBUTES[key]]
-                entry_name_len = unpack("<B", idx_buffer[offset+68])[0]
-                entry_namespace = unpack("<B", idx_buffer[offset+69])[0]
-                if entry_namespace == 2:
-                    offset += entry_len
-                    continue
-                entry_filename = idx_buffer[offset + 69:offset + 69 + (2 * entry_name_len)].replace('\x00', '')
-                idx_entries.append(INDEX_ENTRY(mft_ref, flags, parent_ref, entry_ctime, entry_mtime, entry_atime, entry_alloc_size, entry_real_size, entry_flags, entry_filename, None))
+            entry_ctime = time.ctime((unpack("<Q", idx_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
+            entry_mtime = time.ctime((unpack("<Q", idx_buffer[offset + 32:offset + 40])[0] - NTFS_EPOCH) / 10 ** (7))
+            #entry_mft_mod_time = time.ctime((unpack("<Q", idx_buffer[40:48])[0] - NTFS_EPOCH) / 10**(7))
+            entry_atime = time.ctime((unpack("<Q", idx_buffer[offset + 48:offset + 56])[0] - NTFS_EPOCH) / 10 ** (7))
+            entry_alloc_size = unpack("<Q", idx_buffer[offset + 56:offset + 64])[0]
+            entry_real_size = unpack("<Q", idx_buffer[offset + 64:offset + 72])[0]
+            entry_flags = [key for key in ATTRIBUTES if unpack("<I", idx_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
+            entry_name_len = unpack("<B", idx_buffer[offset+80])[0]
+            entry_namespace = unpack("<B", idx_buffer[offset+81])[0]
+            if entry_namespace == 2:
                 offset += entry_len
-            elif flags & 0x1:
+                continue
+            entry_filename = idx_buffer[offset + 82:offset + 82 + (2 * entry_name_len)].replace('\x00', '')
+            idx_entries.append(INDEX_ENTRY(mft_ref = mft_ref, flags = flags, parent_ref = parent_ref, ctime = entry_ctime, 
+                                    mtime = entry_mtime, atime = entry_atime, alloc_size = entry_alloc_size, real_size = entry_real_size, file_flags = entry_flags, name = entry_filename))
+            offset += entry_len
+            if flags & 0x2:
                 break
         self.entry_offset += attr_len
         return INDEX_ROOT(attr_name, attr_flags, attr_id, attr_type, index_size, header_flags, idx_entries)
@@ -670,29 +673,29 @@ class MFTParser():
         index_buffer = index_block[first_idx_offset:]
         offset = 0
         while True:
+            flags = unpack("<I", index_buffer[offset + 12:offset + 16])[0]
+            if flags & 0x2:
+                break
             mft_ref = unpack("<Q", index_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
             entry_len = unpack("<H", index_buffer[offset + 8:offset + 10])[0]
             key_len = unpack("<H", index_buffer[offset + 10:offset + 12])[0]
-            flags = unpack("<I", index_buffer[offset + 12:offset + 16])[0]
+            #flags = unpack("<I", index_buffer[offset + 12:offset + 16])[0]
             parent_ref = unpack("<Q", index_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
-            if not (flags & 0x1) and not (flags & 0x2):
-                entry_ctime = time.ctime((unpack("<Q", index_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
-                entry_mtime = time.ctime((unpack("<Q", index_buffer[offset + 40:offset + 48])[0] - NTFS_EPOCH) / 10 ** (7))
-                entry_atime = time.ctime((unpack("<Q", index_buffer[offset + 48:offset + 56])[0] - NTFS_EPOCH) / 10 ** (7))
-                entry_alloc_size = unpack("<Q", index_buffer[offset + 56:offset + 64])[0]
-                entry_real_size = unpack("<Q", index_buffer[offset + 64:offset + 72])[0]
-                entry_flags = [key for key in ATTRIBUTES if unpack("<I", index_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
-                entry_name_len = unpack("<B", index_buffer[offset+80])[0]
-                entry_namespace = unpack("<B", index_buffer[offset+81])[0]
-                #if entry_namespace == 2:
-                #    offset += entry_len
-                #    continue
-                entry_filename = index_buffer[offset + 82:offset + 82 + (2 * entry_name_len)].replace('\x00', '')
-                idx_entries.append(INDEX_ENTRY(mft_ref = mft_ref, flags = flags, parent_ref = parent_ref, ctime=entry_ctime, mtime=entry_mtime, atime=entry_atime, alloc_size=entry_alloc_size, 
-                    real_size=entry_real_size, file_flags=entry_flags, name=entry_filename))
+            entry_ctime = time.ctime((unpack("<Q", index_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
+            entry_mtime = time.ctime((unpack("<Q", index_buffer[offset + 40:offset + 48])[0] - NTFS_EPOCH) / 10 ** (7))
+            entry_atime = time.ctime((unpack("<Q", index_buffer[offset + 48:offset + 56])[0] - NTFS_EPOCH) / 10 ** (7))
+            entry_alloc_size = unpack("<Q", index_buffer[offset + 56:offset + 64])[0]
+            entry_real_size = unpack("<Q", index_buffer[offset + 64:offset + 72])[0]
+            entry_flags = [key for key in ATTRIBUTES if unpack("<I", index_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
+            entry_name_len = unpack("<B", index_buffer[offset+80])[0]
+            entry_namespace = unpack("<B", index_buffer[offset+81])[0]
+            if entry_namespace == 2:
                 offset += entry_len
-            else:
-                break
+                continue
+            entry_filename = index_buffer[offset + 82:offset + 82 + (2 * entry_name_len)].replace('\x00', '')
+            idx_entries.append(INDEX_ENTRY(mft_ref = mft_ref, flags = flags, parent_ref = parent_ref, ctime=entry_ctime, mtime=entry_mtime, atime=entry_atime, alloc_size=entry_alloc_size, 
+                    real_size=entry_real_size, file_flags=entry_flags, name=entry_filename))
+            offset += entry_len
         return INDEX_BLOCK(log_seq, index_block_vcn, index_size, header_flags, idx_entries = idx_entries)
 
     def parse_data(self, offset, full_parse = False, quickstat = True):
