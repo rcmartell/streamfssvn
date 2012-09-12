@@ -6,6 +6,7 @@ from threading import Thread, Lock
 import warnings, gc, sys, os
 from xml.etree import ElementTree as tree
 from collections import deque
+from Queue import Queue
 warnings.filterwarnings("ignore")
 import Pyro4.core
 

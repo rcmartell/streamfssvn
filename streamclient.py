@@ -285,19 +285,19 @@ class StreamClient():
                 #self.stdscr.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format
                 #                      ((get_memory_info()[0] / MB), (total_mem / MB), ((avail_phymem() +
                 #                      cached_phymem() + phymem_buffers()) / MB), ''))
-                self.stdscr.addstr(4, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
+                self.stdscr.addstr(3, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
                 try:
-                    self.stdscr.addstr(5, 0, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
+                    self.stdscr.addstr(4, 0, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
                 except:
-                    self.stdscr.addstr(5, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
+                    self.stdscr.addstr(4, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
                 #self.stdscr.addstr(6, 0, "Current idle time: {0:02d}:{1:02d}:{2:02d}".format((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
                 #self.stdscr.addstr(7, 0, "Total idle time: {0:02d}:{1:02d}:{2:02d}".format((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
-                self.stdscr.addstr(8, 0, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
+                self.stdscr.addstr(5, 0, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
                 if self.throttle:
-                    self.stdscr.addstr(9, 0, "Throttling...")
+                    self.stdscr.addstr(6, 0, "Throttling...")
                 else:
-                    self.stdscr.addstr(9, 0, "{0:<30s}".format(''))
-                    self.stdscr.move(9, 0)
+                    self.stdscr.addstr(6, 0, "{0:<30s}".format(''))
+                    self.stdscr.move(6, 0)
                 self.stdscr.refresh()
                 #prev_bytes_written = cur_write_rate
             curses.nocbreak(); stdscr.keypad(0); curses.echo()
