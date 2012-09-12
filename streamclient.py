@@ -25,8 +25,8 @@ class StreamClient():
         self.throttle = False
         self.finished = False
         self.queue = deque()
-        self.setup_status_ui()
         self.setup_folders()
+        self.setup_status_ui()
         self.setup_file_handler()
 
     def setup_status_ui(self):
@@ -38,17 +38,24 @@ class StreamClient():
 
     def setup_folders(self):
         os.chdir(self.path)
-        if os.path.isdir('Incomplete'):
-            shutil.rmtree('Incomplete')
-        os.mkdir('Incomplete')
-        if os.path.isdir('Complete'):
-            shutil.rmtree('Complete')
-        os.mkdir('Complete')
-        os.chdir('Incomplete')
+        if os.path.isdir('{0}{1}Incomplete'.format(self.path, os.path.sep)):
+            answ = raw_input('{0}{1}Incomplete'.format(self.path, os.path.sep) +  "already exists. Delete Y/[N]")
+            if answ.upper() == 'Y':
+                shutil.rmtree('Incomplete')
+                os.mkdir('{0}{1}Incomplete'.format(self.path, os.path.sep))
+        else:
+            os.mkdir('{0}{1}Incomplete'.format(self.path, os.path.sep))
+        if os.path.isdir('{0}{1}Complete'.format(self.path, os.path.sep):
+            answ = raw_input('{0}{1}Complete'.format(self.path, os.path.sep) +  "already exists. Delete Y/[N]")
+            if answ.upper() == 'Y':
+                shutil.rmtree('Complete')
+                os.mkdir('Complete')
+        else:
+            os.mkdir('Complete')
 
     def set_cluster_size(self, size):
         """
-        Set by Image Server
+        Set by Image Server1
         """
         self.cluster_size = int(size)
         return
