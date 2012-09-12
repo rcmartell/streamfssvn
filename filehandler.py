@@ -12,8 +12,10 @@ class FileHandler():
         self.log = open(path + os.path.sep + LOG_FILE, 'wb')
         with open(config_path + os.path.sep + CONFIG_FILE) as fh:
             config = tree.fromstring(fh.read())
+        print config
         self.types, self.dirs = {}, {}
         for elem in config.getchildren()[0].findall('type'):
+            print elem
             if elem.get('include') == 'true':
                 filetype = elem.get('name')
                 self.dirs[filetype] = '{0}{1}Complete{1}{2}'.format(path, os.path.sep, elem.get('directory'))
