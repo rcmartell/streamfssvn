@@ -122,7 +122,6 @@ class StreamServer():
 
 def main():
     server = StreamServer(sys.argv[1], sys.argv[2])
-    server.get_types()
     server.parse_fs_metadata()
     ns = Pyro4.locateNS()
     clients = []
