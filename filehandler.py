@@ -17,7 +17,10 @@ class FileHandler():
             if elem.get('include') == 'true':
                 filetype = elem.get('name')
                 self.dirs[filetype] = '{0}{1}Complete{1}{2}'.format(path, os.path.sep, elem.get('directory'))
-                os.mkdir(self.dirs[filetype])
+                try:
+                    os.mkdir(self.dirs[filetype])
+                except:
+                    pass
                 if filetype != 'misc':
                     with open(config_path + os.path.sep + elem.text) as fh:
                         self.types[filetype] = fh.read().split()
