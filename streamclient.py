@@ -277,7 +277,7 @@ class StreamClient():
                     time.sleep(3)
                 else:
                     self.throttle = False
-                cur_write_rate = (process.get_io_counters()[3] / MB)
+                cur_write_rate = (process.get_io_counters()[1] / MB)
                 duration = int(time.time()) - start_time
                 self.stdscr.addstr(0, 0, "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
                 self.stdscr.addstr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
