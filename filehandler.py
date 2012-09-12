@@ -12,17 +12,15 @@ class FileHandler():
         self.log = open(path + os.path.sep + LOG_FILE, 'wb')
         with open(config_path + os.path.sep + CONFIG_FILE) as fh:
             config = tree.fromstring(fh.read())
-        print config
         self.types, self.dirs = {}, {}
         for elem in config.getchildren()[0].findall('type'):
-            print "WEE", elem.text
             if elem.get('include') == 'true':
                 filetype = elem.get('name')
-                print filetype
                 self.dirs[filetype] = '{0}{1}Complete{1}{2}'.format(path, os.path.sep, elem.get('directory'))
                 os.mkdir(self.dirs[filetype])
-                with open(config_path + os.path.sep + elem.text) as fh:
-                    self.types[filetype] = fh.read().split()
+                if filetype != 'misc':
+                    with open(config_path + os.path.sep + elem.text) as fh:
+                        self.types[filetype] = fh.read().split()
         self.running = True
         #self.indexer_queue = Queue()
         #self.indexer = TextIndexer()

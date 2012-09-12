@@ -6,7 +6,7 @@
 		<type name='images' include='true' directory='Images'>image_extensions</type>
 		<type name='audio' include='true' directory='Audio'>audio_extensions</type>
 		<type name='executables' include='true' directory='Executables'>executable_extensions</type>
-		<type name='misc' include='true' directory='Misc'>none</type>
+		<type name='misc' include='true' directory='Misc'/>
 	</filetypes>
 	<handlers>
 		<handler type='indexer' enable='true' url='http://localhost:8983/solr'>
