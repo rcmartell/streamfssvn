@@ -40,14 +40,14 @@ class StreamClient():
     def setup_folders(self):
         os.chdir(self.path)
         if os.path.isdir('{0}{1}Incomplete'.format(self.path, os.path.sep)):
-            answ = raw_input('{0}{1}Incomplete'.format(self.path, os.path.sep) +  "already exists. Delete Y/[N]")
+            answ = raw_input('{0}{1}Incomplete'.format(self.path, os.path.sep) +  " already exists. Delete Y/[N]")
             if answ.upper() == 'Y':
                 shutil.rmtree('Incomplete')
                 os.mkdir('{0}{1}Incomplete'.format(self.path, os.path.sep))
         else:
             os.mkdir('{0}{1}Incomplete'.format(self.path, os.path.sep))
         if os.path.isdir('{0}{1}Complete'.format(self.path, os.path.sep)):
-            answ = raw_input('{0}{1}Complete'.format(self.path, os.path.sep) +  "already exists. Delete Y/[N]")
+            answ = raw_input('{0}{1}Complete'.format(self.path, os.path.sep) +  " already exists. Delete Y/[N]")
             if answ.upper() == 'Y':
                 shutil.rmtree('Complete')
                 os.mkdir('Complete')
