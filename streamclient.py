@@ -15,7 +15,7 @@ class StreamClient():
     def __init__(self, path, name, config_path, ns, daemon):
         self.path = path
         self.name = name
-        self.config_path = config
+        self.config_path = config_path
         self.ns = ns
         self.daemon = daemon
         self.files = {}
