@@ -21,14 +21,6 @@ class StreamServer():
         self.types = []
         self.widgets = ['Progress: ', Percentage(), ' ', Bar(), ' ', ETA(), ' ', FileTransferSpeed()]
 
-    def get_types(self):
-         with open('config/config.xml') as fh:
-            config = tree.fromstring(fh.read())
-         for elem in config.getchildren()[0].findall('type'):
-            if elem.get('include') == 'true':
-                with open('config' + os.path.sep + elem.text) as fh:
-                    self.types.extend(fh.read().split())
-
     def parse_fs_metadata(self, fstype = 'ntfs'):
         print 'Parsing filesystem metadata...',
         sys.stdout.flush()
