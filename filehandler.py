@@ -8,9 +8,9 @@ CONFIG_FILE = 'config.xml'
 LOG_FILE = 'handler.log'
 
 class FileHandler():
-    def __init__(self, path):
+    def __init__(self, path, config_path):
         self.log = open(path + os.path.sep + LOG_FILE, 'wb')
-        with open(path + os.path.sep + CONFIG_PATH + os.path.sep + CONFIG_FILE) as fh:
+        with open(config_path + os.path.sep + CONFIG_FILE) as fh:
             config = tree.fromstring(fh.read())
         self.types, self.dirs = {}, {}
         for elem in config.getchildren()[0].findall('type'):
@@ -18,7 +18,7 @@ class FileHandler():
                 filetype = elem.get('name')
                 self.dirs[filetype] = '{0}{1}Complete{1}{2}'.format(path, os.path.sep, elem.get('directory'))
                 os.mkdir(self.dirs[filetype])
-                with open(path + os.path.sep + CONFIG_PATH + os.path.sep + elem.text) as fh:
+                with open(config_path + os.path.sep + elem.text) as fh:
                     self.types[filetype] = fh.read().split()
         self.running = True
         #self.indexer_queue = Queue()

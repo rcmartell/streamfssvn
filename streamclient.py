@@ -12,9 +12,10 @@ QUEUE_SIZE = 8192
 MB = 1024 * 1024
 
 class StreamClient():
-    def __init__(self, path, name, ns, daemon):
+    def __init__(self, path, name, config_path, ns, daemon):
         self.path = path
         self.name = name
+        self.config_path = config
         self.ns = ns
         self.daemon = daemon
         self.files = {}
@@ -69,7 +70,7 @@ class StreamClient():
         return
 
     def setup_file_handler(self):
-        self.file_handler = FileHandler(self.path)
+        self.file_handler = FileHandler(self.path, self.config_path)
         self.file_queue = Queue()
         self.proc = Process(target=self.file_handler.handler_queue, args=(self.file_queue,))
         self.proc.daemon = True
@@ -314,10 +315,12 @@ def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('-p', '--path', help = "Root directory for client. Files will be written and processed here. Defaults to the current working directory if no value is specified.", required = False)
     argparser.add_argument('-i', '--id', help = "Unique name/identifier used to register the client with the Pyro nameserver.", required = True)
+    argparser.add_argument('-c', '--config', help = "Path to config directory.", required = False)
     args = argparser.parse_args()
     opts = vars(args)
     name = opts['id']
     path = opts['path']
+    config_path = opts['config']
     if path == None:
         path = os.path.abspath(os.path.curdir)
     elif not os.path.lexists(path):
@@ -325,10 +328,17 @@ def main():
         sys.exit(-1)
     if path.endswith(os.path.sep):
         path = path[:-1]
+    if config_path == None:
+        config_path = os.path.abspath(os.path.curdir) + os.path.sep + 'config'
+    elif not os.path.lexists(config_path):
+        print "Invalid path specified."
+        sys.exit(-1)
+    if config_path.endswith(os.path.sep):
+        config_path = config[:-1]
     # Start Pyro daemon
     daemon = Pyro4.core.Daemon(socket.gethostname())
     ns = Pyro4.naming.locateNS()
-    client = StreamClient(name=name, path=path, ns=ns, daemon=daemon)
+    client = StreamClient(name=name, path=path, config_path=config_path, ns=ns, daemon=daemon)
     uri = daemon.register(client)
     ns.register(name, uri)
     try:
