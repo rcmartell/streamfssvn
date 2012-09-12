@@ -3,21 +3,22 @@ from multiprocessing import Process, Queue
 from xml.etree import ElementTree as tree
 from textindexer import TextIndexer
 
+CONFIG_PATH = 'config'
+CONFIG_FILE = 'config.xml'
+LOG_FILE = 'handler.log'
+
 class FileHandler():
     def __init__(self, path):
-        self.count = 0
-        self.path = path
-        self.log = open(self.path + os.path.sep + 'filehandler.log', 'wb')
-        with open(self.path + os.path.sep + 'config' + os.path.sep + 'config.xml') as fh:
+        self.log = open(path + os.path.sep + LOG_FILE, 'wb')
+        with open(path + os.path.sep + CONFIG_PATH + os.path.sep + CONFIG_FILE) as fh:
             config = tree.fromstring(fh.read())
-        self.types = {}
-        self.dirs = {}
+        self.types, self.dirs = {}, {}
         for elem in config.getchildren()[0].findall('type'):
             if elem.get('include') == 'true':
                 filetype = elem.get('name')
-                self.dirs[filetype] = '{0}{1}Complete{1}{2}'.format(self.path, os.path.sep, elem.get('directory'))
+                self.dirs[filetype] = '{0}{1}Complete{1}{2}'.format(path, os.path.sep, elem.get('directory'))
                 os.mkdir(self.dirs[filetype])
-                with open(self.path + os.path.sep + 'config' + os.path.sep + elem.text) as fh:
+                with open(path + os.path.sep + CONFIG_PATH + os.path.sep + elem.text) as fh:
                     self.types[filetype] = fh.read().split()
         self.running = True
         #self.indexer_queue = Queue()
@@ -30,22 +31,25 @@ class FileHandler():
         while self.running or not queue.empty():
             target = queue.get()
             self.process_file(target)
-        self.indexer.running = False
-        #self.proc.join()
+        #self.indexer.running = False
         return
 
     def process_file(self, target):
+        ext = os.path.splitext(target)[1][1:].upper()
+        basename = os.path.basename(target)
         for filetype in self.types:
-            if os.path.splitext(target)[1][1:].upper() in self.types[filetype]:
+            if ext in self.types[filetype]:
                 try:
-                    if not os.path.exists(self.dirs[filetype] + os.path.sep + os.path.basename(target)):
-                        path = self.dirs[filetype] + os.path.sep + os.path.basename(target)
-                    else:
-                        path = self.dirs[filetype] + os.path.sep + "[" + str(self.count) + "]" + os.path.basename(target)
-                        self.count += 1
+                    path = self.dirs[filetype] + os.path.sep + basename
                     shutil.move(target, path)
                     #self.indexer_queue.put_nowait(path)
-                    return
                 except:
                     self.log.write("Error moving file: {0}\n".format(target))
-                    return
+                return
+        else:
+            try:
+                path = self.dirs['misc'] + os.path.sep + basename
+                shutil.move(target, path)
+            except:
+                self.log.write("Error moving file: {0}\n".format(target))
+            return

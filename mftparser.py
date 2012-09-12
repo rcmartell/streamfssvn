@@ -180,7 +180,7 @@ class MFTParser():
                 name, parent, real_size, data_size, size = None, None, 0, 0, 0
                 if self.entry[0:4] == MFT_ENTRY_SIG:
                     """ Beginning of MFT Entry """
-                    self.header = self.parse_header()
+                    self.header = self.parse_mft_header()
                     if self.header.mft_base != 0:
                     # Part of a multi-entry data attribute, not a unique File Entry.
                     # It will eventually be included in an Attribute List attribute
@@ -225,7 +225,7 @@ class MFTParser():
                             self.parse_bitmap_attr(self.entry_offset)
 
                         elif self.entry[self.entry_offset:self.entry_offset + 4] == DATA_SIG:
-                            self.data.append(self.parse_data(self.entry_offset, full_parse, quickstat))
+                            self.data.append(self.parse_data_attr(self.entry_offset, full_parse, quickstat))
 
                         elif self.entry[self.entry_offset:self.entry_offset + 4] == INDEX_ROOT_SIG:
                             self.idx_root = self.parse_idx_root(self.entry_offset)
@@ -234,8 +234,8 @@ class MFTParser():
                             self.idx_alloc = self.parse_idx_alloc(self.entry_offset)
 
                         elif self.entry[self.entry_offset:self.entry_offset + 4] == LOG_UTIL_STREAM_SIG:
-                            self.parse_data(self.entry_offset)
-                            #self.log_util = self.parse_data(self.entry_offset)
+                            self.parse_data_attr(self.entry_offset)
+                            #self.log_util = self.parse_data_attr(self.entry_offset)
 
                         elif self.entry[self.entry_offset:self.entry_offset + 4] == END_OF_ENTRY_SIG:
                             break
@@ -316,7 +316,7 @@ class MFTParser():
         return self.entries
 
 
-    def parse_header(self):
+    def parse_mft_header(self):
         """ Parse the Standard MFT Entry header. All entries should begin with this header. SHOULD.. """
         # First things first, we need to deal with the fixup values. Grab the saved values from the fixup
         # array and place them where they belong, namely the last 2 bytes of each sector.
@@ -386,13 +386,13 @@ class MFTParser():
 
     def parse_attr_list_nonresident(self, offset, attr_list_len):
         init_offset = self.img.tell()
-        #attr_id = unpack("<H", self.entry[offset + 14:offset + 16])[0]
-        #start_vcn = unpack("<Q", self.entry[offset + 16:offset + 24])[0]
-        #end_vcn = unpack("<Q", self.entry[offset + 24:offset + 32])[0]
+        attr_id = unpack("<H", self.entry[offset + 14:offset + 16])[0]
+        start_vcn = unpack("<Q", self.entry[offset + 16:offset + 24])[0]
+        end_vcn = unpack("<Q", self.entry[offset + 24:offset + 32])[0]
         data_run_off = unpack("<H", self.entry[offset + 32:offset + 34])[0]
-        #alloc_size = unpack("<Q", self.entry[offset + 40:offset + 48])[0]
+        alloc_size = unpack("<Q", self.entry[offset + 40:offset + 48])[0]
         real_size = unpack("<Q", self.entry[offset + 48:offset + 56])[0]
-        #init_size = unpack("<Q", self.entry[offset + 56:offset + 64])[0]
+        init_size = unpack("<Q", self.entry[offset + 56:offset + 64])[0]
         data_run_len = unpack("<Q", self.entry[offset + 40:offset + 48])[0]
         data = self.entry[offset + data_run_off:offset + data_run_off + real_size]
         run_off = 0
@@ -418,7 +418,10 @@ class MFTParser():
                         run_offset = prev_run_offset - ((max_sign[run_offset_bytes] + 2) -
                                                                (run_offset - max_sign[run_offset_bytes]))
             for i in range(data_run_len):
-                attrs.extend(self.parse_nonresident_attr_entries((run_offset + i)))
+                try:
+                    attrs.extend(self.parse_nonresident_attr_entries((run_offset + i + start_vcn)))
+                except:
+                    attrs.append(self.parse_nonresident_attr_entries((run_offset + i + start_vcn)))
             if data[0] == DATA_RUN_END:
                 break
             else:
@@ -466,17 +469,17 @@ class MFTParser():
                 address = (lcn * self.cluster_size) + (idx * MFT_ENTRY_SIZE) + self.partition_offset
                 self.img.seek(address, os.SEEK_SET)
                 self.entry = self.img.read(MFT_ENTRY_SIZE)
-                self.parse_header()
+                self.parse_mft_header()
                 offset = MFT_HEADER_LEN
                 if self.entry[offset:offset + 4] == DATA_SIG:
-                    self.data.append(self.parse_data(offset, quickstat = False, full_parse = True))
+                    self.data.append(self.parse_data_attr(offset, quickstat = False, full_parse = True))
                 self.img.seek(img_off, os.SEEK_SET)
                 self.entry_offset = old_offset
                 self.entry = old_entry
             else:
                 offset = self.entry_offset
                 if self.entry[offset:offset + 4] == DATA_SIG:
-                    self.data.append(self.parse_data(offset, quickstat = False, full_parse = True))
+                    self.data.append(self.parse_data_attr(offset, quickstat = False, full_parse = True))
         return
 
     #def parse_attr_def(self, offset):
@@ -679,7 +682,7 @@ class MFTParser():
             mft_ref = unpack("<Q", index_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
             entry_len = unpack("<H", index_buffer[offset + 8:offset + 10])[0]
             key_len = unpack("<H", index_buffer[offset + 10:offset + 12])[0]
-            #flags = unpack("<I", index_buffer[offset + 12:offset + 16])[0]
+            flags = unpack("<I", index_buffer[offset + 12:offset + 16])[0]
             parent_ref = unpack("<Q", index_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
             entry_ctime = time.ctime((unpack("<Q", index_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
             entry_mtime = time.ctime((unpack("<Q", index_buffer[offset + 40:offset + 48])[0] - NTFS_EPOCH) / 10 ** (7))
@@ -698,7 +701,7 @@ class MFTParser():
             offset += entry_len
         return INDEX_BLOCK(log_seq, index_block_vcn, index_size, header_flags, idx_entries = idx_entries)
 
-    def parse_data(self, offset, full_parse = False, quickstat = True):
+    def parse_data_attr(self, offset, full_parse = False, quickstat = True):
         clusters = []
         attr_name = None
         res_data = None
@@ -757,13 +760,13 @@ class MFTParser():
             res_data = data[content_off:]
         self.entry_offset += attr_len
         if full_parse == True:
-            return DATA(nonresident = nonresident, flags = flags, attr_id = attr_id, start_vcn = start_vcn,
+            return DATA_ATTR(nonresident = nonresident, flags = flags, attr_id = attr_id, start_vcn = start_vcn,
                         end_vcn = end_vcn, alloc_size = alloc_size, data_size = real_size, clusters = clusters,
                         file_fragmented = file_fragmented, res_data = res_data, attr_name = attr_name)
         elif full_parse == False and quickstat == False:
-            return DATA(data_size = real_size, clusters = clusters, res_data = res_data)
+            return DATA_ATTR(data_size = real_size, clusters = clusters, res_data = res_data)
         else:
-            return DATA(data_size = real_size, clusters = [], res_data = res_data)
+            return DATA_ATTR(data_size = real_size, clusters = [], res_data = res_data)
 
     def parse_bitmap_attr(self, offset):
         self.entry_offset += unpack("<I", self.entry[offset + 4:offset + 8])[0]

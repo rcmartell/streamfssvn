@@ -77,7 +77,7 @@ class StreamClient():
         self.stdscr.refresh()
         for entry in entries:
             try:
-                entry.name = "{0}{1}Incomplete{1}{2}".format(self.path, os.path.sep, str(entry.name).replace("/", "]["))
+                entry.name = "{0}{1}Incomplete{1}{2}".format(self.path, os.path.sep, str(entry.name).replace("/", "\\"))
             except:
                 continue
             if entry.res_data != None:

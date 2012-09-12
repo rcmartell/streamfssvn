@@ -62,10 +62,13 @@ class StreamServer():
     def process_image(self):
         self.lock = [Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
-        #ofh = open(self.dest, 'wb+')
+        ofh = open(self.dest, 'wb+')
         self.finished = False
         self.thread_queue = [deque() for idx in range(len(self.streams))]
+        self.writer_queue = Queue()
         threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
+        writer_thread = Thread(target = self.write_image, args = (ofh,))
+        writer_thread.start()
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
@@ -74,26 +77,26 @@ class StreamServer():
         for thread in threads:
             thread.setDaemon(True)
             thread.start()
-        pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
+        #pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             if target == None:
                 data = ifh.read(self.cluster_size)
-                #ofh.write(data)
+                self.writer_queue.put_nowait(data)
                 continue
             data = ifh.read(self.cluster_size)
             self.lock[target].acquire()
             self.thread_queue[target].append((idx, data))
             self.lock[target].release()
-            #ofh.write(data)
-            if not idx % 25000:
-                pbar.update(idx * self.cluster_size)
+            self.writer_queue.put_nowait(data)
+            #if not idx % 25000:
+            #    pbar.update(idx * self.cluster_size)
         self.finished = True
         for handler in self.handlers:
             handler.running = False
         for thread in threads:
             thread.join()
-        pbar.finish()
+        #pbar.finish()
         ifh.close()
         print 'Done.'
         #ofh.close()
@@ -117,6 +120,13 @@ class StreamServer():
                 while self.streams[tid].throttle_needed():
                     sleep(2)
                 self.lock[tid].release()
+                
+    def write_image(self, ofh):
+        while not self.finished or not self.writer_queue.empty():
+            data = self.writer_queue.get()
+            ofh.write(data)
+        ofh.close()
+            
 
 def main():
     server = StreamServer(sys.argv[1], sys.argv[2])

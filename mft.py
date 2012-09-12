@@ -123,7 +123,7 @@ class ATTR_LIST_ENTRY():
         self.attr_id = attr_id
         self.attr_name = attr_name
 
-class DATA():
+class DATA_ATTR():
     def __init__(self, attr_type=None, nonresident=None, flags=None, attr_id=None, start_vcn=None, end_vcn=None,
                  alloc_size=None, data_size=None, clusters=None, file_fragmented=False, res_data=None, attr_name=None):
         self.attr_type = attr_type
