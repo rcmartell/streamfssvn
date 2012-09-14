@@ -162,6 +162,7 @@ class StreamClient():
         this does the job reasonably well.
         """
         try:
+            popleft_queue = self.queue.popleft
             # While incomplete files remain...
             while len(self.file_progress):
                 # Sleep while the queue is empty.
@@ -178,7 +179,7 @@ class StreamClient():
                     if len(self.queue) == 0:
                         continue
                     # Grab the front cluster/data set from the queue
-                    cluster, data = self.queue.popleft()
+                    cluster, data = popleft_queue()
                     # Create an in-memory db of mappings between files and their
                     # clusters/data that we've pulled off the queue.
                     try:
@@ -192,6 +193,9 @@ class StreamClient():
                         fh = open(_file, 'r+b')
                     except:
                         fh = open(_file, 'wb')
+                    write_fh = fh.write
+                    seek_fh = fh.seek
+                    tell_fh = fh.tell
                     # Create individual lists of the file's clusters and data we've obtained from the qeueue.
                     clusters, data = zip(*filedb[_file])
                     idx = 0
@@ -214,20 +218,18 @@ class StreamClient():
                         except:
                             pass
                         # Seek to the initial offset
-                        fh.seek(self.files[_file][1].index(seek) * self.cluster_size, os.SEEK_SET)
+                        seek_fh(self.files[_file][1].index(seek) * self.cluster_size, os.SEEK_SET)
                         # Check to see if (initial offset + data length) > size of the file. This
                         # normally occurs because the file's size is not an exact multiple of the
                         # cluster size and thus the final cluster is zero padded. If this is so,
                         # trim off the padding.
-                        if fh.tell() + len("".join(buff)) > int(self.files[_file][0]):
-                            left = int(self.files[_file][0] - fh.tell())
+                        if tell_fh() + len("".join(buff)) > int(self.files[_file][0]):
+                            left = int(self.files[_file][0] - tell_fh())
                             out = "".join(buff)
-                            fh.write(out[:left])
-                            fh.flush()
+                            write_fh(out[:left])
                         # Otherwise just append the data.
                         else:
-                            fh.write("".join(buff))
-                            fh.flush()
+                            write_fh("".join(buff))
                         # Subtract the number of clusters written from the file's remaining clusters list.
                         self.file_progress[_file] -= len(buff)
                         idx += 1
@@ -270,6 +272,7 @@ class StreamClient():
             prev_bytes_written, cur_idle, total_idle = 0, 0, 0
             phymem_buffers = psutil.phymem_buffers
             cached_phymem = psutil.cached_phymem
+            addstr_stdscr = self.stdscr.addstr
             while self.show_status:
                 time.sleep(3)
                 if len(self.queue) >= 524288:
@@ -279,24 +282,24 @@ class StreamClient():
                     self.throttle = False
                 cur_write_rate = (process.get_io_counters()[1] / MB)
                 duration = int(time.time()) - start_time
-                self.stdscr.addstr(0, 0, "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
-                self.stdscr.addstr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
-                self.stdscr.addstr(2, 0, "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
+                addstr_stdscr(0, 0, "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
+                addstr_stdscr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
+                addstr_stdscr(2, 0, "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
                 #self.stdscr.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format
                 #                      ((get_memory_info()[0] / MB), (total_mem / MB), ((avail_phymem() +
                 #                      cached_phymem() + phymem_buffers()) / MB), ''))
-                self.stdscr.addstr(3, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
+                addstr_stdscr(3, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
                 try:
-                    self.stdscr.addstr(4, 0, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
+                    addstr_stdscr(4, 0, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
                 except:
-                    self.stdscr.addstr(4, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
+                    addstr_stdscr(4, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
                 #self.stdscr.addstr(6, 0, "Current idle time: {0:02d}:{1:02d}:{2:02d}".format((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
                 #self.stdscr.addstr(7, 0, "Total idle time: {0:02d}:{1:02d}:{2:02d}".format((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
-                self.stdscr.addstr(5, 0, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
+                addstr_stdscr(5, 0, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
                 if self.throttle:
-                    self.stdscr.addstr(6, 0, "Throttling...")
+                    addstr_stdscr(6, 0, "Throttling...")
                 else:
-                    self.stdscr.addstr(6, 0, "{0:<30s}".format(''))
+                    addstr_stdscr(6, 0, "{0:<30s}".format(''))
                     self.stdscr.move(6, 0)
                 self.stdscr.refresh()
                 #prev_bytes_written = cur_write_rate

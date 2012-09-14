@@ -55,6 +55,7 @@ class StreamServer():
     def process_image(self):
         self.lock = [Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
+        read_ifh = ifh.read
         #ofh = open(self.dest, 'wb+')
         self.finished = False
         self.thread_queue = [deque() for idx in range(len(self.streams))]
@@ -71,9 +72,10 @@ class StreamServer():
             thread.setDaemon(True)
             thread.start()
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
+        p_update = pbar.update
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
-            data = ifh.read(self.cluster_size)
+            data = read_ifh(self.cluster_size)
             if target == None:                
                 #self.writer_queue.put_nowait(data)
                 continue
@@ -82,7 +84,7 @@ class StreamServer():
             #self.lock[target].release()
             #self.writer_queue.put_nowait(data)
             if not idx % 25000:
-                pbar.update(idx * self.cluster_size)
+                p_update(idx * self.cluster_size)
         self.finished = True
         for thread in threads:
             thread.join()
@@ -93,23 +95,26 @@ class StreamServer():
                     
     def threaded_queue(self, idx):
         tid = idx
+        acquire_lock = self.lock[tid].acquire
+        release_lock = self.lock[tid].release
+        add_queue = self.streams[tid].add_queue
         while True:
             while len(self.thread_queue[tid]) < QUEUE_SIZE:
                 sleep(1)
                 if self.finished:
                     if len(self.thread_queue[tid]):
-                        self.streams[tid].add_queue(self.thread_queue[tid])
+                        add_queue(self.thread_queue[tid])
                     return
-            self.lock[tid].acquire()
+            acquire_lock()
             items = list(self.thread_queue[tid])
             self.thread_queue[tid].clear()
-            self.lock[tid].release()
-            self.streams[tid].add_queue(items)
+            release_lock()
+            add_queue(items)
             if self.streams[tid].throttle_needed():
-                self.lock[tid].acquire()
+                acquire_lock()
                 while self.streams[tid].throttle_needed():
                     sleep(1)
-                self.lock[tid].release()
+                release_lock()
 
     def write_image(self, ofh):
         while not self.finished or not self.writer_queue.empty():
