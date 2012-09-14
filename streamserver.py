@@ -57,8 +57,8 @@ class StreamServer():
         ifh = open(self.src, 'rb')
         ofh = open(self.dest, 'wb+')
         self.finished = False
-        self.thread_queue = [deque() for idx in range(len(self.streams))]
-        self.writer_queue = Queue()
+        self.thread_queue = [Queue(524288) for idx in range(len(self.streams))]
+        #self.writer_queue = Queue()
         threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
         writer_thread = Thread(target = self.write_image, args = (ofh,))
         writer_thread.start()
@@ -75,13 +75,14 @@ class StreamServer():
             target = self.mapping[idx]
             if target == None:
                 data = ifh.read(self.cluster_size)
-                self.writer_queue.put_nowait(data)
+                #self.writer_queue.put_nowait(data)
                 continue
             data = ifh.read(self.cluster_size)
-            self.lock[target].acquire()
-            self.thread_queue[target].append((idx, data))
-            self.lock[target].release()
-            self.writer_queue.put_nowait(data)
+            #self.lock[target].acquire()
+            #self.thread_queue[target].append((idx, data))
+            self.thread_queue[target].put((idx, data), block=True)
+            #self.lock[target].release()
+            #self.writer_queue.put_nowait(data)
             #if not idx % 25000:
             #    pbar.update(idx * self.cluster_size)
         self.finished = True
@@ -96,9 +97,29 @@ class StreamServer():
 
     def threaded_queue(self, idx):
         tid = idx
+        items = []
+        while not self.finished:
+            try:
+                item = self.thread_queue[tid].get(block=True, timeout=3)
+                items.append(item)
+                if buff >= QUEUE_SIZE:
+                    while self.streams[tid].throttle_needed():
+                        sleep(1)
+                    self.streams[tid].add_queue(items)
+                    items = [:]
+            except:
+                if len(items):
+                    self.streams[tid].add_queue(items)
+                    items = [:]
+        if len(items):
+            self.streams[tid].add_queue(items)
+                    
+    """
+    def threaded_queue(self, idx):
+        tid = idx
         while True:
             while len(self.thread_queue[tid]) < QUEUE_SIZE:
-                sleep(2)
+                sleep(1)
                 if self.finished:
                     if len(self.thread_queue[tid]):
                         self.streams[tid].add_queue(self.thread_queue[tid])
@@ -113,7 +134,7 @@ class StreamServer():
                 while self.streams[tid].throttle_needed():
                     sleep(2)
                 self.lock[tid].release()
-                
+    """
     def write_image(self, ofh):
         while not self.finished or not self.writer_queue.empty():
             data = self.writer_queue.get()
