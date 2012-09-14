@@ -55,13 +55,13 @@ class StreamServer():
     def process_image(self):
         self.lock = [Lock() for idx in range(len(self.streams))]
         ifh = open(self.src, 'rb')
-        ofh = open(self.dest, 'wb+')
+        #ofh = open(self.dest, 'wb+')
         self.finished = False
         self.thread_queue = [deque() for idx in range(len(self.streams))]
         #self.writer_queue = Queue()
         threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
-        writer_thread = Thread(target = self.write_image, args = (ofh,))
-        writer_thread.start()
+        #writer_thread = Thread(target = self.write_image, args = (ofh,))
+        #writer_thread.start()
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
@@ -73,20 +73,17 @@ class StreamServer():
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
-            if target == None:
-                data = ifh.read(self.cluster_size)
+            data = ifh.read(self.cluster_size)
+            if target == None:                
                 #self.writer_queue.put_nowait(data)
                 continue
-            data = ifh.read(self.cluster_size)
-            self.lock[target].acquire()
-            self.thread_queue[target].append((idx, data))
-            self.lock[target].release()
+            #self.lock[target].acquire()
+            #self.thread_queue[target].append((idx, data))
+            #self.lock[target].release()
             #self.writer_queue.put_nowait(data)
             if not idx % 25000:
                 pbar.update(idx * self.cluster_size)
         self.finished = True
-        for handler in self.handlers:
-            handler.running = False
         for thread in threads:
             thread.join()
         pbar.finish()
