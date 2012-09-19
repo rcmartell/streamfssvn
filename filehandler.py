@@ -1,7 +1,7 @@
 import os, shutil
 from multiprocessing import Process, Queue
 from xml.etree import ElementTree as tree
-from textindexer import TextIndexer
+#from textindexer import TextIndexer
 
 CONFIG_PATH = 'config'
 CONFIG_FILE = 'config.xml'

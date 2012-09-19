@@ -10,7 +10,7 @@ from Queue import Queue
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
-QUEUE_SIZE = 16384
+QUEUE_SIZE = 16384 
 Pyro4.config.ONEWAY_THREADED = True
 
 class StreamServer():
@@ -79,9 +79,11 @@ class StreamServer():
             if target == None:                
                 #self.writer_queue.put_nowait(data)
                 continue
-            #self.lock[target].acquire()
-            #self.thread_queue[target].append((idx, data))
-            #self.lock[target].release()
+            while len(self.thread_queue[target]) >= (QUEUE_SIZE * 3):
+                sleep(0.5)
+	    self.lock[target].acquire()
+            self.thread_queue[target].append((idx, data))
+            self.lock[target].release()
             #self.writer_queue.put_nowait(data)
             if not idx % 25000:
                 p_update(idx * self.cluster_size)
@@ -95,26 +97,25 @@ class StreamServer():
                     
     def threaded_queue(self, idx):
         tid = idx
-        acquire_lock = self.lock[tid].acquire
-        release_lock = self.lock[tid].release
-        add_queue = self.streams[tid].add_queue
-        while True:
+        lock = self.lock[tid]
+	stream = self.streams[tid]
+	while True:
             while len(self.thread_queue[tid]) < QUEUE_SIZE:
-                sleep(1)
+                sleep(0.25)
                 if self.finished:
                     if len(self.thread_queue[tid]):
-                        add_queue(self.thread_queue[tid])
+                        stream.add_queue(self.thread_queue[tid])
                     return
-            acquire_lock()
+            lock.acquire()
             items = list(self.thread_queue[tid])
             self.thread_queue[tid].clear()
-            release_lock()
-            add_queue(items)
-            if self.streams[tid].throttle_needed():
-                acquire_lock()
+            lock.release()
+            stream.add_queue(items)
+            if stream.throttle_needed():
+                lock.acquire()
                 while self.streams[tid].throttle_needed():
                     sleep(1)
-                release_lock()
+                lock.release()
 
     def write_image(self, ofh):
         while not self.finished or not self.writer_queue.empty():

@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
 from multiprocessing import Process, Queue
 
-QUEUE_SIZE = 8192
+QUEUE_SIZE = 16384 
 MB = 1024 * 1024
 
 class StreamClient():
@@ -167,7 +167,7 @@ class StreamClient():
             while len(self.file_progress):
                 # Sleep while the queue is empty.
                 if not len(self.queue):
-                    time.sleep(1)
+                    time.sleep(0.5)
                 filedb = {}
                 # QUEUE_SIZE is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
@@ -319,11 +319,13 @@ def main():
     argparser.add_argument('-p', '--path', help = "Root directory for client. Files will be written and processed here. Defaults to the current working directory if no value is specified.", required = False)
     argparser.add_argument('-i', '--id', help = "Unique name/identifier used to register the client with the Pyro nameserver.", required = True)
     argparser.add_argument('-c', '--config', help = "Path to config directory.", required = False)
+    argparser.add_argument('-n', '--nameserver', help = "IP/Hostname of Pyro nameserver.", required = True)
     args = argparser.parse_args()
     opts = vars(args)
     name = opts['id']
     path = opts['path']
     config_path = opts['config']
+    nameserver = opts['nameserver']
     if path == None:
         path = os.path.abspath(os.path.curdir)
     elif not os.path.lexists(path):
@@ -340,7 +342,7 @@ def main():
         config_path = config[:-1]
     # Start Pyro daemon
     daemon = Pyro4.core.Daemon(socket.gethostname())
-    ns = Pyro4.naming.locateNS()
+    ns = Pyro4.naming.locateNS(nameserver)
     client = StreamClient(name=name, path=path, config_path=config_path, ns=ns, daemon=daemon)
     uri = daemon.register(client)
     ns.register(name, uri)
