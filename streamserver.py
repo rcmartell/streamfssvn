@@ -7,6 +7,7 @@ import warnings, gc, sys, os
 from xml.etree import ElementTree as tree
 from collections import deque
 from Queue import Queue
+from clienthandler import ClientHandler
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
@@ -58,48 +59,43 @@ class StreamServer():
         read_ifh = ifh.read
         #ofh = open(self.dest, 'wb+')
         self.finished = False
-        self.thread_queue = [deque() for idx in range(len(self.streams))]
-        #self.writer_queue = Queue()
-        threads = [Thread(target = self.threaded_queue, args = (idx,)) for idx in range(len(self.streams))]
-        #writer_thread = Thread(target = self.write_image, args = (ofh,))
-        #writer_thread.start()
+        self.handler_queues = [deque() for idx in range(len(self.streams))]
+        self.handlers = []
+        self.handler_procs = []
+        for idx in range(len(self.lock)):
+            self.handlers.append(ClientHandler(self.streams[idx], self.lock[idx]))
+            self.handler_procs.append(target=self.handlers[idx].process_data, args=self.handler_queues[idx])
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
             stream.queue_writes()
             stream.queue_show_status()
-        for thread in threads:
-            thread.setDaemon(True)
-            thread.start()
+        for proc in self.handler_procs:
+            proc.start()
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
-        p_update = pbar.update
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             data = read_ifh(self.cluster_size)
             if target == None:                
-                #self.writer_queue.put_nowait(data)
                 continue
-            while len(self.thread_queue[target]) >= (QUEUE_SIZE * 3):
-                sleep(0.5)
-	    self.lock[target].acquire()
-            self.thread_queue[target].append((idx, data))
+	        self.lock[target].acquire()
+            self.handler_queues.append((idx, data))
             self.lock[target].release()
-            #self.writer_queue.put_nowait(data)
             if not idx % 25000:
-                p_update(idx * self.cluster_size)
-        self.finished = True
-        for thread in threads:
-            thread.join()
+                pbar.update(idx * self.cluster_size)
+        for handler in self.handlers
+            handler.running = False
         pbar.finish()
         ifh.close()
         print 'Done.'
         #ofh.close()
-                    
+    
+    """   
     def threaded_queue(self, idx):
         tid = idx
         lock = self.lock[tid]
-	stream = self.streams[tid]
-	while True:
+	    stream = self.streams[tid]
+	    while True:
             while len(self.thread_queue[tid]) < QUEUE_SIZE:
                 sleep(0.25)
                 if self.finished:
@@ -122,7 +118,7 @@ class StreamServer():
             data = self.writer_queue.get()
             ofh.write(data)
         ofh.close()
-            
+    """            
 
 def main():
     server = StreamServer(sys.argv[1], sys.argv[2])
