@@ -68,7 +68,7 @@ class StreamServer():
             stream.setup_file_progress()
             stream.queue_writes()
             stream.queue_show_status()
-        for proc in self.handler_procs:
+        for proc in self.procs:
             proc.start()
         pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
