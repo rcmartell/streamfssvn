@@ -6,6 +6,7 @@ from threading import Thread, Lock
 import warnings, gc, sys, os
 from xml.etree import ElementTree as tree
 from collections import deque
+from multiprocessing import Process, Queue
 from clienthandler import ClientHandler
 warnings.filterwarnings("ignore")
 import Pyro4.core
@@ -62,8 +63,8 @@ class StreamServer():
         self.handlers = []
         self.handler_procs = []
         for idx in range(len(self.lock)):
-            self.handlers.append(ClientHandler(self.streams[idx], self.lock[idx]))
-            self.handler_procs.append(target=self.handlers[idx].process_data, args=self.handler_queues[idx])
+            self.handlers.append(ClientHandler(self.streams[idx], self.lock[idx], self.handler_queues[idx]))
+            self.handler_procs.append(Process(target=self.handlers[idx].process_data))
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
@@ -77,12 +78,12 @@ class StreamServer():
             data = read_ifh(self.cluster_size)
             if target == None:                
                 continue
-	        self.lock[target].acquire()
+	    self.lock[target].acquire()
             self.handler_queues.append((idx, data))
             self.lock[target].release()
             if not idx % 25000:
                 pbar.update(idx * self.cluster_size)
-        for handler in self.handlers
+        for handler in self.handlers:
             handler.running = False
         pbar.finish()
         ifh.close()
