@@ -59,12 +59,10 @@ class StreamServer():
         read_ifh = ifh.read
         #ofh = open(self.dest, 'wb+')
         self.finished = False
-        self.handler_queues = [deque() for idx in range(len(self.streams))]
-        self.handlers = []
-        self.handler_procs = []
         for idx in range(len(self.lock)):
-            self.handlers.append(ClientHandler(self.streams[idx], self.lock[idx], self.handler_queues[idx]))
-            self.handler_procs.append(Process(target=self.handlers[idx].process_data))
+            self.queues = [Queue(maxsize=524288) for idx in range(len(self.streams))]
+            self.handlers = [ClientHandler(stream) for stream in self.streams]
+            self.procs = [Process(target=self.handlers[idx].process_data, args=(self.queues[idx],)) for idx in range(len(self.queues))]
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
@@ -78,9 +76,7 @@ class StreamServer():
             data = read_ifh(self.cluster_size)
             if target == None:                
                 continue
-	    self.lock[target].acquire()
-            self.handler_queues.append((idx, data))
-            self.lock[target].release()
+            self.queues[target].put((idx, data), block=True)
             if not idx % 25000:
                 pbar.update(idx * self.cluster_size)
         for handler in self.handlers:

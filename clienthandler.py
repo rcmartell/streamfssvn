@@ -3,32 +3,28 @@ from time import sleep
 QUEUE_SIZE = 16384
 
 class ClientHandler():
-    def __init__(self, stream, lock, queue):
+    def __init__(self, stream):
         self.stream = stream
         self.running = True
-        self.lock = lock
-        self.queue = queue
     
-    def process_data(self):
+    def process_data(self, queue):
         try:
-            items = []
+            clusters, data = [],[]
             while self.running:
-                for idx in xrange(QUEUE_SIZE):
-                    try:
-                        items.append(self.queue.popleft())
-                    except:
-                        continue
-                if len(items):
-                    if self.stream.throttle_needed():
-                        self.lock.acquire()
-                        while self.stream.throttle_needed():
-                            sleep(1)
-                        self.lock.release()
-                    self.stream.add_queue(items)
-                    items[:] = []
-            if len(items):
-                self.stream.add_queue(items)
+                item = queue.get(block=True)
+                clusters.append(item[0])
+                data.append(item[1])
+                if len(clusters) >= QUEUE_SIZE:
+                    while self.stream.get_queue_size() + len(clusters) >= 524288:
+                        sleep(2)
+                    self.stream.add_queue(clusters, data)
+                    clusters, data = [],[]
+            while not queue.empty():
+                item = queue.get(block=True)
+                clusters.append(item[0])
+                data.append(item[1])
+            self.stream.add_queue(clusters, data)
+            sys.exit(0)
         except KeyboardInterrupt:
             print "User aborted"
             sys.exit(-1)
-        
