@@ -14,9 +14,10 @@ class ClientHandler():
             items = []
             while self.running:
                 for idx in xrange(QUEUE_SIZE):
-                    if len(self.queue) == 0:
+                    try:
+                        items.append(self.queue.popleft())
+                    except:
                         continue
-                    items.append(self.queue.popleft())
                 if len(items):
                     if self.stream.throttle_needed():
                         self.lock.acquire()
@@ -25,6 +26,8 @@ class ClientHandler():
                         self.lock.release()
                     self.stream.add_queue(items)
                     items[:] = []
+            if len(items):
+                self.stream.add_queue(items)
         except KeyboardInterrupt:
             print "User aborted"
             sys.exit(-1)
