@@ -70,7 +70,7 @@ class StreamClient():
         return
 
     def setup_file_handler(self):
-        self.file_handler = FileHandler(self.path, self.config_path)
+        self.file_handler = FileHandler()
         self.file_queue = Queue()
         self.proc = Process(target=self.file_handler.handler_queue, args=(self.file_queue,))
         self.proc.daemon = True
