@@ -1,6 +1,6 @@
 import sys
 from time import sleep
-QUEUE_SIZE = 32768
+QUEUE_SIZE = 65536
 
 class ClientHandler():
     def __init__(self, stream):
@@ -21,7 +21,7 @@ class ClientHandler():
                     self.stream.add_queue(zip(clusters, data))
                     clusters[:], data[:] = [],[]
             while not queue.empty():
-                item = queue.get(block=True)
+                item = queue.get_nowait()
                 clusters.append(item[0])
                 data.append(item[1])
             self.stream.add_queue(clusters, data)

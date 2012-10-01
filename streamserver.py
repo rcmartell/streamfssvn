@@ -11,7 +11,7 @@ from clienthandler import ClientHandler
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
-QUEUE_SIZE = 32768 
+QUEUE_SIZE = 65536 
 Pyro4.config.ONEWAY_THREADED = True
 
 class StreamServer():
