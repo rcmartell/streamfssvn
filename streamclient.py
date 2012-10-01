@@ -33,7 +33,7 @@ class StreamClient():
     def clear_screen(self):
         if sys.platform == 'linux2':
             os.system("clear")
-        else
+        else:
             os.system("cls")
 
     def setup_status_ui(self):
@@ -274,7 +274,7 @@ class StreamClient():
             self.ns.remove(name=name)
             return
             
-    def print_status(self):
+    def show_status(self):
         num_files = len(self.files)
         start_time = int(time.time())
         process = psutil.Process(os.getpid())
@@ -365,7 +365,7 @@ def main():
     argparser.add_argument('-i', '--id', help = "Unique name/identifier used to register the client with the Pyro nameserver.", required = True)
     argparser.add_argument('-c', '--config', help = "Path to config directory.", required = False)
     argparser.add_argument('-n', '--nameserver', help = "IP/Hostname of Pyro nameserver.", required = True)
-    argparser.add_argument('-h', '--host', help = "The IP/Hostname to bind this daemon to.", required = True)
+    argparser.add_argument('-b', '--bind', help = "The IP/Hostname to bind this daemon to.", required = True)
     args = argparser.parse_args()
     opts = vars(args)
     name = opts['id']
