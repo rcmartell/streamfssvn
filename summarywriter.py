@@ -24,7 +24,7 @@ class SummaryWriter():
             entrystr = "{ \"%s\" : [ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" , \"%s\" ] },\n" % (num, name, path, ctime, mtime, atime, size, "".join(str(clusters)[1:-1]), res_data)
             self.fh.write(entrystr)
         else:
-            entrystr = "{ \"%s\" : [ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",  \"%s\" , \"%s\" ] } ] }" % (num, name, path, ctime, mtime, atime, size, "".join(str(clusters)[1:-1]), res_data)
+            entrystr = "{ \"%s\" : [ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",  \"%s\" , \"%s\" ] } ] }\n" % (num, name, path, ctime, mtime, atime, size, "".join(str(clusters)[1:-1]), res_data)
             self.fh.write(entrystr)
             self.fh.close()
 
