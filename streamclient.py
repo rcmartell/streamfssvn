@@ -365,12 +365,14 @@ def main():
     argparser.add_argument('-i', '--id', help = "Unique name/identifier used to register the client with the Pyro nameserver.", required = True)
     argparser.add_argument('-c', '--config', help = "Path to config directory.", required = False)
     argparser.add_argument('-n', '--nameserver', help = "IP/Hostname of Pyro nameserver.", required = True)
+    argparser.add_argument('-h', '--host', help = "The IP/Hostname to bind this daemon to.", required = True)
     args = argparser.parse_args()
     opts = vars(args)
     name = opts['id']
     path = opts['path']
     config_path = opts['config']
     nameserver = opts['nameserver']
+    host = opts['host'] 
     if path == None:
         path = os.path.abspath(os.path.curdir)
     elif not os.path.lexists(path):
@@ -386,7 +388,7 @@ def main():
     if config_path.endswith(os.path.sep):
         config_path = config[:-1]
     # Start Pyro daemon
-    daemon = Pyro4.core.Daemon(socket.gethostname())
+    daemon = Pyro4.core.Daemon(host=host)
     ns = Pyro4.naming.locateNS(nameserver)
     client = StreamClient(name=name, path=path, config_path=config_path, ns=ns, daemon=daemon)
     uri = daemon.register(client)
