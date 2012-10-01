@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
 from multiprocessing import Process, Queue
 
-QUEUE_SIZE = 16384 
+QUEUE_SIZE = 32768 
 MB = 1024 * 1024
 
 class StreamClient():

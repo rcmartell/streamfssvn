@@ -60,7 +60,7 @@ class StreamServer():
         #ofh = open(self.dest, 'wb+')
         self.finished = False
         for idx in range(len(self.lock)):
-            self.queues = [Queue(maxsize=524288) for idx in range(len(self.streams))]
+            self.queues = [Queue() for idx in range(len(self.streams))]
             self.handlers = [ClientHandler(stream) for stream in self.streams]
             self.procs = [Process(target=self.handlers[idx].process_data, args=(self.queues[idx],)) for idx in range(len(self.queues))]
         for stream in self.streams:
@@ -76,7 +76,7 @@ class StreamServer():
             data = read_ifh(self.cluster_size)
             if target == None:                
                 continue
-            self.queues[target].put((idx, data), block=True)
+            self.queues[target].put_nowait((idx, data))
             if not idx % 25000:
                 pbar.update(idx * self.cluster_size)
         for handler in self.handlers:
