@@ -145,10 +145,10 @@ class MFTParser():
         """
         The main method/function of the parser. It accepts a 'start' entry if only a single MFT entry's data is desired (in which case the 'end' parameter is set to the same
         value as 'start'). The optional parameters 'full_parse', 'quickstat' and 'cleanup' are used to somewhat fine-tune the parser so that no more parsing/processing occurs
-        than necessary. The 'full_parse' option determines whether to completely parse idx root/entry information (if present) of an entry. The 'quickstat' option determines
-        whether to parse the data run information for an entry. The 'cleanup' option determines whether to force the release of file entry objects from memory, as Python
-        seems to be a little too lax on its garbage collection mechanisms. This is generally a good idea, as it cuts the memory usage of a full-parsing down significantly
-        without adding too much overhead.
+        than necessary. The 'full_parse' option determines whether to completely parse idx root/entries (if entry is a directory) as well as attribute list information (if present)
+        of an entry. The 'quickstat' option determines whether to parse the data run information for an entry. The 'cleanup' option determines whether to force the release of file 
+        entry objects from memory, as Python seems to be a little too lax on its garbage collection mechanisms. This is generally a good idea, as it cuts the memory usage
+        of a full-parsing down significantly without adding too much overhead.
         """
         count = start
         inode = start
@@ -196,8 +196,11 @@ class MFTParser():
                             self.std_info = self.parse_std_info(self.entry_offset)
 
                         elif self.entry[self.entry_offset:self.entry_offset + 4] == ATTR_LIST_SIG:
-                            self.attr_list = self.parse_attr_list(self.entry_offset)
-                            self.parse_attr_list_entries(count)
+                            if not self.full_parse:
+                                self.parse_attr_list(self.entry_offset)
+                            else:
+                                self.attr_list = self.parse_attr_list(self.entry_offset)
+                                self.parse_attr_list_entries(count)
 
                         elif self.entry[self.entry_offset:self.entry_offset + 4] == FILENAME_SIG:
                             filename = self.parse_filename(self.entry_offset)
@@ -281,7 +284,8 @@ class MFTParser():
                             size = data_size
                         else:
                             size = real_size
-                        self.entries.append(FILE_RECORD(name = name, entry_num = self.entry_num, parent = parent, ctime = ctime, mtime = mtime, atime = atime, size = size, clusters = clusters, res_data = res_data))
+                        self.entries.append(FILE_RECORD(name = name, entry_num = self.entry_num, parent = parent, 
+                            ctime = ctime, mtime = mtime, atime = atime, size = size, clusters = clusters, res_data = res_data))
                     inode += 1
                     count += 1
                     if self.cleanup:
@@ -356,6 +360,9 @@ class MFTParser():
         """Parse the Attribute List attribute of an entry. Entries only have an attribute list if a single entry is too small
            to hold all the metadata of the entry's attributes."""
         attr_list_len = unpack("<I", self.entry[offset + 4:offset + 8])[0]
+        if not self.full_parse:
+            self.entry_offset += attr_list_len
+            return
         non_resident = unpack("<B", self.entry[offset + 8])[0]
         if non_resident == 0:
             return self.parse_attr_list_resident(offset, attr_list_len)
@@ -778,4 +785,4 @@ class MFTParser():
 
     def main(self):
         self.setup_mft_data()
-        return self.parse_mft(resolve_filepaths=False)
+        return self.parse_mft()
