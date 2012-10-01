@@ -275,6 +275,7 @@ class StreamClient():
             return
             
     def show_status(self):
+        self.clear_screen()
         num_files = len(self.files)
         start_time = int(time.time())
         process = psutil.Process(os.getpid())
@@ -292,12 +293,12 @@ class StreamClient():
                 self.throttle = False
             cur_write_rate = (process.get_io_counters()[1] / MB)
             duration = int(time.time()) - start_time
-            print("\033[0;0H%s" % "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
-            print("\033[1;0H%s" % "Clusters in queue: {0:<30d}".format(len(self.queue)))
-            print("\033[2;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
-            print("\033[3;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
-            print("\033[4;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
-            print("\033[5;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
+            print("\033[1;0H%s" % "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
+            print("\033[2;0H%s" % "Clusters in queue: {0:<30d}".format(len(self.queue)))
+            print("\033[3;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
+            print("\033[4;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
+            print("\033[5;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
+            print("\033[6;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
             if self.throttle:
                 print("\033[6;0HThrottling...")
             else:
