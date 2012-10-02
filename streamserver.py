@@ -71,18 +71,18 @@ class StreamServer():
             stream.queue_show_status()
         for proc in self.procs:
             proc.start()
-        pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
+        #pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         for idx in xrange(len(self.mapping)):
             target = self.mapping[idx]
             data = read_ifh(self.cluster_size)
             if target == None:                
                 continue
             self.queues[target].put_nowait((idx, data))
-            if not idx % 25000:
-                pbar.update(idx * self.cluster_size)
+            #if not idx % 25000:
+            #    pbar.update(idx * self.cluster_size)
         for handler in self.handlers:
             handler.running = False
-        pbar.finish()
+        #pbar.finish()
         ifh.close()
         print 'Done.'
         #ofh.close()
