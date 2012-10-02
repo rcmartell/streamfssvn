@@ -39,16 +39,8 @@ class StreamClient():
     def setup_status_ui(self):
         self.clear_screen()
         print("\033[0;0HWaiting for server...")
-
-    """
-    def setup_status_ui(self):
-        curses.initscr(); curses.noecho(); curses.cbreak()
-        self.stdscr = curses.newwin(0,0)
-        self.stdscr.clear()
-        self.stdscr.addstr(0, 0, "Waiting for server...")
-        self.stdscr.refresh()
-    """
-
+        return
+        
     def setup_folders(self):
         self.clear_screen()
         os.chdir(self.path)
@@ -95,9 +87,6 @@ class StreamClient():
         """
         self.clear_screen()
         print("\033[0;0HProcessing file entries...")
-        #self.stdscr.clear()
-        #self.stdscr.addstr(0, 0, "Processing file entries...")
-        #self.stdscr.refresh()
         for entry in entries:
             try:
                 entry.name = "{0}{1}Incomplete{1}{2}".format(self.path, os.path.sep, str(entry.name).replace("/", "\\"))
@@ -275,34 +264,39 @@ class StreamClient():
             return
             
     def show_status(self):
-        self.clear_screen()
-        num_files = len(self.files)
-        start_time = int(time.time())
-        process = psutil.Process(os.getpid())
-        total_mem = psutil.TOTAL_PHYMEM
-        avail_phymem = psutil.avail_phymem
-        get_cpu_percent = process.get_cpu_percent
-        get_memory_info = process.get_memory_info
-        prev_bytes_written, cur_idle, total_idle = 0, 0, 0
-        while self.show_status:
-            time.sleep(3)
-            if len(self.queue) >= 524288:
-                self.throttle = True
+        try:
+            self.clear_screen()
+            num_files = len(self.files)
+            start_time = int(time.time())
+            process = psutil.Process(os.getpid())
+            total_mem = psutil.TOTAL_PHYMEM
+            avail_phymem = psutil.avail_phymem
+            get_cpu_percent = process.get_cpu_percent
+            get_memory_info = process.get_memory_info
+            prev_bytes_written, cur_idle, total_idle = 0, 0, 0
+            while self.show_status:
                 time.sleep(3)
-            else:
-                self.throttle = False
-            cur_write_rate = (process.get_io_counters()[1] / MB)
-            duration = int(time.time()) - start_time
-            print("\033[1;0H%s" % "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
-            print("\033[2;0H%s" % "Clusters in queue: {0:<30d}".format(len(self.queue)))
-            print("\033[3;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
-            print("\033[4;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
-            print("\033[5;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
-            print("\033[6;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
-            if self.throttle:
-                print("\033[6;0HThrottling...")
-            else:
-                print("\033[6;0H%s" % "{0:<30s}".format(''))
+                if len(self.queue) >= 524288:
+                    self.throttle = True
+                    time.sleep(3)
+                else:
+                    self.throttle = False
+                cur_write_rate = (process.get_io_counters()[1] / MB)
+                duration = int(time.time()) - start_time
+                print("\033[1;0H%s" % "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
+                print("\033[2;0H%s" % "Clusters in queue: {0:<30d}".format(len(self.queue)))
+                print("\033[3;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
+                print("\033[4;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
+                print("\033[5;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
+                print("\033[6;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
+                if self.throttle:
+                    print("\033[6;0HThrottling...")
+                else:
+                    print("\033[6;0H%s" % "{0:<30s}".format(''))
+        except:
+            print 'User aborted'
+            self.ns.remove(name=name)
+            return
 
     """
     def show_status(self):
@@ -398,8 +392,6 @@ def main():
         daemon.requestLoop()
     except KeyboardInterrupt:
         print 'User aborted'
-        curses.nocbreak(); stdscr.keypad(0); curses.echo()
-        curses.endwin()
         ns.remove(name=name)
         daemon.shutdown()
         sys.exit(-1)

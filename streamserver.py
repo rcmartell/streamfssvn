@@ -41,6 +41,7 @@ class StreamServer():
         sys.stdout.flush()
         self.streams = []
         for idx in range(len(clients)):
+            print clients[idx]
             self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % clients[idx]))
             self.streams[idx]._pyroBind()
             self.streams[idx]._pyroOneway.add("add_queue")
