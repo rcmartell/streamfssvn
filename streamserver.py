@@ -87,6 +87,8 @@ class StreamServer():
             #sys.stdout.flush()
         for handler in self.handlers:
             handler.running = False
+        for stream in self.streams:
+            stream._pyroRelease()
         #pbar.finish()
         fh.close()
         print 'Done.'

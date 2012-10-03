@@ -171,7 +171,7 @@ class StreamClient():
             while len(self.file_progress):
                 # Sleep while the queue is empty.
                 while not len(self.queue):
-                    time.sleep(0.05)
+                    sleep(0.0005)
                 filedb = {}
                 # QUEUE_SIZE is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
@@ -269,11 +269,11 @@ class StreamClient():
         num_files = len(self.files)
         start_time = int(time())
         while self.show_status:
-            time.sleep(3)
+            sleep(3)
             """
             if len(self.queue) >= 524288:
                 self.throttle = True
-                time.sleep(3)
+                sleep(3)
             else:
                 self.throttle = False
             """
