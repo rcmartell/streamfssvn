@@ -7,6 +7,7 @@ import warnings, psutil
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
 from multiprocessing import Process, Queue
+from time import time
 
 QUEUE_SIZE = 65536 
 MB = 1024 * 1024
@@ -25,10 +26,12 @@ class StreamClient():
         self.show_current_status = True
         self.throttle = False
         self.finished = False
+        self.bytes_written = 0
         self.queue = deque()
         self.setup_folders()
         self.setup_status_ui()
         self.setup_file_handler()
+        self.write_data()
 
     def clear_screen(self):
         if sys.platform == 'linux2':
@@ -75,10 +78,9 @@ class StreamClient():
         return
 
     def setup_file_handler(self):
-        self.file_handler = FileHandler()
+        self.handler = FileHandler()
         self.file_queue = Queue()
-        self.proc = Process(target=self.file_handler.handler_queue, args=(self.file_queue,))
-        self.proc.daemon = True
+        self.proc = Process(target=self.handler.handler_queue, args=(self.file_queue,))
         self.proc.start()
 
     def process_entries(self, entries):
@@ -197,9 +199,9 @@ class StreamClient():
                         fh = open(_file, 'r+b')
                     except:
                         fh = open(_file, 'wb')
-                    write_fh = fh.write
-                    seek_fh = fh.seek
-                    tell_fh = fh.tell
+                    write = fh.write
+                    seek = fh.seek
+                    tell = fh.tell
                     # Create individual lists of the file's clusters and data we've obtained from the qeueue.
                     clusters, data = zip(*filedb[_file])
                     idx = 0
@@ -208,7 +210,7 @@ class StreamClient():
                     # For every cluster for this file we've received...
                     while idx < num_clusters:
                         # Create an initial offset using the current index into the cluster array.
-                        seek = clusters[idx]
+                        offset = clusters[idx]
                         # Add the data at the index into the "to be written buffer".
                         buff.append(data[idx])
                         try:
@@ -222,20 +224,21 @@ class StreamClient():
                         except:
                             pass
                         # Seek to the initial offset
-                        seek_fh(self.files[_file][1].index(seek) * self.cluster_size, os.SEEK_SET)
+                        seek(self.files[_file][1].index(offset) * self.cluster_size, os.SEEK_SET)
                         # Check to see if (initial offset + data length) > size of the file. This
                         # normally occurs because the file's size is not an exact multiple of the
                         # cluster size and thus the final cluster is zero padded. If this is so,
                         # trim off the padding.
-                        if tell_fh() + len("".join(buff)) > int(self.files[_file][0]):
-                            left = int(self.files[_file][0] - tell_fh())
+                        if tell() + len("".join(buff)) > int(self.files[_file][0]):
+                            left = int(self.files[_file][0] - tell())
                             out = "".join(buff)
-                            write_fh(out[:left])
+                            write(out[:left])
                         # Otherwise just append the data.
                         else:
-                            write_fh("".join(buff))
+                            write("".join(buff))
                         # Subtract the number of clusters written from the file's remaining clusters list.
                         self.file_progress[_file] -= len(buff)
+                        self.bytes_written += len(buff)
                         idx += 1
                         buff = []
                     fh.close()
@@ -246,20 +249,21 @@ class StreamClient():
                         # Move file to appropriate folder based on its extension/sorter number.
                         self.file_queue.put_nowait(_file)
             # Write resident files to disk.
-            for res_file in self.residentfiles:
-                fh = open(res_file, 'wb')
-                fh.write(self.residentfiles[res_file])
+            for _file in self.residentfiles:
+                fh = open(_file, 'wb')
+                fh.write(self.residentfiles[_file])
                 fh.close()
-                self.file_queue.put_nowait(res_file)
-            self.file_handler.running = False
-            self.proc.join()
+                self.bytes_written += len(self.residentfiles[_file])
+                self.file_queue.put_nowait(_file)
+            self.handler.running = False
             self.show_status = False
             self.ns.remove(name=name)
+            self.proc.join()
             return
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.show_status = False
-            self.file_handler.running = False
+            self.handler.running = False
             self.ns.remove(name=name)
             return
             
@@ -268,27 +272,24 @@ class StreamClient():
             self.clear_screen()
             num_files = len(self.files)
             start_time = int(time.time())
-            process = psutil.Process(os.getpid())
-            total_mem = psutil.TOTAL_PHYMEM
-            avail_phymem = psutil.avail_phymem
-            get_cpu_percent = process.get_cpu_percent
-            get_memory_info = process.get_memory_info
             prev_bytes_written, cur_idle, total_idle = 0, 0, 0
             while self.show_status:
                 time.sleep(3)
+                """
                 if len(self.queue) >= 524288:
                     self.throttle = True
                     time.sleep(3)
                 else:
                     self.throttle = False
-                cur_write_rate = (process.get_io_counters()[1] / MB)
-                duration = int(time.time()) - start_time
+                """
+                cur_write_rate = self.bytes_written / MB
+                duration = int(time()) - start_time
                 print("\033[1;0H%s" % "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
                 print("\033[2;0H%s" % "Clusters in queue: {0:<30d}".format(len(self.queue)))
-                print("\033[3;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
-                print("\033[4;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
-                print("\033[5;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
-                print("\033[6;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
+                #print("\033[3;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
+                print("\033[3;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(self.bytes_written / MB))
+                print("\033[4;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((self.bytes_written / MB) / (duration), ''))
+                print("\033[5;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
                 if self.throttle:
                     print("\033[6;0HThrottling...")
                 else:

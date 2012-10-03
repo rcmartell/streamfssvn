@@ -1,3 +1,4 @@
+import sys, io
 from md5 import md5
 
 class FileHandler():
@@ -6,7 +7,16 @@ class FileHandler():
         self.hashes = {}
 
     def handler_queue(self, queue):
-        while self.running or not queue.empty():
-            target = queue.get()
-            self.hashes[target] = md5(open(target, 'rb').read()).hexdigest()
+        getitem = queue.get_nowait
+        qempty = queue.empty
+        while self.running or not qempty():
+            try:
+                target = getitem()
+                self.hashes[target] = md5(open(target, 'rb').read()).hexdigest()
+            except:
+                pass
+        fh = io.open("filehashes.txt", "wb")
+        for k,v in self.hashes.iteritems:
+            write("%s : %s" % (k,v))
+        fh.close()
         return

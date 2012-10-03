@@ -69,7 +69,7 @@ class StreamServer():
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
-            stream.queue_writes()
+            #stream.queue_writes()
             stream.queue_show_status()
         for proc in self.procs:
             proc.start()
