@@ -77,8 +77,8 @@ class StreamServer():
         pbar_udpate = pbar.update
         while tell() < img_size:
             buff = read(QUEUE_SIZE * self.cluster_size)
-            offset = tell() / self.cluster_size
-            data_mapping = {offset+x : (self.cluster_mapping[offset+x], buff[x:x+self.cluster_size]) for x in range(0, len(buff), self.cluster_size)}
+            base = tell() / self.cluster_size
+            data_mapping = {base+idx : (self.cluster_mapping[base+idx], buff[idx:idx+self.cluster_size]) for idx in range(0, len(buff), self.cluster_size)}
             for idx in data_mapping:
                 self.queues[target].put_nowait(data_mapping[idx])
             pbar_update(tell())
