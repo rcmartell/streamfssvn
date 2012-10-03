@@ -23,7 +23,7 @@ class StreamClient():
         self.file_progress = {}
         self.filenames = []
         self.residentfiles = {}
-        self.show_current_status = True
+        self.show_status = True
         self.throttle = False
         self.finished = False
         self.bytes_written = 0
@@ -148,7 +148,7 @@ class StreamClient():
         return
 
     def queue_show_status(self):
-        self.statusThread = threading.Thread(target=self.show_status)
+        self.statusThread = threading.Thread(target=self.show_status_info)
         self.statusThread.setDaemon(True)
         self.statusThread.start()
         return
@@ -264,37 +264,30 @@ class StreamClient():
             self.ns.remove(name=self.name)
             return
             
-    def show_status(self):
-        try:
-            self.clear_screen()
-            num_files = len(self.files)
-            start_time = int(time.time())
-            prev_bytes_written, cur_idle, total_idle = 0, 0, 0
-            while self.show_status:
+    def show_status_info(self):
+        self.clear_screen()
+        num_files = len(self.files)
+        start_time = int(time.time())
+        while self.show_status:
+            time.sleep(3)
+            """
+            if len(self.queue) >= 524288:
+                self.throttle = True
                 time.sleep(3)
-                """
-                if len(self.queue) >= 524288:
-                    self.throttle = True
-                    time.sleep(3)
-                else:
-                    self.throttle = False
-                """
-                cur_write_rate = self.bytes_written / MB
-                duration = int(time()) - start_time
-                print("\033[1;0H%s" % "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
-                print("\033[2;0H%s" % "Clusters in queue: {0:<30d}".format(len(self.queue)))
-                #print("\033[3;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
-                print("\033[3;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(self.bytes_written / MB))
-                print("\033[4;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((self.bytes_written / MB) / (duration), ''))
-                print("\033[5;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
-                if self.throttle:
-                    print("\033[6;0HThrottling...")
-                else:
-                    print("\033[6;0H%s" % "{0:<30s}".format(''))
-        except:
-            print 'User aborted'
-            self.ns.remove(name=self.name)
-            return
+            else:
+                self.throttle = False
+            """
+            duration = int(time()) - start_time
+            print("\033[1;0H%s" % "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
+            print("\033[2;0H%s" % "Clusters in queue: {0:<30d}".format(len(self.queue)))
+            #print("\033[3;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
+            print("\033[3;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(self.bytes_written / MB))
+            print("\033[4;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((self.bytes_written / MB) / (duration), ''))
+            print("\033[5;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
+            if self.throttle:
+                print("\033[6;0HThrottling...")
+            else:
+                print("\033[6;0H%s" % "{0:<30s}".format(''))
 
     """
     def show_status(self):
