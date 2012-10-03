@@ -85,7 +85,8 @@ class StreamServer():
             print base
             data_mapping = {base+idx : (self.cluster_mapping[base+idx], buff[idx:idx+self.cluster_size]) for idx in range(0, len(buff), self.cluster_size)}
             for idx in data_mapping:
-                self.queues[target].put_nowait(data_mapping[idx])
+		target, data = data_mapping[idx]
+                self.queues[target].put_nowait((idx, data))
             #pbar_update(tell())
             #sys.stdout.flush()
         for handler in self.handlers:
