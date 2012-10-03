@@ -267,7 +267,7 @@ class StreamClient():
     def show_status_info(self):
         self.clear_screen()
         num_files = len(self.files)
-        start_time = int(time.time())
+        start_time = int(time())
         while self.show_status:
             time.sleep(3)
             """
