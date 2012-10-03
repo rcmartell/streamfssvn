@@ -3,7 +3,7 @@ from mftparser import MFTParser
 from time import ctime, sleep
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 from threading import Thread, Lock
-import warnings, gc, sys, os
+import warnings, gc, sys, os, io
 from xml.etree import ElementTree as tree
 from collections import deque
 from multiprocessing import Process, Queue
@@ -25,7 +25,6 @@ class StreamServer():
 
     def parse_fs_metadata(self, fstype = 'ntfs'):
         print 'Parsing filesystem metadata...',
-        sys.stdout.flush()
         if fstype.lower() == 'ntfs':
             parser = MFTParser(self.src)
             self.cluster_size = parser.get_cluster_size()
@@ -38,7 +37,6 @@ class StreamServer():
 
     def setup_stream_listeners(self, clients):
         print 'Setting up stream listeners...',
-        sys.stdout.flush()
         self.streams = []
         for idx in range(len(clients)):
             print clients[idx]
@@ -49,15 +47,19 @@ class StreamServer():
             self.streams[idx].set_num_clusters(self.num_clusters)
             self.streams[idx].process_entries(self.entries[idx::len(clients)])
             for cluster in self.streams[idx].list_clusters():
-                self.mapping[cluster] = idx
+                self.cluster_mapping[cluster] = idx
         del(self.entries)
         gc.collect()
         print 'Done.'
 
     def process_image(self):
         self.lock = [Lock() for idx in range(len(self.streams))]
-        ifh = open(self.src, 'rb')
-        read_ifh = ifh.read
+        fh = io.open(self.src, 'rb')
+        read = fh.read
+        tell = fh.tell
+        fh.seek(0, os.SEEK_END)
+        img_size = tell()
+        fh.seek(0, os.SEEK_SET)
         #ofh = open(self.dest, 'wb+')
         self.finished = False
         for idx in range(len(self.lock)):
@@ -71,10 +73,25 @@ class StreamServer():
             stream.queue_show_status()
         for proc in self.procs:
             proc.start()
-        #pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
-        for idx in xrange(len(self.mapping)):
-            target = self.mapping[idx]
-            data = read_ifh(self.cluster_size)
+        pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
+        pbar_udpate = pbar.update
+        while tell() < img_size:
+            buff = read(QUEUE_SIZE * self.cluster_size)
+            offset = tell() / self.cluster_size
+            data_mapping = {offset+x : (self.cluster_mapping[offset+x], buff[x:x+self.cluster_size]) for x in range(0, len(buff), self.cluster_size)}
+            for idx in data_mapping:
+                self.queues[target].put_nowait(data_mapping[idx])
+            pbar_update(tell())
+        for handler in self.handlers:
+            handler.running = False
+        pbar.finish()
+        fh.close()
+        print 'Done.'
+        sys.exit(0)
+        """
+        for idx in xrange(len(self.cluster_mapping)):
+            target = self.mapping_cluster[idx]
+            data = read(self.cluster_size)
             if target == None:                
                 continue
             self.queues[target].put_nowait((idx, data))
@@ -83,9 +100,10 @@ class StreamServer():
         for handler in self.handlers:
             handler.running = False
         #pbar.finish()
-        ifh.close()
+        fh.close()
         print 'Done.'
         #ofh.close()
+        """
     
     """   
     def threaded_queue(self, idx):

@@ -170,8 +170,8 @@ class StreamClient():
             # While incomplete files remain...
             while len(self.file_progress):
                 # Sleep while the queue is empty.
-                if not len(self.queue):
-                    time.sleep(0.5)
+                while not len(self.queue):
+                    time.sleep(0.05)
                 filedb = {}
                 # QUEUE_SIZE is an arbitrary queue size to work on at one time.
                 # This value can be adjusted for better performance.
