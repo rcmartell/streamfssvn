@@ -293,6 +293,7 @@ class StreamClient():
                     print("\033[6;0H%s" % "{0:<30s}".format(''))
         except:
             print 'User aborted'
+            self.ns.remove(name=self.name)
             return
 
     """
@@ -364,7 +365,7 @@ def main():
     path = opts['path']
     config_path = opts['config']
     nameserver = opts['nameserver']
-    host = opts['host'] 
+    host = opts['bind'] 
     if path == None:
         path = os.path.abspath(os.path.curdir)
     elif not os.path.lexists(path):
