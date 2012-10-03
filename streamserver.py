@@ -32,7 +32,7 @@ class StreamServer():
             self.num_clusters = parser.get_num_clusters()
             #self.entries = filter(lambda x : x.name.split('.')[1].upper() in self.types, parser.main())
             self.entries = parser.main()
-            self.cluster_mapping = [None] * self.num_clusters
+            self.cluster_mapping = [-1] * self.num_clusters
         del(parser)
         print 'Done.'
 
@@ -41,7 +41,6 @@ class StreamServer():
         sys.stdout.flush()
         self.streams = []
         for idx in range(len(clients)):
-            print clients[idx]
             self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % clients[idx]))
             self.streams[idx]._pyroBind()
             self.streams[idx]._pyroOneway.add("add_queue")
@@ -55,7 +54,6 @@ class StreamServer():
         print 'Done.'
 
     def process_image(self):
-        self.lock = [Lock() for idx in range(len(self.streams))]
         fh = open(self.src, 'rb')
         read = fh.read
         tell = fh.tell
@@ -63,7 +61,6 @@ class StreamServer():
         img_size = tell()
         fh.seek(0, os.SEEK_SET)
         #ofh = open(self.dest, 'wb+')
-        self.finished = False
         for idx in range(len(self.streams)):
             self.queues = [Queue() for idx in range(len(self.streams))]
             self.handlers = [ClientHandler(stream) for stream in self.streams]
@@ -78,14 +75,19 @@ class StreamServer():
         #pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         #pbar_udpate = pbar.update
         while tell() < img_size:
+            base = tell() / self.cluster_size
             buff = read(QUEUE_SIZE * self.cluster_size)
+            print base, len(buff), len(self.cluster_mapping)
             if len(buff) == 0 or buff == None:
                 print "FAILURE!!!"
-            base = (tell() / self.cluster_size)
-            print base
-            data_mapping = {base+idx : (self.cluster_mapping[base+idx], buff[idx:idx+self.cluster_size]) for idx in range(0, len(buff), self.cluster_size)}
+            try:
+                data_mapping = {base+idx : (self.cluster_mapping[base+idx], buff[idx:idx+self.cluster_size]) for idx in range(0, len(buff), self.cluster_size)}
+            except:
+                print [idx for idx in range(0, len(buff), self.cluster_size)]
+                print len(buff)
+                print self.cluster_size
             for idx in data_mapping:
-		target, data = data_mapping[idx]
+                target, data = data_mapping[idx]
                 self.queues[target].put_nowait((idx, data))
             #pbar_update(tell())
             #sys.stdout.flush()
