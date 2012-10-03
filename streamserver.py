@@ -64,14 +64,14 @@ class StreamServer():
         fh.seek(0, os.SEEK_SET)
         #ofh = open(self.dest, 'wb+')
         self.finished = False
-        for idx in range(len(self.lock)):
+        for idx in range(len(self.streams)):
             self.queues = [Queue() for idx in range(len(self.streams))]
             self.handlers = [ClientHandler(stream) for stream in self.streams]
             self.procs = [Process(target=self.handlers[idx].process_data, args=(self.queues[idx],)) for idx in range(len(self.queues))]
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
-            #stream.queue_writes()
+            stream.queue_writes()
             stream.queue_show_status()
         for proc in self.procs:
             proc.start()

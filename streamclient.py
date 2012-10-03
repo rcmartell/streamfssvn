@@ -31,7 +31,6 @@ class StreamClient():
         self.setup_folders()
         self.setup_status_ui()
         self.setup_file_handler()
-        self.write_data()
 
     def clear_screen(self):
         if sys.platform == 'linux2':
@@ -257,14 +256,12 @@ class StreamClient():
                 self.file_queue.put_nowait(_file)
             self.handler.running = False
             self.show_status = False
-            self.ns.remove(name=self.name)
             self.proc.join()
             return
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.show_status = False
             self.handler.running = False
-            self.ns.remove(name=self.name)
             return
             
     def show_status(self):
@@ -296,7 +293,6 @@ class StreamClient():
                     print("\033[6;0H%s" % "{0:<30s}".format(''))
         except:
             print 'User aborted'
-            self.ns.remove(name=self.name)
             return
 
     """
