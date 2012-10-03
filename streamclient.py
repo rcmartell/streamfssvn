@@ -30,7 +30,6 @@ class StreamClient():
         self.queue = deque()
         self.setup_folders()
         self.setup_status_ui()
-        self.setup_file_handler()
 
     def clear_screen(self):
         if sys.platform == 'linux2':
@@ -262,6 +261,7 @@ class StreamClient():
             print 'User cancelled execution...'
             self.show_status = False
             self.handler.running = False
+            self.ns.remove(name=self.name)
             return
             
     def show_status(self):
