@@ -25,6 +25,7 @@ class StreamServer():
 
     def parse_fs_metadata(self, fstype = 'ntfs'):
         print 'Parsing filesystem metadata...',
+        sys.stdout.flush()
         if fstype.lower() == 'ntfs':
             parser = MFTParser(self.src)
             self.cluster_size = parser.get_cluster_size()
@@ -37,6 +38,7 @@ class StreamServer():
 
     def setup_stream_listeners(self, clients):
         print 'Setting up stream listeners...',
+        sys.stdout.flush()
         self.streams = []
         for idx in range(len(clients)):
             print clients[idx]
@@ -82,6 +84,7 @@ class StreamServer():
             for idx in data_mapping:
                 self.queues[target].put_nowait(data_mapping[idx])
             pbar_update(tell())
+            sys.stdout.flush()
         for handler in self.handlers:
             handler.running = False
         pbar.finish()
