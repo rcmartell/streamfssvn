@@ -74,18 +74,16 @@ class StreamServer():
             proc.start()
         #pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
         #pbar_udpate = pbar.update
+        data_mapping = {}
         while tell() < img_size:
             base = tell() / self.cluster_size
             buff = read(QUEUE_SIZE * self.cluster_size)
-            print base, len(buff), len(self.cluster_mapping)
-            if len(buff) == 0 or buff == None:
-                print "FAILURE!!!"
-            try:
-                data_mapping = {base+idx : (self.cluster_mapping[base+idx], buff[idx:idx+self.cluster_size]) for idx in range(0, len(buff), self.cluster_size)}
-            except:
-                print [idx for idx in range(0, len(buff), self.cluster_size)]
-                print len(buff)
-                print self.cluster_size
+            for idx in range(0, len(buff), self.cluster_size):
+                try:
+                    data_mapping[base + idx] = (self.cluster_mapping[base+idx], buff[idx:idx+self.cluster_size])
+                except:
+                    print data_mapping.keys()
+                    sys.exit(-1)
             for idx in data_mapping:
                 target, data = data_mapping[idx]
                 self.queues[target].put_nowait((idx, data))
