@@ -32,7 +32,7 @@ class StreamServer():
             self.num_clusters = parser.get_num_clusters()
             #self.entries = filter(lambda x : x.name.split('.')[1].upper() in self.types, parser.main())
             self.entries = parser.main()
-            self.mapping = [None] * self.num_clusters
+            self.cluster_mapping = [None] * self.num_clusters
         del(parser)
         print 'Done.'
 
@@ -41,7 +41,6 @@ class StreamServer():
         sys.stdout.flush()
         self.streams = []
         for idx in range(len(clients)):
-            print clients[idx]
             self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % clients[idx]))
             self.streams[idx]._pyroBind()
             self.streams[idx]._pyroOneway.add("add_queue")
@@ -55,7 +54,7 @@ class StreamServer():
         print 'Done.'
 
     def process_image(self):
-        self.lock = [Lock() for idx in range(len(self.streams))]
+        #self.lock = [Lock() for idx in range(len(self.streams))]
         fh = io.open(self.src, 'rb')
         read = fh.read
         tell = fh.tell
@@ -75,7 +74,7 @@ class StreamServer():
             stream.queue_show_status()
         for proc in self.procs:
             proc.start()
-        pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
+        pbar = ProgressBar(widgets = self.widgets, maxval = len(self.cluster_mapping) * self.cluster_size).start()
         pbar_udpate = pbar.update
         while tell() < img_size:
             buff = read(QUEUE_SIZE * self.cluster_size)
