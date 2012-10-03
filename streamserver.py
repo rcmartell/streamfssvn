@@ -3,7 +3,7 @@ from mftparser import MFTParser
 from time import ctime, sleep
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 from threading import Thread, Lock
-import warnings, gc, sys, os, io
+import warnings, gc, sys, os
 from xml.etree import ElementTree as tree
 from collections import deque
 from multiprocessing import Process, Queue
@@ -41,6 +41,7 @@ class StreamServer():
         sys.stdout.flush()
         self.streams = []
         for idx in range(len(clients)):
+            print clients[idx]
             self.streams.append(Pyro4.core.Proxy("PYRONAME:%s" % clients[idx]))
             self.streams[idx]._pyroBind()
             self.streams[idx]._pyroOneway.add("add_queue")
@@ -54,8 +55,8 @@ class StreamServer():
         print 'Done.'
 
     def process_image(self):
-        #self.lock = [Lock() for idx in range(len(self.streams))]
-        fh = io.open(self.src, 'rb')
+        self.lock = [Lock() for idx in range(len(self.streams))]
+        fh = open(self.src, 'rb')
         read = fh.read
         tell = fh.tell
         fh.seek(0, os.SEEK_END)
@@ -74,19 +75,22 @@ class StreamServer():
             stream.queue_show_status()
         for proc in self.procs:
             proc.start()
-        pbar = ProgressBar(widgets = self.widgets, maxval = len(self.cluster_mapping) * self.cluster_size).start()
-        pbar_udpate = pbar.update
+        #pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
+        #pbar_udpate = pbar.update
         while tell() < img_size:
             buff = read(QUEUE_SIZE * self.cluster_size)
-            base = tell() / self.cluster_size
+            if len(buff) == 0 or buff == None:
+                print "FAILURE!!!"
+            base = (tell() / self.cluster_size)
+            print base
             data_mapping = {base+idx : (self.cluster_mapping[base+idx], buff[idx:idx+self.cluster_size]) for idx in range(0, len(buff), self.cluster_size)}
             for idx in data_mapping:
                 self.queues[target].put_nowait(data_mapping[idx])
-            pbar_update(tell())
-            sys.stdout.flush()
+            #pbar_update(tell())
+            #sys.stdout.flush()
         for handler in self.handlers:
             handler.running = False
-        pbar.finish()
+        #pbar.finish()
         fh.close()
         print 'Done.'
         sys.exit(0)

@@ -365,7 +365,7 @@ def main():
     path = opts['path']
     config_path = opts['config']
     nameserver = opts['nameserver']
-    host = opts['bind'] 
+    boundhost = opts['bind'] 
     if path == None:
         path = os.path.abspath(os.path.curdir)
     elif not os.path.lexists(path):
@@ -381,7 +381,7 @@ def main():
     if config_path.endswith(os.path.sep):
         config_path = config[:-1]
     # Start Pyro daemon
-    daemon = Pyro4.core.Daemon(host=host)
+    daemon = Pyro4.core.Daemon(host=boundhost)
     ns = Pyro4.naming.locateNS(nameserver)
     client = StreamClient(name=name, path=path, config_path=config_path, ns=ns, daemon=daemon)
     uri = daemon.register(client)
