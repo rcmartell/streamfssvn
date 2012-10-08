@@ -74,7 +74,7 @@ class StreamServer():
         while tell() < img_size:
             base = tell() / self.cluster_size
             buff = read(QUEUE_SIZE * self.cluster_size)
-            data_mapping = {base + idx : (self.cluster_mapping[base + idx], buff[idx:idx + self.cluster_size]) for idx in range(len(buff) / self.cluster_size)}
+            data_mapping = {base + idx : (self.cluster_mapping[base + idx], buff[(idx * self.cluster_size):(idx * self.cluster_size) + self.cluster_size]) for idx in range(len(buff) / self.cluster_size)}
             for idx in data_mapping:
                 target, data = data_mapping[idx]
                 self.queues[target].put_nowait((idx, data))
