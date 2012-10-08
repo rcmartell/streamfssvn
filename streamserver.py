@@ -56,6 +56,7 @@ class StreamServer():
         fh.seek(0, os.SEEK_END)
         img_size = tell()
         fh.seek(0, os.SEEK_SET)
+        csize = self.cluster_size
         #ofh = open(self.dest, 'wb+')
         for idx in range(len(self.streams)):
             self.queues = [Queue() for idx in range(len(self.streams))]
@@ -72,9 +73,9 @@ class StreamServer():
         #pbar_udpate = pbar.update
         data_mapping = {}
         while tell() < img_size:
-            base = tell() / self.cluster_size
-            buff = read(QUEUE_SIZE * self.cluster_size)
-            data_mapping = {base + idx : (self.cluster_mapping[base + idx], buff[(idx * self.cluster_size):(idx * self.cluster_size) + self.cluster_size]) for idx in range(len(buff) / self.cluster_size)}
+            base = tell() / csize
+            buff = read(QUEUE_SIZE * csize)
+            data_mapping = {base + idx : (self.cluster_mapping[base + idx], buff[(idx * csize):(idx * csize) + csize]) for idx in range(len(buff) / csize)}
             for idx in data_mapping:
                 target, data = data_mapping[idx]
                 self.queues[target].put_nowait((idx, data))
