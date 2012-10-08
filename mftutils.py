@@ -1,6 +1,5 @@
 #!/usr/bin/python
 from mftparser import MFTParser
-import itertools
 from summarywriter import SummaryWriter
 
 MFT_ENTRY_SIZE = 0x400
@@ -148,7 +147,7 @@ if __name__ == "__main__":
     Note: When using this option, the file-type is determined exclusively by extension, so counts may not truly reflect the contents of the system. 
     """)
     argparser.add_argument('-t', '--target', help = "Target image/drive to be parsed.", required = True)
-    argparser.add_argument('-p', '--partition', type = int, help = "Specify which partition is to be parsed. If none is specified target assumed to be a partition.", default = 0) 
+    argparser.add_argument('-p', '--partition', type = int, help = "Specify which partition is to be parsed. If none is specified target assumed to be a partition.", default = 0)
     group = argparser.add_mutually_exclusive_group(required = True)
     group.add_argument('-e', '--entry', type = int, help = "Get basic MFT entry data for supplied entry number. Similar to Sleuthkit's istat sans datarun info for ease of viewing. See -d/--data for datarun listings.")
     group.add_argument('-d', '--data', type = int, help = "Get data blocks belonging to file in specified MFT entry.")

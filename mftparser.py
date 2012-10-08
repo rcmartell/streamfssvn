@@ -284,7 +284,7 @@ class MFTParser():
                             size = data_size
                         else:
                             size = real_size
-                        self.entries.append(FILE_RECORD(name = name, entry_num = self.entry_num, parent = parent, 
+                        self.entries.append(FILE_RECORD(name = name, entry_num = self.entry_num, parent = parent,
                             ctime = ctime, mtime = mtime, atime = atime, size = size, clusters = clusters, res_data = res_data))
                     inode += 1
                     count += 1
@@ -598,20 +598,20 @@ class MFTParser():
             entry_alloc_size = unpack("<Q", idx_buffer[offset + 56:offset + 64])[0]
             entry_real_size = unpack("<Q", idx_buffer[offset + 64:offset + 72])[0]
             entry_flags = [key for key in ATTRIBUTES if unpack("<I", idx_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
-            entry_name_len = unpack("<B", idx_buffer[offset+80])[0]
-            entry_namespace = unpack("<B", idx_buffer[offset+81])[0]
+            entry_name_len = unpack("<B", idx_buffer[offset + 80])[0]
+            entry_namespace = unpack("<B", idx_buffer[offset + 81])[0]
             if entry_namespace == 2:
                 offset += entry_len
                 continue
             entry_filename = idx_buffer[offset + 82:offset + 82 + (2 * entry_name_len)].replace('\x00', '')
-            idx_entries.append(INDEX_ENTRY(mft_ref = mft_ref, flags = flags, parent_ref = parent_ref, ctime = entry_ctime, 
+            idx_entries.append(INDEX_ENTRY(mft_ref = mft_ref, flags = flags, parent_ref = parent_ref, ctime = entry_ctime,
                                     mtime = entry_mtime, atime = entry_atime, alloc_size = entry_alloc_size, real_size = entry_real_size, file_flags = entry_flags, name = entry_filename))
             offset += entry_len
             if flags & 0x2:
                 break
         self.entry_offset += attr_len
         return INDEX_ROOT(attr_name, attr_flags, attr_id, attr_type, index_size, header_flags, idx_entries)
-        
+
     def parse_idx_alloc(self, offset):
         init_offset = self.img.tell()
         attr_len = unpack("<I", self.entry[offset + 4:offset + 8])[0]
@@ -630,7 +630,7 @@ class MFTParser():
         attr_name = idx_alloc[name_off:name_off + (2 * name_len)]
         data = self.entry[offset + run_offset:offset + run_offset + run_len]
         idx_blocks = []
-        prev_offset = 0
+        prev_run_offset = 0
         max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
         file_fragmented = False
         while True:
@@ -697,14 +697,14 @@ class MFTParser():
             entry_alloc_size = unpack("<Q", index_buffer[offset + 56:offset + 64])[0]
             entry_real_size = unpack("<Q", index_buffer[offset + 64:offset + 72])[0]
             entry_flags = [key for key in ATTRIBUTES if unpack("<I", index_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
-            entry_name_len = unpack("<B", index_buffer[offset+80])[0]
-            entry_namespace = unpack("<B", index_buffer[offset+81])[0]
+            entry_name_len = unpack("<B", index_buffer[offset + 80])[0]
+            entry_namespace = unpack("<B", index_buffer[offset + 81])[0]
             if entry_namespace == 2:
                 offset += entry_len
                 continue
             entry_filename = index_buffer[offset + 82:offset + 82 + (2 * entry_name_len)].replace('\x00', '')
-            idx_entries.append(INDEX_ENTRY(mft_ref = mft_ref, flags = flags, parent_ref = parent_ref, ctime=entry_ctime, mtime=entry_mtime, atime=entry_atime, alloc_size=entry_alloc_size, 
-                    real_size=entry_real_size, file_flags=entry_flags, name=entry_filename))
+            idx_entries.append(INDEX_ENTRY(mft_ref = mft_ref, flags = flags, parent_ref = parent_ref, ctime = entry_ctime, mtime = entry_mtime, atime = entry_atime, alloc_size = entry_alloc_size,
+                    real_size = entry_real_size, file_flags = entry_flags, name = entry_filename))
             offset += entry_len
         return INDEX_BLOCK(log_seq, index_block_vcn, index_size, header_flags, idx_entries = idx_entries)
 

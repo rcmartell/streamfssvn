@@ -1,15 +1,15 @@
 #!/usr/bin/python
-import sys, os, time, shutil, argparse, curses
-import threading, socket, gc
+import sys, os, shutil, argparse
+import threading, gc
 from collections import deque
 from filehandler import FileHandler
-import warnings, psutil
+import warnings
 warnings.filterwarnings("ignore")
 import Pyro4.core, Pyro4.naming
 from multiprocessing import Process, Queue
-from time import time
+from time import time, sleep
 
-QUEUE_SIZE = 65536 
+QUEUE_SIZE = 65536
 MB = 1024 * 1024
 
 class StreamClient():
@@ -41,19 +41,19 @@ class StreamClient():
         self.clear_screen()
         print("\033[0;0HWaiting for server...")
         return
-        
+
     def setup_folders(self):
         self.clear_screen()
         os.chdir(self.path)
         if os.path.isdir('{0}{1}Incomplete'.format(self.path, os.path.sep)):
-            answ = raw_input('{0}{1}Incomplete'.format(self.path, os.path.sep) +  " already exists. Delete Y/[N]")
+            answ = raw_input('{0}{1}Incomplete'.format(self.path, os.path.sep) + " already exists. Delete Y/[N]")
             if answ.upper() == 'Y':
                 shutil.rmtree('Incomplete')
                 os.mkdir('{0}{1}Incomplete'.format(self.path, os.path.sep))
         else:
             os.mkdir('{0}{1}Incomplete'.format(self.path, os.path.sep))
         if os.path.isdir('{0}{1}Complete'.format(self.path, os.path.sep)):
-            answ = raw_input('{0}{1}Complete'.format(self.path, os.path.sep) +  " already exists. Delete Y/[N]")
+            answ = raw_input('{0}{1}Complete'.format(self.path, os.path.sep) + " already exists. Delete Y/[N]")
             if answ.upper() == 'Y':
                 shutil.rmtree('Complete')
                 os.mkdir('Complete')
@@ -78,7 +78,7 @@ class StreamClient():
     def setup_file_handler(self):
         self.handler = FileHandler()
         self.file_queue = Queue()
-        self.proc = Process(target=self.handler.handler_queue, args=(self.file_queue,))
+        self.proc = Process(target = self.handler.handler_queue, args = (self.file_queue,))
         self.proc.start()
 
     def process_entries(self, entries):
@@ -97,7 +97,7 @@ class StreamClient():
                 self.residentfiles[entry.name] = entry.res_data
             else:
                 # Nonresident
-                self.files[entry.name] = [entry.size, reduce(lambda x, y: x+y, [range(idx[0], idx[0] + idx[1]) for idx in entry.clusters])]
+                self.files[entry.name] = [entry.size, reduce(lambda x, y: x + y, [range(idx[0], idx[0] + idx[1]) for idx in entry.clusters])]
         del(entries)
         gc.collect()
         return
@@ -132,7 +132,7 @@ class StreamClient():
         Method used by Image Server to transfer cluster/data to client.
         """
         self.queue.extend(items)
-        
+
     def get_queue_size(self):
         return len(self.queue)
 
@@ -143,12 +143,12 @@ class StreamClient():
         """
         Helper method to spawn write_data in a seperate thread.
         """
-        self.thread = threading.Thread(target=self.write_data)
+        self.thread = threading.Thread(target = self.write_data)
         self.thread.start()
         return
 
     def queue_show_status(self):
-        self.statusThread = threading.Thread(target=self.show_status_info)
+        self.statusThread = threading.Thread(target = self.show_status_info)
         self.statusThread.setDaemon(True)
         self.statusThread.start()
         return
@@ -261,9 +261,9 @@ class StreamClient():
             print 'User cancelled execution...'
             self.show_status = False
             self.handler.running = False
-            self.ns.remove(name=self.name)
+            self.ns.remove(name = self.name)
             return
-            
+
     def show_status_info(self):
         self.clear_screen()
         num_files = len(self.files)
@@ -283,7 +283,7 @@ class StreamClient():
             #print("\033[3;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
             print("\033[3;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(self.bytes_written / MB))
             print("\033[4;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((self.bytes_written / MB) / (duration), ''))
-            print("\033[5;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
+            print("\033[5;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration / 3600), ((duration / 60) % 60), (duration % 60)))
             if self.throttle:
                 print("\033[6;0HThrottling...")
             else:
@@ -358,7 +358,7 @@ def main():
     path = opts['path']
     config_path = opts['config']
     nameserver = opts['nameserver']
-    boundhost = opts['bind'] 
+    boundhost = opts['bind']
     if path == None:
         path = os.path.abspath(os.path.curdir)
     elif not os.path.lexists(path):
@@ -372,20 +372,20 @@ def main():
         print "Invalid path specified."
         sys.exit(-1)
     if config_path.endswith(os.path.sep):
-        config_path = config[:-1]
+        config_path = config_path[:-1]
     # Start Pyro daemon
-    daemon = Pyro4.core.Daemon(host=boundhost)
+    daemon = Pyro4.core.Daemon(host = boundhost)
     ns = Pyro4.naming.locateNS(nameserver)
-    client = StreamClient(name=name, path=path, config_path=config_path, ns=ns, daemon=daemon)
+    client = StreamClient(name = name, path = path, config_path = config_path, ns = ns, daemon = daemon)
     uri = daemon.register(client)
     ns.register(name, uri)
     try:
         daemon.requestLoop()
     except KeyboardInterrupt:
         print 'User aborted'
-        ns.remove(name=name)
+        ns.remove(name = name)
         daemon.shutdown()
         sys.exit(-1)
 
 if __name__ == "__main__":
-	main()
+    main()

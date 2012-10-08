@@ -1,17 +1,13 @@
 #!/usr/bin/python
 from mftparser import MFTParser
-from time import ctime, sleep
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
-from threading import Thread, Lock
 import warnings, gc, sys, os
-from xml.etree import ElementTree as tree
-from collections import deque
 from multiprocessing import Process, Queue
 from clienthandler import ClientHandler
 warnings.filterwarnings("ignore")
 import Pyro4.core
 
-QUEUE_SIZE = 65536 
+QUEUE_SIZE = 65536
 Pyro4.config.ONEWAY_THREADED = True
 
 class StreamServer():
@@ -64,7 +60,7 @@ class StreamServer():
         for idx in range(len(self.streams)):
             self.queues = [Queue() for idx in range(len(self.streams))]
             self.handlers = [ClientHandler(stream) for stream in self.streams]
-            self.procs = [Process(target=self.handlers[idx].process_data, args=(self.queues[idx],)) for idx in range(len(self.queues))]
+            self.procs = [Process(target = self.handlers[idx].process_data, args = (self.queues[idx],)) for idx in range(len(self.queues))]
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
@@ -78,7 +74,7 @@ class StreamServer():
         while tell() < img_size:
             base = tell() / self.cluster_size
             buff = read(QUEUE_SIZE * self.cluster_size)
-            data_mapping = {base+idx : (self.cluster_mapping[base+idx], buff[idx:idx+self.cluster_size]) for idx in range(len(buff) / self.cluster_size)}
+            data_mapping = {base + idx : (self.cluster_mapping[base + idx], buff[idx:idx + self.cluster_size]) for idx in range(len(buff) / self.cluster_size)}
             for idx in data_mapping:
                 target, data = data_mapping[idx]
                 self.queues[target].put_nowait((idx, data))
@@ -109,7 +105,7 @@ class StreamServer():
         print 'Done.'
         #ofh.close()
         """
-    
+
     """   
     def threaded_queue(self, idx):
         tid = idx
@@ -138,7 +134,7 @@ class StreamServer():
             data = self.writer_queue.get()
             ofh.write(data)
         ofh.close()
-    """            
+    """
 
 def main():
     server = StreamServer(sys.argv[1], sys.argv[2])

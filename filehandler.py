@@ -1,4 +1,3 @@
-import sys
 from md5 import md5
 
 class FileHandler():
@@ -16,7 +15,7 @@ class FileHandler():
             except:
                 pass
         fh = open("filehashes.txt", "wb")
-        for k,v in self.hashes.iteritems:
-            write("%s : %s" % (k,v))
+        for k, v in self.hashes.iteritems:
+            fh.write("%s : %s" % (k, v))
         fh.close()
         return
