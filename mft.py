@@ -75,7 +75,7 @@ class INDEX_ROOT():
         self.idx_entries = idx_entries
 
 class INDEX_ALLOC():
-    def __init__(self, attr_name=None, attr_flags=None, attr_id=None, start_vcn=None, end_vcn=None, data_size=None, idx_blocks=[]):
+    def __init__(self, attr_name=None, attr_flags=None, attr_id=None, start_vcn=None, end_vcn=None, data_size=None, idx_blocks=[], clusters=None):
         self.attr_name = attr_name
         self.attr_flags = attr_flags
         self.attr_id = attr_id
@@ -83,6 +83,7 @@ class INDEX_ALLOC():
         self.end_vcn = end_vcn
         self.data_size = data_size
         self.idx_blocks = idx_blocks
+        self.clusters = clusters
         
 
 class INDEX_BLOCK():
@@ -112,6 +113,14 @@ class SECURE_FILE():
         self.sii = sii
         self.sdh = sdh
         self.sds = sds
+        
+class ATTR_LIST():
+    def __init__(self, nonresident=None, size=None, init_size=None, attr_entries=[], clusters=None):
+        self.nonresident = nonresident
+        self.size = size
+        self.init_size = init_size
+        self.attr_entries = attr_entries
+        self.clusters = clusters
 
 class ATTR_LIST_ENTRY():
     def __init__(self, attr_type=None, attr_len=None, name_len=None, start_vcn=None, mft_ref=None, attr_id=None, attr_name=None):

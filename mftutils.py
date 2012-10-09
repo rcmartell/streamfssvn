@@ -12,7 +12,6 @@ def get_filesystem_summary(parser, path):
     summary.writeEntry(parser.entries[-1], True)
 
 
-
 def print_header(parser):
     print "*****************HEADER INFO*****************"
     print "Entry:                           %i" % parser.header.entry_num
@@ -60,7 +59,7 @@ def print_idx_root(parser):
         return
     print "*****************INDEX ROOT**************"
     for entry in parser.idx_root.idx_entries:
-        print entry.name, entry.file_flags, entry.mft_ref, entry.parent_ref, entry.real_size
+        print entry.name, entry.file_flags, entry.mft_ref, entry.real_size
     print ''
 
 
@@ -68,12 +67,12 @@ def print_idx_alloc(parser):
     print "*****************INDEX ALLOCATION**************"
     for block in parser.idx_alloc.idx_blocks:
         for entry in block.idx_entries:
-            print entry.name, entry.file_flags, entry.mft_ref, entry.parent_ref, entry.real_size
+            print entry.name, entry.file_flags, entry.mft_ref, entry.real_size
     print ''
 
 def print_attr_list(parser):
     print "*****************ATTRIBUTE LIST****************"
-    for attr in parser.attr_list:
+    for attr in parser.attr_list.attr_entries:
         print "Type: {0}-{1}\tMFT Entry: {2}\tVCN: {3}".format(attr.attr_type, attr.attr_id, attr.mft_ref, attr.start_vcn)
 
 
@@ -165,7 +164,7 @@ if __name__ == "__main__":
             entry_num = int(opts['entry'])
         except:
             entry_num = int(opts['data'])
-        parser.parse_mft(start = entry_num, end = entry_num, full_parse = True, cleanup = False, resolve_filepaths = False, parse_index_records = True)
+        parser.parse_mft(start = entry_num, end = entry_num, full_parse = True, cleanup = False, resolve_filepaths = True, parse_index_records = True)
     if opts['entry'] != None:
         if not hasattr(parser, 'data'):
             print "Invalid MFT Entry"
@@ -210,13 +209,13 @@ if __name__ == "__main__":
                 res_data = parser.data[i].res_data
                 print_data(parser.data[i], parser.data[i].clusters, parser.data[i].start_vcn, parser.data[i].end_vcn, True)
     elif opts['files']:
-        parser.parse_mft(full_parse = True, quickstat = False, parse_index_records = False, resolve_filepaths = True, get_mactimes = True)
+        parser.parse_mft(full_parse = False, quickstat = True, parse_index_records = False, resolve_filepaths = True, get_mactimes = True)
         get_filesystem_summary(parser, opts['files'])
     elif opts['info']:
         print_fsdata(parser)
     elif opts['search']:
-        parser.parse_mft(full_parse = True, quickstat = True, parse_index_records = False, resolve_filepaths = True)
+        parser.parse_mft(full_parse = False, quickstat = True, parse_index_records = False, resolve_filepaths = True)
         search(parser, opts['search'])
     elif opts['cluster']:
-        parser.parse_mft(full_parse = True, parse_index_records = False, resolve_filepaths = True)
+        parser.parse_mft(full_parse = True, parse_index_records = False, resolve_filepaths = True, quickstat = False)
         cluster_to_file(parser, opts['cluster'])

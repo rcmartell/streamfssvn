@@ -174,6 +174,7 @@ class MFTParser():
                 self.data = []
                 clusters = []
                 self.entry_num = 0
+                self.alloc_status = 1
                 self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
                 ctime, mtime, atime = None, None, None
                 flags = []
@@ -196,7 +197,7 @@ class MFTParser():
                             self.std_info = self.parse_std_info(self.entry_offset)
 
                         elif self.entry[self.entry_offset:self.entry_offset + 4] == ATTR_LIST_SIG:
-                            if not self.full_parse:
+                            if not self.alloc_status:
                                 self.parse_attr_list(self.entry_offset)
                             else:
                                 self.attr_list = self.parse_attr_list(self.entry_offset)
@@ -344,6 +345,7 @@ class MFTParser():
         # first_attr_off = unpack("<H", self.entry[20:22])[0]
         # Directory, System, Hidden, etc.
         flags = unpack("<H", self.entry[22:24])[0]
+        self.alloc_status = flags & 0x1
         # If mft_base != 0, then we're in an extended data attribute entry
         # owned by mft_base's entry. Its attributes could not fit in a single record
         # so another entry was reserved for it.
@@ -360,7 +362,7 @@ class MFTParser():
         """Parse the Attribute List attribute of an entry. Entries only have an attribute list if a single entry is too small
            to hold all the metadata of the entry's attributes."""
         attr_list_len = unpack("<I", self.entry[offset + 4:offset + 8])[0]
-        if not self.full_parse:
+        if not self.alloc_status:
             self.entry_offset += attr_list_len
             return
         non_resident = unpack("<B", self.entry[offset + 8])[0]
@@ -389,7 +391,7 @@ class MFTParser():
                 name_len = name_len, start_vcn = start_vcn, mft_ref = mft_ref, attr_id = attr_id, attr_name = name))
             offset += attr_len
         self.entry_offset += attr_list_len
-        return attr_entries
+        return ATTR_LIST(nonresident=0, size=attr_list_len, init_size=attr_list_len, attr_entries=attr_entries, clusters=None)
 
     def parse_attr_list_nonresident(self, offset, attr_list_len):
         init_offset = self.img.tell()
@@ -406,7 +408,8 @@ class MFTParser():
         prev_run_offset = 0
         max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
         file_fragmented = False
-        attrs = []
+        attr_entries = []
+        clusters = []
         while True:
             tmp = b2a_hex(unpack("<c", data[run_off])[0])
             run_offset_bytes = int(tmp[0], 16)
@@ -426,9 +429,10 @@ class MFTParser():
                                                                (run_offset - max_sign[run_offset_bytes]))
             for i in range(data_run_len):
                 try:
-                    attrs.extend(self.parse_nonresident_attr_entries((run_offset + i + start_vcn)))
+                    attr_entries.extend(self.parse_nonresident_attr_entries((run_offset + i + start_vcn)))
                 except:
-                    attrs.append(self.parse_nonresident_attr_entries((run_offset + i + start_vcn)))
+                    attr_entries.append(self.parse_nonresident_attr_entries((run_offset + i + start_vcn)))
+            clusters.append((run_offset, data_run_len))
             if data[0] == DATA_RUN_END:
                 break
             else:
@@ -438,7 +442,7 @@ class MFTParser():
                 continue
         self.entry_offset += attr_list_len
         self.img.seek(init_offset, os.SEEK_SET)
-        return attrs
+        return ATTR_LIST(nonresident=1, size=real_size, init_size=init_size, attr_entries=attr_entries, clusters=clusters)
 
     def parse_nonresident_attr_entries(self, lcn):
         self.img.seek((lcn * self.cluster_size) + self.partition_offset, os.SEEK_SET)
@@ -468,7 +472,7 @@ class MFTParser():
         old_offset = self.entry_offset
         old_entry = self.entry
         img_off = self.img.tell()
-        for attr in self.attr_list:
+        for attr in self.attr_list.attr_entries:
             if attr.mft_ref != count:
                 idx, vcn = math.modf((attr.mft_ref * MFT_ENTRY_SIZE) / self.cluster_size)
                 idx = self.pos.index(idx)
@@ -477,9 +481,20 @@ class MFTParser():
                 self.img.seek(address, os.SEEK_SET)
                 self.entry = self.img.read(MFT_ENTRY_SIZE)
                 self.parse_mft_header()
-                offset = MFT_HEADER_LEN
-                if self.entry[offset:offset + 4] == DATA_SIG:
-                    self.data.append(self.parse_data_attr(offset, quickstat = False, full_parse = True))
+                self.entry_offset = MFT_HEADER_LEN
+                if self.entry[self.entry_offset:self.entry_offset + 4] == FILENAME_SIG:
+                    filename = self.parse_filename(self.entry_offset)
+                    if self.filename != None:
+                        if filename.namespace == 2:
+                            continue
+                        else:
+                            self.filename = filename
+                    else:
+                        self.filename = filename
+                elif self.entry[self.entry_offset:self.entry_offset + 4] == INDEX_ROOT_SIG:
+                    self.idx_root = self.parse_idx_root(self.entry_offset)
+                elif self.entry[self.entry_offset:self.entry_offset + 4] == DATA_SIG:
+                    self.data.append(self.parse_data_attr(self.entry_offset, quickstat = False, full_parse = True))
                 self.img.seek(img_off, os.SEEK_SET)
                 self.entry_offset = old_offset
                 self.entry = old_entry
@@ -561,7 +576,7 @@ class MFTParser():
 
     def parse_idx_root(self, offset):
         attr_len = unpack("<I", self.entry[offset + 4:offset + 8])[0]
-        if not self.parse_index_records:
+        if not self.parse_index_records or not self.alloc_status:
             self.entry_offset += attr_len
             return
         idx_root = self.entry[offset:offset + attr_len]
@@ -607,8 +622,6 @@ class MFTParser():
             idx_entries.append(INDEX_ENTRY(mft_ref = mft_ref, flags = flags, parent_ref = parent_ref, ctime = entry_ctime,
                                     mtime = entry_mtime, atime = entry_atime, alloc_size = entry_alloc_size, real_size = entry_real_size, file_flags = entry_flags, name = entry_filename))
             offset += entry_len
-            if flags & 0x2:
-                break
         self.entry_offset += attr_len
         return INDEX_ROOT(attr_name, attr_flags, attr_id, attr_type, index_size, header_flags, idx_entries)
 
@@ -616,7 +629,7 @@ class MFTParser():
         init_offset = self.img.tell()
         attr_len = unpack("<I", self.entry[offset + 4:offset + 8])[0]
         idx_alloc = self.entry[offset:offset + attr_len]
-        if not self.parse_index_records:
+        if not self.parse_index_records or not self.alloc_status:
             self.entry_offset += attr_len
             return
         name_len = unpack("<B", idx_alloc[9])[0]
