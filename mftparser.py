@@ -522,7 +522,7 @@ class MFTParser():
     def parse_std_info(self, offset):
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         std_info = self.entry[offset + 24:offset + attr_len]
-        ctime, mtime, atime = None, None, None
+        ctime, mtime, atime, sid = None, None, None, None
         if self.get_mactimes:
             try:
                 ctime = time.ctime((struct_q.unpack(std_info[0:8])[0] - NTFS_EPOCH) / 10 ** (7))
@@ -532,12 +532,10 @@ class MFTParser():
             except:
                 pass
         flags = [key for key in ATTRIBUTES if struct_i.unpack(std_info[32:36])[0] & ATTRIBUTES[key]]
-        sid = None
-        if attr_len > 48:
-            try:
-                sid = struct_i.unpack(std_info[52:56])[0]
-            except:
-                pass
+        try:
+            sid = struct_i.unpack(std_info[52:56])[0]
+        except:
+            pass
         self.entry_offset += attr_len
         return STANDARD_INFO(ctime, mtime, atime, flags, sid)
 
@@ -728,10 +726,7 @@ class MFTParser():
 
     def parse_data_attr(self, offset):
         clusters = []
-        attr_name = None
-        res_data = None
-        start_vcn = None
-        end_vcn = None
+        attr_name, res_data, start_vcn, end_vcn = None, None, None, None
         file_fragmented = False
         prev_run_offset = 0
         max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
@@ -751,7 +746,7 @@ class MFTParser():
             alloc_size = struct_q.unpack(data[40:48])[0]
             real_size = struct_q.unpack(data[48:56])[0]
             while True:
-                tmp = b2a_hex(struct_c.unpack( data[run_off])[0])
+                tmp = b2a_hex(struct_c.unpack(data[run_off])[0])
                 run_offset_bytes = int(tmp[0], 16)
                 data_run_bytes = int(tmp[1], 16)
                 if tmp[0] == '0' or tmp[1] == '0':
