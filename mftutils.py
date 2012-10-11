@@ -164,7 +164,7 @@ if __name__ == "__main__":
             entry_num = int(opts['entry'])
         except:
             entry_num = int(opts['data'])
-        parser.parse_mft(start = entry_num, end = entry_num, full_parse = True, cleanup = False, resolve_filepaths = True, parse_index_records = True)
+        parser.parse_mft(start = entry_num, end = entry_num, full_parse = True, cleanup = False, resolve_filepaths = False, parse_index_records = True, get_mactimes = True)
     if opts['entry'] != None:
         if not hasattr(parser, 'data'):
             print "Invalid MFT Entry"
@@ -209,7 +209,7 @@ if __name__ == "__main__":
                 res_data = parser.data[i].res_data
                 print_data(parser.data[i], parser.data[i].clusters, parser.data[i].start_vcn, parser.data[i].end_vcn, True)
     elif opts['files']:
-        parser.parse_mft(full_parse = False, quickstat = True, parse_index_records = False, resolve_filepaths = True, get_mactimes = True)
+        parser.parse_mft(full_parse = False, quickstat = False, parse_index_records = False, resolve_filepaths = True, get_mactimes = True)
         get_filesystem_summary(parser, opts['files'])
     elif opts['info']:
         print_fsdata(parser)

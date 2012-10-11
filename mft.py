@@ -65,11 +65,10 @@ class OBJECT_ID():
         self.object_id = object_id
 
 class INDEX_ROOT():
-    def __init__(self, attr_name=None, attr_flags=None, attr_id=None, attr_type=None, idx_size=None, header_flags=None, idx_entries=[]):
+    def __init__(self, attr_name=None, attr_flags=None, attr_id=None, idx_size=None, header_flags=None, idx_entries=[]):
         self.attr_name = attr_name
         self.attr_flags = attr_flags
         self.attr_id = attr_id
-        self.attr_type = attr_type
         self.idx_size = idx_size
         self.header_flags = header_flags
         self.idx_entries = idx_entries
@@ -124,7 +123,7 @@ class ATTR_LIST():
 
 class ATTR_LIST_ENTRY():
     def __init__(self, attr_type=None, attr_len=None, name_len=None, start_vcn=None, mft_ref=None, attr_id=None, attr_name=None):
-        self.attr_type = attr_type
+        self.attr_type = attr_type        
         self.attr_len = attr_len
         self.name_len = name_len
         self.start_vcn = start_vcn
@@ -133,9 +132,8 @@ class ATTR_LIST_ENTRY():
         self.attr_name = attr_name
 
 class DATA_ATTR():
-    def __init__(self, attr_type=None, nonresident=None, flags=None, attr_id=None, start_vcn=None, end_vcn=None,
+    def __init__(self, nonresident=None, flags=None, attr_id=None, start_vcn=None, end_vcn=None,
                  alloc_size=None, data_size=None, clusters=None, file_fragmented=False, res_data=None, attr_name=None):
-        self.attr_type = attr_type
         self.nonresident = nonresident
         self.flags = flags
         self.attr_id = attr_id
