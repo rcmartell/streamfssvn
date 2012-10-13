@@ -117,7 +117,7 @@ class MFTParser():
         prev_run_offset = 0
         self.mft_data = []
         max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
-        fragmented = False
+        file_fragmented = False
         while True:
             try:
                 tmp = b2a_hex(struct_c.unpack(data[run_off])[0])
@@ -130,7 +130,7 @@ class MFTParser():
                 data = data[data_run_bytes:]
                 run_offset = struct_q.unpack(data[0:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0]
                 data = data[run_offset_bytes:]
-                if fragmented:
+                if file_fragmented:
                     if max_sign[run_offset_bytes] >= run_offset:
                         run_offset += prev_run_offset
                     else:
@@ -140,7 +140,7 @@ class MFTParser():
                 if data[0] == DATA_RUN_END:
                     break
                 else:
-                    fragmented = True
+                    file_fragmented = True
                     run_off = 0
                     prev_run_offset = run_offset
             except:
@@ -181,9 +181,10 @@ class MFTParser():
                 self.entry = self.img.read(MFT_ENTRY_SIZE)
                 self.entry_offset = 0
                 self.data = []
+                self.filedata = None
                 clusters = []
                 self.entry_num = 0
-                self.alloc_status = ALLOCATED
+                self.alloc_status = UNALLOCATED
                 self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
                 ctime, mtime, atime = None, None, None
                 flags = []
@@ -243,7 +244,17 @@ class MFTParser():
                             if self.quickstat or self.alloc_status == UNALLOCATED:
                                 self.entry_offset += attr_len
                             else:
-                                self.data.append(self.parse_data_attr(self.entry_offset))
+                                data_attrib = self.parse_data_attr(self.entry_offset)
+                                if data_attrib.attr_name == None:
+                                    if data_attrib.start_vcn == 0:
+                                        self.filedata = data_attrib
+                                    else:
+                                        self.filedata.clusters.extend(data_attrib.clusters)
+                                        self.filedata.end_vcn = max(self.filedata.end_vcn, data_attrib.end_vcn)
+                                        if data_attrib.fragmented:
+                                            self.filedata.fragmented = True
+                                else:
+                                    self.data.append(data_attrib)
 
                         elif self.entry[self.entry_offset:self.entry_offset + 4] == INDEX_ROOT_SIG:
                             attr_len = struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
@@ -288,23 +299,15 @@ class MFTParser():
                     if hasattr(self.filename, 'parent'):
                         parent = self.filename.parent
                     # And of course, for data attributes
-                    for data in self.data:
-                        if data != None and data.attr_name == None:
-                            if hasattr(data, 'clusters') and len(data.clusters):
-                                clusters.append((data.start_vcn, data.clusters))
-                            if hasattr(data, 'data_size') and data.data_size:
-                                data_size = data.data_size
-                            if hasattr(data, 'res_data') and data.res_data != None:
-                                res_data = data.res_data
-                            if hasattr(data, 'fragmented') and data.fragmented:
-                                self.data[0].fragmented = True
-                            if hasattr(data, 'end_vcn') and data.end_vcn > self.data[0].end_vcn:
-                                self.data[0].end_vcn = data.end_vcn
-                    clusters.sort()
-                    clusters = [c[1][0] for c in clusters]
-                    self.data[0].clusters = clusters
+                    if self.filedata != None:
+                        if hasattr(self.filedata, 'clusters') and len(self.filedata.clusters):
+                            clusters = self.filedata.clusters
+                        if hasattr(self.filedata, 'data_size'):
+                            data_size = self.filedata.data_size
+                        if hasattr(self.filedata, 'res_data') and self.filedata.res_data != None:
+                            res_data = self.filedata.res_data
                     if name != None and 'DIRECTORY' in flags:
-                            self.directories[self.entry_num] = (name, parent)
+                        self.directories[self.entry_num] = (name, parent)
                     # We're not interested in MFT specific files nor deleted ones...
                     elif name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in flags:
                         # FILE_RECORDs represent each file's metadata
@@ -395,7 +398,6 @@ class MFTParser():
             attr_entries = []
             while offset < attr_list_len - 24:
                 attr_type = struct_i.unpack(attr_list[offset:offset + 4])[0]
-                print attr_type
                 if attr_type == 0:
                     break
                 attr_len = struct_h.unpack(attr_list[offset + 4:offset + 6])[0]
@@ -405,39 +407,39 @@ class MFTParser():
                 mft_ref = struct_q.unpack(attr_list[offset + 16:offset + 24])[0] & 0xFFFFFFFF
                 attr_id = struct_b.unpack(attr_list[offset + 24])[0]
                 name = attr_list[offset + name_offset: offset + name_offset + (2 * name_length)].replace('\x00', '')
-                attr_entries.append(ATTR_LIST_ENTRY(attr_type, attr_len, start_vcn, mft_ref, attr_id, name))
+                attr_entries.append(ATTR_LIST_ENTRY(attr_type, attr_len, name_length, start_vcn, mft_ref, attr_id, name))
                 offset += attr_len
             self.entry_offset += attr_list_len
             return ATTR_LIST(non_resident, attr_list_len, attr_list_len, attr_entries, None)
         else:
-            _img_offset = self.img.tell()
+            prev_img_offset = self.img.tell()
             attr_id = struct_h.unpack(self.entry[offset + 14:offset + 16])[0]
             start_vcn = struct_q.unpack(self.entry[offset + 16:offset + 24])[0]
-            #end_vcn = struct_q.unpack(self.entry[offset + 24:offset + 32])[0]
+            end_vcn = struct_q.unpack(self.entry[offset + 24:offset + 32])[0]
             data_run_off = struct_h.unpack(self.entry[offset + 32:offset + 34])[0]
-            #alloc_size = struct_q.unpack(self.entry[offset + 40:offset + 48])[0]
+            alloc_size = struct_q.unpack(self.entry[offset + 40:offset + 48])[0]
             real_size = struct_q.unpack(self.entry[offset + 48:offset + 56])[0]
             init_size = struct_q.unpack(self.entry[offset + 56:offset + 64])[0]
             data_run_len = struct_q.unpack(self.entry[offset + 40:offset + 48])[0]
             data = self.entry[offset + data_run_off:offset + data_run_off + real_size]
-            run_off = 0
+            run_offset = 0
             prev_run_offset = 0
             max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
-            fragmented = False
+            file_fragmented = False
             attr_entries = []
             clusters = []
             while True:
-                tmp = b2a_hex(struct_c.unpack(data[run_off])[0])
+                tmp = b2a_hex(struct_c.unpack(data[0])[0])
                 run_offset_bytes = int(tmp[0], 16)
                 data_run_bytes = int(tmp[1], 16)
                 if tmp[0] == '0' or tmp[1] == '0':
                     break
-                data = data[run_off + 1:]
+                data = data[run_offset + 1:]
                 data_run_len = struct_q.unpack(data[0:data_run_bytes % 8] + ('\x00' * (8 - (data_run_bytes % 8))))[0]
                 data = data[data_run_bytes:]
                 run_offset = struct_q.unpack(data[0:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0]
                 data = data[run_offset_bytes:]
-                if fragmented:
+                if file_fragmented:
                         if max_sign[run_offset_bytes] >= run_offset:
                             run_offset += prev_run_offset
                         else:
@@ -448,37 +450,37 @@ class MFTParser():
                     self.img.seek((lcn * self.cluster_size) + self.partition_offset, os.SEEK_SET)
                     attr_entry = self.img.read(self.cluster_size)
                     offset = 0
-                    while offset < self.cluster_size:
-                        attr_type = struct_i.unpack(attr_entry[offset:offset + 4])[0]
-                        if attr_type == 0:
+                    while True:
+                        try:
+                            attr_type = struct_i.unpack(attr_entry[offset:offset + 4])[0]
+                            if attr_type == 0:
+                                break
+                        except:
                             break
                         attr_len = struct_h.unpack(attr_entry[offset + 4:offset + 6])[0]
                         name_length = struct_b.unpack(attr_entry[offset + 6])[0]
                         name_offset = struct_b.unpack(attr_entry[offset + 7])[0]
-                        startvcn = struct_q.unpack(attr_entry[offset + 8:offset + 16])[0]
+                        entry_start_vcn = struct_q.unpack(attr_entry[offset + 8:offset + 16])[0]
                         mft_ref = struct_q.unpack(attr_entry[offset + 16:offset + 24])[0] & 0xFFFFFFFF
                         attr_id = struct_b.unpack(attr_entry[offset + 24])[0]
-                        attr_name = None
-                        if name_length != 0:
-                            attr_name = attr_entry[offset + name_offset: offset + name_offset + (2 * name_length)].replace('\x00', '')
-                        attr_entries.append(ATTR_LIST_ENTRY(attr_type, attr_len, startvcn, mft_ref, attr_id, attr_name))
+                        attr_name = attr_entry[offset + name_offset: offset + name_offset + (2 * name_length)].replace('\x00', '')
+                        attr_entries.append(ATTR_LIST_ENTRY(attr_type, attr_len, name_length, entry_start_vcn, mft_ref, attr_id, attr_name))
                         offset += attr_len
                 clusters.append((run_offset, data_run_len))
                 if data[0] == DATA_RUN_END:
                     break
                 else:
-                    fragmented = True
-                    run_off = 0
+                    file_fragmented = True
                     prev_run_offset = run_offset
                     continue
             self.entry_offset += attr_list_len
-            self.img.seek(_img_offset, os.SEEK_SET)
+            self.img.seek(prev_img_offset, os.SEEK_SET)
             return ATTR_LIST(non_resident, real_size, init_size, attr_entries, clusters)
 
     def parse_attr_list_entries(self, count):
-        _entry_offset = self.entry_offset
-        _entry = self.entry
-        _img_offset = self.img.tell()
+        orig_entry_offset = self.entry_offset
+        orig_entry = self.entry
+        orig_img_offset = self.img.tell()
         for attr in self.attr_list.attr_entries:
             if attr.mft_ref != count:
                 idx, vcn = math.modf((attr.mft_ref * MFT_ENTRY_SIZE) / self.cluster_size)
@@ -502,14 +504,34 @@ class MFTParser():
                     attr_len = struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
                     self.entry_offset += attr_len
                 elif self.entry[self.entry_offset:self.entry_offset + 4] == DATA_SIG:
-                    self.data.append(self.parse_data_attr(self.entry_offset))
-                self.img.seek(_img_offset, os.SEEK_SET)
-                self.entry_offset = _entry_offset
-                self.entry = _entry
+                    data_attrib = self.parse_data_attr(self.entry_offset)
+                    if data_attrib.attr_name == None:
+                        if data_attrib.start_vcn == 0:
+                            self.filedata = data_attrib
+                        else:
+                            self.filedata.clusters.extend(data_attrib.clusters)
+                            self.filedata.end_vcn = max(self.filedata.end_vcn, data_attrib.end_vcn)
+                            if data_attrib.fragmented:
+                                self.filedata.fragmented = True
+                    else:
+                        self.data.append(data_attrib)
+                self.img.seek(orig_img_offset, os.SEEK_SET)
+                self.entry_offset = orig_entry_offset
+                self.entry = orig_entry
             else:
                 offset = self.entry_offset
                 if self.entry[offset:offset + 4] == DATA_SIG:
-                    self.data.append(self.parse_data_attr(offset))
+                    data_attrib = self.parse_data_attr(self.entry_offset)
+                    if data_attrib.attr_name == None:
+                        if data_attrib.start_vcn == 0:
+                            self.filedata = data_attrib
+                        else:
+                            self.filedata.clusters.extend(data_attrib.clusters)
+                            self.filedata.end_vcn = max(self.filedata.end_vcn, data_attrib.end_vcn)
+                            if data_attrib.fragmented:
+                                self.filedata.fragmented = True
+                    else:
+                        self.data.append(data_attrib)
         return
 
     #def parse_attr_def(self, offset):
@@ -540,7 +562,6 @@ class MFTParser():
             sid = struct_i.unpack(std_info[52:56])[0]
         except:
             pass
-        del(std_info)
         self.entry_offset += attr_len
         return STANDARD_INFO(ctime, mtime, atime, flags, sid)
 
@@ -563,9 +584,8 @@ class MFTParser():
         name_length = struct_b.unpack(filename[64])[0]
         namespace = struct_b.unpack(filename[65])[0]
         name = filename[66: 66 + (2 * name_length)].replace('\x00', '')
-        del(filename)
         self.entry_offset += attr_len
-        return FILENAME(parent, ctime, mtime, atime, alloc_size, real_size, flags, name, namespace)
+        return FILENAME(parent, ctime, mtime, atime, alloc_size, real_size, flags, name_length, name, namespace)
 
     def parse_object_id(self, offset):
         object_id = b2a_hex(self.entry[offset + 39:offset + 23:-1])
@@ -584,20 +604,20 @@ class MFTParser():
     def parse_idx_root(self, offset):
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         idx_root = self.entry[offset:offset + attr_len]
-        #attr_type = idx_root[0:4]
+        attr_type = idx_root[0:4]
         name_length = struct_b.unpack(idx_root[9])[0]
         name_offset = struct_h.unpack(idx_root[10:12])[0]
         attr_name = idx_root[name_offset:name_offset + (2 * name_length)].replace('\x00', '')
         attr_flags = struct_h.unpack(idx_root[12:14])[0]
         attr_id = struct_h.unpack(idx_root[14:16])[0]
-        #attr_data_size = struct_i.unpack(idx_root[16:20])[0]
+        attr_data_size = struct_i.unpack(idx_root[16:20])[0]
         attr_data_offset = struct_h.unpack(idx_root[20:22])[0]
         idx_root = idx_root[attr_data_offset:]
-        #coll_sort_rule = struct_i.unpack(idx_root[4:8])[0]
-        #clusters_per_entry = int(b2a_hex(struct_c.unpack( idx_root[12])[0]), 16)
+        coll_sort_rule = struct_i.unpack(idx_root[4:8])[0]
+        clusters_per_entry = int(b2a_hex(struct_c.unpack( idx_root[12])[0]), 16)
         first_idx_offset = struct_i.unpack(idx_root[16:20])[0]
         index_size = struct_i.unpack(idx_root[20:24])[0]
-        #index_alloc_size = struct_i.unpack(idx_root[24:28])[0]
+        index_alloc_size = struct_i.unpack(idx_root[24:28])[0]
         header_flags = struct_i.unpack(idx_root[28:32])[0]
         if attr_name == "$SDH" or attr_name == "$SII":
             self.entry_offset += attr_len
@@ -611,7 +631,7 @@ class MFTParser():
                 break
             mft_ref = struct_q.unpack(idx_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
             entry_len = struct_h.unpack(idx_buffer[offset + 8:offset + 10])[0]
-            #key_len = struct_h.unpack(idx_buffer[offset + 10:offset + 12])[0]
+            key_len = struct_h.unpack(idx_buffer[offset + 10:offset + 12])[0]
             parent = struct_q.unpack(idx_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
             entry_ctime, entry_mtime, entry_atime = None, None, None
             if self.get_mactimes:            
@@ -630,13 +650,11 @@ class MFTParser():
             entry_filename = idx_buffer[offset + 82:offset + 82 + (2 * entry_name_length)].replace('\x00', '')
             idx_entries.append(INDEX_ENTRY(mft_ref, flags, parent, entry_ctime, entry_mtime, entry_atime, entry_alloc_size, entry_real_size,  entry_flags, entry_filename))
             offset += entry_len
-        del(idx_root)
-        del(idx_buffer)
         self.entry_offset += attr_len
         return INDEX_ROOT(attr_name, attr_flags, attr_id, index_size, header_flags, idx_entries)
 
     def parse_idx_alloc(self, offset):
-        _img_offset = self.img.tell()
+        orig_img_offset = self.img.tell()
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         idx_alloc = self.entry[offset:offset + attr_len]
         name_length = struct_b.unpack(idx_alloc[9])[0]
@@ -645,11 +663,10 @@ class MFTParser():
         attr_id = struct_h.unpack(idx_alloc[14:16])[0]
         start_vcn = struct_q.unpack(idx_alloc[16:24])[0]
         end_vcn = struct_q.unpack(idx_alloc[24:32])[0]
-        run_offset = struct_h.unpack(idx_alloc[32:34])[0]
+        run_off = struct_h.unpack(idx_alloc[32:34])[0]
         run_len = struct_q.unpack(idx_alloc[40:48])[0]
         attr_name = idx_alloc[name_offset:name_offset + (2 * name_length)].replace('\x00', '')
         if attr_name == "$SDH" or attr_name == "$SII":
-            del(idx_alloc)
             self.entry_offset += attr_len
             return INDEX_ALLOC(attr_name, attr_flags, attr_id, start_vcn, end_vcn, 0, [], None)
         data = self.entry[offset + run_offset:offset + run_offset + run_len]
@@ -658,12 +675,12 @@ class MFTParser():
         max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
         fragmented = False
         while True:
-            tmp = b2a_hex(struct_c.unpack( data[0])[0])
+            tmp = b2a_hex(struct_c.unpack(data[run_off])[0])
             run_offset_bytes = int(tmp[0], 16)
             run_bytes = int(tmp[1], 16)
             if tmp[0] == '0' or tmp[1] == '0':
                 break
-            data = data[1:]
+            data = data[run_off + 1:]
             run_len = struct_q.unpack(data[:run_bytes % 8] + ('\x00' * (8 - (run_bytes % 8))))[0]
             data = data[run_bytes:]
             run_offset = struct_q.unpack(data[:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0]
@@ -679,12 +696,12 @@ class MFTParser():
             if data[0] == DATA_RUN_END:
                 break
             else:
+                run_off = 0
                 fragmented = True
                 prev_run_offset = run_offset
                 continue
-        del(data)
         self.entry_offset += attr_len
-        self.img.seek(_img_offset)
+        self.img.seek(orig_img_offset)
         return INDEX_ALLOC(attr_name, attr_flags, attr_id, start_vcn, end_vcn, run_len, idx_blocks)
 
     def parse_index_block(self, lcn):
@@ -702,7 +719,7 @@ class MFTParser():
         index_block = pack("<%dc" % len(index_block), *index_block)
         first_idx_offset = struct_i.unpack(index_block[24:28])[0] + 24
         index_size = struct_i.unpack(index_block[28:32])[0] + 24
-        #alloc_size = struct_i.unpack(index_block[32:36])[0] + 24
+        alloc_size = struct_i.unpack(index_block[32:36])[0] + 24
         header_flags = struct_i.unpack(index_block[36:40])[0]
         idx_entries = []
         index_buffer = index_block[first_idx_offset:]
@@ -713,7 +730,7 @@ class MFTParser():
                 break
             mft_ref = struct_q.unpack(index_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
             entry_len = struct_h.unpack(index_buffer[offset + 8:offset + 10])[0]
-            #key_len = struct_h.unpack(index_buffer[offset + 10:offset + 12])[0]
+            key_len = struct_h.unpack(index_buffer[offset + 10:offset + 12])[0]
             flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0]
             parent = struct_q.unpack(index_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
             entry_ctime, entry_mtime, entry_atime = None, None, None
@@ -732,12 +749,11 @@ class MFTParser():
             entry_filename = index_buffer[offset + 82:offset + 82 + (2 * entry_name_length)].replace('\x00', '')
             idx_entries.append(INDEX_ENTRY(mft_ref, flags, parent, entry_ctime, entry_mtime, entry_atime, entry_alloc_size, entry_real_size, entry_flags, entry_filename))
             offset += entry_len
-        del(index_buffer)
         return INDEX_BLOCK(log_seq, index_block_vcn, index_size, header_flags, idx_entries = idx_entries)
 
     def parse_data_attr(self, offset):
         clusters = []
-        attr_name, res_data, start_vcn, end_vcn = None, None, None, None
+        attr_name, res_data, start_vcn, end_vcn = None, None, 0, 0
         fragmented = False
         prev_run_offset = 0
         max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
@@ -780,18 +796,14 @@ class MFTParser():
                     fragmented = True
                     run_off = 0
                     prev_run_offset = run_offset
-                    continue          
+                    continue
         else:
             real_size = struct_i.unpack(data[12:16])[0]
             alloc_size = struct_i.unpack(data[16:20])[0]
             content_off = struct_h.unpack(data[20:22])[0]
             res_data = data[content_off:]
-        del(data)
         self.entry_offset += attr_len
-        if self.full_parse:
-            return DATA_ATTR(nonresident, flags, attr_id, start_vcn, end_vcn, alloc_size, real_size, clusters, fragmented, res_data, attr_name)
-        else:
-            return DATA_ATTR(data_size = real_size, clusters = clusters, res_data = res_data, start_vcn = start_vcn, end_vcn = end_vcn, attr_name=attr_name)
+        return DATA_ATTR(nonresident, flags, attr_id, start_vcn, end_vcn, alloc_size, real_size, clusters, fragmented, res_data, attr_name)
 
     def parse_bitmap_attr(self, offset):
         self.entry_offset += struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
