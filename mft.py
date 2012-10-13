@@ -14,6 +14,7 @@ class MFT_ENTRY():
         self.bitmap = bitmap
 
 class FILE_RECORD(object):
+    __slots__ = ('name', 'entry_num', 'parent', 'ctime', 'mtime', 'atime', 'size', 'clusters', 'res_data')
     def __init__(self, name=None, entry_num=0, parent=None, ctime=None, mtime=None, atime=None, size=None, clusters=None, res_data=None):
         self.name = name
         self.entry_num = entry_num
@@ -25,7 +26,8 @@ class FILE_RECORD(object):
         self.clusters = clusters
         self.res_data = res_data
 
-class MFT_STANDARD_HEADER():
+class MFT_STANDARD_HEADER(object):
+    __slots__ = ('lsn', 'seq_num', 'lnk_cnt', 'flags', 'entry_num', 'mft_base')
     """Standard MFT Entry header. All entries should start with one...Should..."""
     def __init__(self, lsn=None, seq_num=None, lnk_cnt=None, flags=None, entry_num=None, mft_base=None):
         self.lsn = lsn
@@ -35,7 +37,8 @@ class MFT_STANDARD_HEADER():
         self.entry_num = entry_num
         self.mft_base = mft_base
 
-class STANDARD_INFO():
+class STANDARD_INFO(object):
+    __slots__ = ('ctime', 'mtime', 'atime', 'flags', 'sid')
     """Standard MAC time info and flags"""
     def __init__(self, ctime=None, mtime=None, atime=None, flags=None, sid=None):
         self.ctime = ctime
@@ -44,10 +47,11 @@ class STANDARD_INFO():
         self.flags = flags
         self.sid = sid
 
-class FILENAME():
+class FILENAME(object):
+    __slots__ = ('parent', 'ctime', 'mtime', 'atime', 'alloc_size', 'real_size', 'flags', 'name', 'namespace')
     """Standard filename entry info"""
     def __init__(self, parent=None, ctime=None, mtime=None, atime=None,
-                 alloc_size=None, real_size=None, flags=None, name_len=None, name=None, seq_num=None, namespace=None):
+                 alloc_size=None, real_size=None, flags=None, name=None, namespace=None):
         self.parent = parent
         self.ctime = ctime
         self.mtime = mtime
@@ -55,16 +59,15 @@ class FILENAME():
         self.alloc_size = alloc_size
         self.real_size = real_size
         self.flags = flags
-        self.name_len = name_len
         self.name = name
-        self.seq_num = seq_num
         self.namespace = namespace
 
 class OBJECT_ID():
     def __init__(self, object_id=None):
         self.object_id = object_id
 
-class INDEX_ROOT():
+class INDEX_ROOT(object):
+    __slots__ = ('attr_name', 'attr_flags', 'attr_id', 'idx_size', 'header_flags', 'idx_entries')
     def __init__(self, attr_name=None, attr_flags=None, attr_id=None, idx_size=None, header_flags=None, idx_entries=[]):
         self.attr_name = attr_name
         self.attr_flags = attr_flags
@@ -73,7 +76,8 @@ class INDEX_ROOT():
         self.header_flags = header_flags
         self.idx_entries = idx_entries
 
-class INDEX_ALLOC():
+class INDEX_ALLOC(object):
+    __slots__ = ('attr_name', 'attr_flags', 'attr_id', 'start_vcn', 'end_vcn', 'data_size', 'idx_blocks', 'clusters')
     def __init__(self, attr_name=None, attr_flags=None, attr_id=None, start_vcn=None, end_vcn=None, data_size=None, idx_blocks=[], clusters=None):
         self.attr_name = attr_name
         self.attr_flags = attr_flags
@@ -85,7 +89,8 @@ class INDEX_ALLOC():
         self.clusters = clusters
         
 
-class INDEX_BLOCK():
+class INDEX_BLOCK(object):
+    __slots__ = ('log_seq', 'idx_block_vcn', 'idx_size', 'alloc_size', 'header_flags', 'idx_entries')
     def __init__(self, log_seq = None, idx_block_vcn = None, idx_size = None, alloc_size = None, header_flags = None, idx_entries=[]):
         self.log_seq = log_seq
         self.idx_block_vcn = idx_block_vcn
@@ -94,18 +99,16 @@ class INDEX_BLOCK():
         self.header_flags = header_flags
         self.idx_entries = idx_entries
 
-class INDEX_ENTRY():
-    def __init__(self, mft_ref=None, flags=None, parent_ref=None, ctime=None, mtime=None, atime=None, alloc_size=None, real_size=None, file_flags=None, name=None):
+class INDEX_ENTRY(object):
+    __slots__ = ('mft_ref', 'flags', 'parent', 'alloc_size', 'real_size', 'file_flags', 'filename')
+    def __init__(self, mft_ref=None, flags=None, parent=None, alloc_size=None, real_size=None, file_flags=None, filename=None):
         self.mft_ref = mft_ref
         self.flags = flags
-        self.parent_ref = parent_ref
-        self.ctime = ctime
-        self.mtime = mtime
-        self.atime = atime
+        self.parent = parent
         self.alloc_size = alloc_size
         self.real_size = real_size
         self.file_flags = file_flags
-        self.name = name
+        self.filename = filename
 
 class SECURE_FILE():
     def __init__(self, sii=None, sdh=None, sds=None):
@@ -122,18 +125,18 @@ class ATTR_LIST():
         self.clusters = clusters
 
 class ATTR_LIST_ENTRY():
-    def __init__(self, attr_type=None, attr_len=None, name_len=None, start_vcn=None, mft_ref=None, attr_id=None, attr_name=None):
+    def __init__(self, attr_type=None, attr_len=None, start_vcn=None, mft_ref=None, attr_id=None, attr_name=None):
         self.attr_type = attr_type        
         self.attr_len = attr_len
-        self.name_len = name_len
         self.start_vcn = start_vcn
         self.mft_ref = mft_ref
         self.attr_id = attr_id
         self.attr_name = attr_name
 
-class DATA_ATTR():
+class DATA_ATTR(object):
+    __slots__ = ('nonresident', 'flags', 'attr_id', 'start_vcn', 'end_vcn', 'alloc_size', 'data_size', 'clusters', 'fragmented', 'res_data', 'attr_name')
     def __init__(self, nonresident=None, flags=None, attr_id=None, start_vcn=None, end_vcn=None,
-                 alloc_size=None, data_size=None, clusters=None, file_fragmented=False, res_data=None, attr_name=None):
+                 alloc_size=None, data_size=None, clusters=None, fragmented=False, res_data=None, attr_name=None):
         self.nonresident = nonresident
         self.flags = flags
         self.attr_id = attr_id
@@ -142,7 +145,7 @@ class DATA_ATTR():
         self.alloc_size = alloc_size
         self.data_size = data_size
         self.clusters = clusters
-        self.file_fragmented = file_fragmented
+        self.fragmented = fragmented
         self.res_data = res_data
         self.attr_name = attr_name
 

@@ -25,7 +25,9 @@ class ClientHandler():
                 item = queue.get_nowait()
                 clusters.append(item[0])
                 data.append(item[1])
-            self.stream.add_queue(zip(clusters, data))
+            if len(clusters):
+                self.stream.add_queue(zip(clusters, data))
+                clusters[:], data[:] = [],[]
             sys.exit(0)
         except KeyboardInterrupt:
             print "User aborted"

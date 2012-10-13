@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from mftparser import MFTParser
 from summarywriter import SummaryWriter
+import argparse, sys
 
 MFT_ENTRY_SIZE = 0x400
 
@@ -59,7 +60,7 @@ def print_idx_root(parser):
         return
     print "*****************INDEX ROOT**************"
     for entry in parser.idx_root.idx_entries:
-        print entry.name, entry.file_flags, entry.mft_ref, entry.real_size
+        print entry.filename, entry.file_flags, entry.mft_ref, entry.real_size
     print ''
 
 
@@ -67,16 +68,16 @@ def print_idx_alloc(parser):
     print "*****************INDEX ALLOCATION**************"
     for block in parser.idx_alloc.idx_blocks:
         for entry in block.idx_entries:
-            print entry.name, entry.file_flags, entry.mft_ref, entry.real_size
+            print entry.filename, entry.file_flags, entry.mft_ref, entry.real_size
     print ''
 
 def print_attr_list(parser):
     print "*****************ATTRIBUTE LIST****************"
     for attr in parser.attr_list.attr_entries:
-        print "Type: {0}-{1}\tMFT Entry: {2}\tVCN: {3}".format(attr.attr_type, attr.attr_id, attr.mft_ref, attr.start_vcn)
+        print "Type: {0}-{1}\tMFT Entry: {2}\tStart VCN: {3}".format(attr.attr_type, attr.attr_id, attr.mft_ref, attr.start_vcn)
+        
 
-
-def print_data(data, clusters, start_vcn, end_vcn, show_clusters = False):
+def print_data(data, clusters, start_vcn, end_vcn, res_data=None, show_clusters = False):
     print "******************DATA INFO******************"
     print "Attribute ID:                    %i" % data.attr_id
     if hasattr(data, 'name') and data.name != None:
@@ -93,15 +94,15 @@ def print_data(data, clusters, start_vcn, end_vcn, show_clusters = False):
         print "First Data VCN:                  %i" % start_vcn
     if data.end_vcn != None:
         print "Last Data VCN:                   %i" % end_vcn
-    print "File fragmented:                 %s" % data.file_fragmented
+    print "File fragmented:                 %s" % data.fragmented
     if show_clusters and len(clusters):
         print "Data Clusters: "
         _clusters = reduce(lambda x, y: x + y, [range(idx[0], idx[0] + idx[1]) for idx in clusters])
         for idx in range(len(_clusters[::7])):
             print str(_clusters[idx * 7:idx * 7 + 7]).replace(",", "")
-    if data.res_data != None:
+    if res_data != None:
         print "Resident Data: "
-        print data.res_data
+        print res_data
     print ''
 
 def print_fsdata(parser):
@@ -137,9 +138,7 @@ def search(parser, name):
         if entry.name.__contains__(name):
             print "MFT Entry: %d" % entry.entry_num, "Entry Name: %s" % entry.name
 
-
-if __name__ == "__main__":
-    import argparse, sys
+def main():
     argparser = argparse.ArgumentParser(description = """
     Parses the MFT of an NTFS filesystem. The data returned depends on the flags selected by the user. 
     Functionality similar to Sleuthkit's fsstat/istat is possible, as well as a tentative count of various file-types found throughout the system. 
@@ -158,7 +157,6 @@ if __name__ == "__main__":
     parser = MFTParser(args.target, args.partition)
     parser.setup_mft_data()
     opts = vars(args)
-
     if opts['entry'] != None or opts['data'] != None:
         try:
             entry_num = int(opts['entry'])
@@ -185,7 +183,9 @@ if __name__ == "__main__":
             print_idx_alloc(parser)
         if len(parser.data):
             for i in range(len(parser.data)):
-                print_data(parser.data[i], [], parser.data[i].start_vcn, parser.data[i].end_vcn)
+                if parser.data[i].start_vcn == 0:
+                    print_data(parser.data[i], [], parser.data[i].start_vcn, parser.data[i].end_vcn)
+                
     elif opts['data'] != None:
         if not hasattr(parser, 'data'):
             print "Invalid MFT Entry"
@@ -206,10 +206,11 @@ if __name__ == "__main__":
             print_idx_alloc(parser)
         if len(parser.data):
             for i in range(len(parser.data)):
-                res_data = parser.data[i].res_data
-                print_data(parser.data[i], parser.data[i].clusters, parser.data[i].start_vcn, parser.data[i].end_vcn, True)
+                if parser.data[i].start_vcn == 0:
+                    res_data = parser.data[i].res_data
+                    print_data(parser.data[i], parser.data[i].clusters, parser.data[i].start_vcn, parser.data[i].end_vcn, res_data, show_clusters = True)
     elif opts['files']:
-        parser.parse_mft(full_parse = False, quickstat = False, parse_index_records = False, resolve_filepaths = True, get_mactimes = True)
+        parser.parse_mft(full_parse = False, quickstat = False, parse_index_records = False, resolve_filepaths = False, get_mactimes = True)
         get_filesystem_summary(parser, opts['files'])
     elif opts['info']:
         print_fsdata(parser)
@@ -219,3 +220,6 @@ if __name__ == "__main__":
     elif opts['cluster']:
         parser.parse_mft(full_parse = True, parse_index_records = False, resolve_filepaths = True, quickstat = False)
         cluster_to_file(parser, opts['cluster'])
+
+if __name__ == "__main__":
+    main()

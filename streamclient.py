@@ -149,7 +149,6 @@ class StreamClient():
 
     def queue_show_status(self):
         self.statusThread = threading.Thread(target = self.show_status_info)
-        self.statusThread.setDaemon(True)
         self.statusThread.start()
         return
 
