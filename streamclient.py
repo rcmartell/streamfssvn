@@ -1,6 +1,6 @@
 #!/usr/bin/python
-import sys, os, shutil, argparse
-import threading, gc
+import sys, os, shutil, argparse, gc
+import threading
 from collections import deque
 from filehandler import FileHandler
 import warnings
@@ -13,10 +13,9 @@ QUEUE_SIZE = 65536
 MB = 1024 * 1024
 
 class StreamClient():
-    def __init__(self, path, name, config_path, ns, daemon):
-        self.path = path
+    def __init__(self, name, ns, daemon):
         self.name = name
-        self.config_path = config_path
+        self.path = os.getcwd()
         self.ns = ns
         self.daemon = daemon
         self.files = {}
@@ -75,11 +74,13 @@ class StreamClient():
         self.clustermap = [-1] * self.num_clusters
         return
 
+    """
     def setup_file_handler(self):
         self.handler = FileHandler()
         self.file_queue = Queue()
         self.proc = Process(target = self.handler.handler_queue, args = (self.file_queue,))
         self.proc.start()
+    """
 
     def process_entries(self, entries):
         """
@@ -204,19 +205,20 @@ class StreamClient():
                     idx = 0
                     num_clusters = len(clusters)
                     buff = []
+                    buffappend = buff.append
                     # For every cluster for this file we've received...
                     while idx < num_clusters:
                         # Create an initial offset using the current index into the cluster array.
                         offset = clusters[idx]
                         # Add the data at the index into the "to be written buffer".
-                        buff.append(data[idx])
+                        buffappend(data[idx])
                         try:
                             # If the next value in the cluster array is one more than the value at the index,
                             # include this in our buffer and increment the index. Continue doing so until
                             # we encounter a value that is not one more than the previous. This helps to
                             # maximize linear writes.
                             while clusters[idx + 1] == clusters[idx] + 1:
-                                buff.append(data[idx + 1])
+                                buffappend(data[idx + 1])
                                 idx += 1
                         except:
                             pass
@@ -226,134 +228,92 @@ class StreamClient():
                         # normally occurs because the file's size is not an exact multiple of the
                         # cluster size and thus the final cluster is zero padded. If this is so,
                         # trim off the padding.
-                        if tell() + len("".join(buff)) > int(self.files[_file][0]):
+                        buffdata = "".join(buff)
+                        if tell() + len(buffdata) > int(self.files[_file][0]):
                             left = int(self.files[_file][0] - tell())
-                            out = "".join(buff)
-                            write(out[:left])
+                            write(buffdata[:left])
+                            self.bytes_written += len(buffdata[:left])
                         # Otherwise just append the data.
                         else:
-                            write("".join(buff))
+                            write(buffdata)
+                            self.bytes_written += len(buffdata)
                         # Subtract the number of clusters written from the file's remaining clusters list.
                         self.file_progress[_file] -= len(buff)
-                        self.bytes_written += len(buff)
                         idx += 1
-                        buff = []
+                        buff[:] = []
+                        buffdata = ""
                     fh.close()
                     # If the file's file_progress list is empty, then the entire file has been written to disk.
-                    if not self.file_progress[_file]:
+                    if self.file_progress[_file] == 0:
                         del self.files[_file]
                         del self.file_progress[_file]
                         # Move file to appropriate folder based on its extension/sorter number.
-                        self.file_queue.put_nowait(_file)
+                        #self.file_queue.put_nowait(_file)
             # Write resident files to disk.
             for _file in self.residentfiles:
                 fh = open(_file, 'wb')
                 fh.write(self.residentfiles[_file])
                 fh.close()
                 self.bytes_written += len(self.residentfiles[_file])
-                self.file_queue.put_nowait(_file)
-            self.handler.running = False
+                #self.file_queue.put_nowait(_file)
+            #self.handler.running = False
             self.show_status = False
-            self.proc.join()
+            #self.proc.join()
+            self.ns.remove(self.name)
             return
         except KeyboardInterrupt:
             print 'User cancelled execution...'
             self.show_status = False
-            self.handler.running = False
-            self.ns.remove(name = self.name)
+            #self.handler.running = False
+            #self.proc.join()
+            self.ns.remove(self.name)
             return
 
     def show_status_info(self):
         self.clear_screen()
         num_files = len(self.files)
         start_time = int(time())
+        prev_bytes_written = 0
+        idle_time = 0
         while self.show_status:
             sleep(3)
-            """
+            if self.bytes_written == prev_bytes_written:
+                idle_time += 3
             if len(self.queue) >= 524288:
                 self.throttle = True
                 sleep(3)
+                if self.bytes_written == prev_bytes_written:
+                    idle_time += 3
             else:
                 self.throttle = False
-            """
             duration = int(time()) - start_time
             print("\033[1;0H%s" % "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
             print("\033[2;0H%s" % "Clusters in queue: {0:<30d}".format(len(self.queue)))
-            #print("\033[3;0H%s" % "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
             print("\033[3;0H%s" % "Total bytes written to disk(MB): {0:<30d}".format(self.bytes_written / MB))
-            print("\033[4;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((self.bytes_written / MB) / (duration), ''))
+            print("\033[4;0H%s" % "Average write rate: {0} MB/s {1:<30s}".format((self.bytes_written / MB) / (duration - idle_time), ''))
             print("\033[5;0H%s" % "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration / 3600), ((duration / 60) % 60), (duration % 60)))
+            try:
+                print("\033[6;0H%s" % "Total Idle Time: {0:02d}:{1:02d}:{2:02d}".format((idle_time / 3600), ((idle_time / 60) % 60), (idle_time % 60)))
+            except:
+                print("\033[6;0H%s" % "Total Idle Time: {0:02d}:{1:02d}:{2:02d}".format(0, 0, 0))
             if self.throttle:
-                print("\033[6;0HThrottling...")
+                print("\033[7;0HThrottling...")
             else:
-                print("\033[6;0H%s" % "{0:<30s}".format(''))
+                print("\033[7;0H%s" % "{0:<30s}".format(''))
+            prev_bytes_written = self.bytes_written
 
-    """
-    def show_status(self):
-        try:
-            num_files = len(self.files)
-            start_time = int(time.time())
-            process = psutil.Process(os.getpid())
-            total_mem = psutil.TOTAL_PHYMEM
-            avail_phymem = psutil.avail_phymem
-            get_cpu_percent = process.get_cpu_percent
-            get_memory_info = process.get_memory_info
-            prev_bytes_written, cur_idle, total_idle = 0, 0, 0
-            phymem_buffers = psutil.phymem_buffers
-            cached_phymem = psutil.cached_phymem
-            addstr_stdscr = self.stdscr.addstr
-            while self.show_status:
-                time.sleep(3)
-                if len(self.queue) >= 524288:
-                    self.throttle = True
-                    time.sleep(3)
-                else:
-                    self.throttle = False
-                cur_write_rate = (process.get_io_counters()[1] / MB)
-                duration = int(time.time()) - start_time
-                addstr_stdscr(0, 0, "{0} of {1} files remaining {2:<30s}".format(len(self.file_progress), num_files, ''))
-                addstr_stdscr(1, 0, "Clusters in queue: {0:<30d}".format(len(self.queue)))
-                addstr_stdscr(2, 0, "Client CPU usage: {0:<30d}".format(int(get_cpu_percent())))
-                #self.stdscr.addstr(3, 0, "Using {0} MB of {1} MB physical memory | {2} MB physical memory free {3:<20s}".format
-                #                      ((get_memory_info()[0] / MB), (total_mem / MB), ((avail_phymem() +
-                #                      cached_phymem() + phymem_buffers()) / MB), ''))
-                addstr_stdscr(3, 0, "Total bytes written to disk(MB): {0:<30d}".format(cur_write_rate))
-                try:
-                    addstr_stdscr(4, 0, "Average write rate: {0} MB/s {1:<30s}".format((cur_write_rate / (duration)), ''))
-                except:
-                    addstr_stdscr(4, 0, "Average write rate: {0} MB/s {1:<30}".format((cur_write_rate / duration), ''))
-                #self.stdscr.addstr(6, 0, "Current idle time: {0:02d}:{1:02d}:{2:02d}".format((cur_idle/3600), ((cur_idle/60) % 60), (cur_idle % 60)))
-                #self.stdscr.addstr(7, 0, "Total idle time: {0:02d}:{1:02d}:{2:02d}".format((total_idle/3600), ((total_idle/60) % 60), (total_idle % 60)))
-                addstr_stdscr(5, 0, "Duration: {0:02d}:{1:02d}:{2:02d}".format((duration/3600), ((duration/60) % 60), (duration % 60)))
-                if self.throttle:
-                    addstr_stdscr(6, 0, "Throttling...")
-                else:
-                    addstr_stdscr(6, 0, "{0:<30s}".format(''))
-                    self.stdscr.move(6, 0)
-                self.stdscr.refresh()
-                #prev_bytes_written = cur_write_rate
-            curses.nocbreak(); stdscr.keypad(0); curses.echo()
-            curses.endwin()
-            self.ns.remove(name=name)
-        except KeyboardInterrupt:
-            if sys.platform == "linux2":
-                curses.nocbreak(); stdscr.keypad(0); curses.echo()
-                curses.endwin()
-            print 'User aborted'
-            self.ns.remove(name=name)
-            return
-    """
 
 def main():
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('-p', '--path', help = "Root directory for client. Files will be written and processed here. Defaults to the current working directory if no value is specified.", required = False)
+    #argparser.add_argument('-p', '--path', help = "Root directory for client. Files will be written and processed here. Defaults to the current working directory if no value is specified.", required = False)
     argparser.add_argument('-i', '--id', help = "Unique name/identifier used to register the client with the Pyro nameserver.", required = True)
-    argparser.add_argument('-c', '--config', help = "Path to config directory.", required = False)
-    argparser.add_argument('-n', '--nameserver', help = "IP/Hostname of Pyro nameserver.", required = True)
-    argparser.add_argument('-b', '--bind', help = "The IP/Hostname to bind this daemon to.", required = True)
+    #argparser.add_argument('-c', '--config', help = "Path to config directory.", required = False)
+    #argparser.add_argument('-n', '--nameserver', help = "IP/Hostname of Pyro nameserver.", required = True)
+    #argparser.add_argument('-b', '--bind', help = "The IP/Hostname to bind this daemon to.", required = True)
     args = argparser.parse_args()
     opts = vars(args)
     name = opts['id']
+    """
     path = opts['path']
     config_path = opts['config']
     nameserver = opts['nameserver']
@@ -372,17 +332,24 @@ def main():
         sys.exit(-1)
     if config_path.endswith(os.path.sep):
         config_path = config_path[:-1]
+    """
     # Start Pyro daemon
-    daemon = Pyro4.core.Daemon(host = boundhost)
-    ns = Pyro4.naming.locateNS(nameserver)
-    client = StreamClient(name = name, path = path, config_path = config_path, ns = ns, daemon = daemon)
+    daemon = Pyro4.core.Daemon()
+    ns = Pyro4.naming.locateNS()
+    while name in ns.list():
+        answ = raw_input("Specified client name already registered with nameserver. Remove existing entry? [Y]/N ")
+        if answ.upper() == 'Y':
+            ns.remove(name)
+        else:
+            answ = raw_input("Enter new client name: ")
+    client = StreamClient(name, ns, daemon)
     uri = daemon.register(client)
     ns.register(name, uri)
     try:
         daemon.requestLoop()
     except KeyboardInterrupt:
         print 'User aborted'
-        ns.remove(name = name)
+        ns.remove(name)
         daemon.shutdown()
         sys.exit(-1)
 

@@ -9,9 +9,10 @@
 		<type name='misc' include='true' directory='Misc'/>
 	</filetypes>
 	<handlers>
-		<handler type='indexer' enable='true' url='http://localhost:8983/solr'>
+		<handler type='full-text index' enable='true' module='indexer' url='http://localhost:8983/solr' numprocs='4'>
 			<include>documents web</include>
 		</handler>
-		<handler type='hasher' enable='false'/>
+		<handler type='crypto-hash' enable='true' module='hash' numprocs='4'/>
+		    <include>documents web</include>
 	</handlers>
 </config>

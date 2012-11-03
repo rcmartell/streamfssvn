@@ -2,6 +2,7 @@
 from mftparser import MFTParser
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 import warnings, gc, sys, os
+from time import sleep
 from multiprocessing import Process, Queue
 from clienthandler import ClientHandler
 warnings.filterwarnings("ignore")
@@ -26,10 +27,10 @@ class StreamServer():
             parser = MFTParser(self.src)
             self.cluster_size = parser.get_cluster_size()
             self.num_clusters = parser.get_num_clusters()
-            #self.entries = filter(lambda x : x.name.split('.')[1].upper() in self.types, parser.main())
             self.entries = parser.main()
-            self.cluster_mapping = [-1] * self.num_clusters
+            self.mapping = [-1] * self.num_clusters
         del(parser)
+        gc.collect()
         print 'Done.'
 
     def setup_stream_listeners(self, clients):
@@ -44,7 +45,7 @@ class StreamServer():
             self.streams[idx].set_num_clusters(self.num_clusters)
             self.streams[idx].process_entries(self.entries[idx::len(clients)])
             for cluster in self.streams[idx].list_clusters():
-                self.cluster_mapping[cluster] = idx
+                self.mapping[cluster] = idx
         del(self.entries)
         gc.collect()
         print 'Done.'
@@ -52,16 +53,10 @@ class StreamServer():
     def process_image(self):
         fh = open(self.src, 'rb')
         read = fh.read
-        tell = fh.tell
-        fh.seek(0, os.SEEK_END)
-        img_size = tell()
-        fh.seek(0, os.SEEK_SET)
-        csize = self.cluster_size
         #ofh = open(self.dest, 'wb+')
-        for idx in range(len(self.streams)):
-            self.queues = [Queue() for idx in range(len(self.streams))]
-            self.handlers = [ClientHandler(stream) for stream in self.streams]
-            self.procs = [Process(target = self.handlers[idx].process_data, args = (self.queues[idx],)) for idx in range(len(self.queues))]
+        self.queues = [Queue(65536) for idx in range(len(self.streams))]
+        self.handlers = [ClientHandler(stream) for stream in self.streams]
+        self.procs = [Process(target = self.handlers[idx].process_data, args = (self.queues[idx],)) for idx in range(len(self.queues))]
         for stream in self.streams:
             stream.setup_clustermap()
             stream.setup_file_progress()
@@ -69,24 +64,27 @@ class StreamServer():
             stream.queue_show_status()
         for proc in self.procs:
             proc.start()
-        #pbar = ProgressBar(widgets = self.widgets, maxval = len(self.mapping) * self.cluster_size).start()
-        #pbar_udpate = pbar.update
-        data_mapping = {}
-        while tell() < img_size:
-            base = tell() / csize
-            buff = read(QUEUE_SIZE * csize)
-            data_mapping = {base + idx : (self.cluster_mapping[base + idx], buff[(idx * csize):(idx * csize) + csize]) for idx in range(len(buff) / csize)}
-            for idx in data_mapping:
-                target, data = data_mapping[idx]
-                self.queues[target].put_nowait((idx, data))
-            del data_mapping
-            #pbar_update(tell())
-            #sys.stdout.flush()
+        pbar = ProgressBar(widgets = self.widgets, maxval = (len(self.mapping) * self.cluster_size)).start()
+        pbarupdate = pbar.update
+        for idx in xrange(len(self.mapping)):
+            target = self.mapping[idx]
+            data = read(self.cluster_size)
+            if target == -1:
+                if not idx % 50000:
+                    pbarupdate(idx * self.cluster_size)
+                continue
+            #while self.handlers[target].throttle:
+            #    sleep(0.005)
+            self.queues[target].put((idx, data))
+            if not idx % 50000:
+                pbarupdate(idx * self.cluster_size)
         for handler in self.handlers:
             handler.running = False
+        for proc in self.procs:
+            proc.join()
         for stream in self.streams:
             stream._pyroRelease()
-        #pbar.finish()
+        pbar.finish()
         fh.close()
         print 'Done.'
         sys.exit(0)
@@ -149,6 +147,9 @@ def main():
     try:
         server.process_image()
     except KeyboardInterrupt:
+        for entry in ns.list():
+            if entry != "Pyro.NameServer":
+                ns.remove(entry)
         sys.exit(-1)
 
 if __name__ == "__main__":

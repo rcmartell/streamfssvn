@@ -150,7 +150,7 @@ class MFTParser():
     def create_SecurityDescriptorTable(self):
         pass
 
-    def parse_mft(self, start = 0, end = None, full_parse = False, quickstat = False, cleanup = True, resolve_filepaths = True, parse_index_records = False, get_mactimes = False):
+    def parse_mft(self, start = 0, end = None, full_parse = False, quickstat = False, cleanup = True, resolve_filepaths = False, parse_index_records = False, get_mactimes = False):
         """
         The main method/function of the parser. It accepts a 'start' entry if only a single MFT entry's data is desired (in which case the 'end' parameter is set to the same
         value as 'start'). The optional parameters 'full_parse', 'quickstat' and 'cleanup' are used to somewhat fine-tune the parser so that no more parsing/processing occurs
@@ -188,7 +188,7 @@ class MFTParser():
                 self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
                 ctime, mtime, atime = None, None, None
                 flags = []
-                name, parent, real_size, data_size, size = None, None, 0, 0, 0
+                name, entry_num, parent, real_size, data_size, size = None, None, None, 0, 0, 0
                 if self.entry[0:4] == MFT_ENTRY_SIG:
                     """ Beginning of MFT Entry """
                     self.header = self.parse_mft_header()
@@ -279,7 +279,7 @@ class MFTParser():
                         else:
                             # Where the hell are we? Just go to the next entry...
                             break
-
+                    entry_num = self.entry_num
                     # To Prevent NoneType Errors if a
                     # standard info attribute is not present.
                     if self.get_mactimes:
@@ -307,7 +307,7 @@ class MFTParser():
                         if hasattr(self.filedata, 'res_data') and self.filedata.res_data != None:
                             res_data = self.filedata.res_data
                     if name != None and 'DIRECTORY' in flags:
-                        self.directories[self.entry_num] = (name, parent)
+                            self.directories[self.entry_num] = (name, parent)
                     # We're not interested in MFT specific files nor deleted ones...
                     elif name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in flags:
                         # FILE_RECORDs represent each file's metadata
@@ -319,16 +319,19 @@ class MFTParser():
                     inode += 1
                     count += 1
                     if self.cleanup:
-                        del(clusters)
-                        del(self.data)
-                        del(self.attr_list)
+                        try:
+                            del(clusters)
+                            del(self.data)
+                            del(self.attr_list)
+                        except:
+                            pass
                 else:
                     # We're not in an MFT Entry, move along now
                     count += 1
             except KeyboardInterrupt:
                 print "User aborted"
                 break
-
+        """
         if self.resolve_filepaths:
             for directory in self.directories:
                 path = self.directories[directory][0]
@@ -343,6 +346,7 @@ class MFTParser():
             for entry in self.entries:
                 parent = entry.parent
                 entry.name = self.directories[parent][0] + '/' + entry.name
+        """
         del(self.directories)
         gc.collect()
         self.img.close()

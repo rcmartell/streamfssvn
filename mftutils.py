@@ -141,7 +141,7 @@ def search(parser, name):
 
 
 if __name__ == "__main__":
-    import argparse, sys
+    import argparse, sys, gc, time
     argparser = argparse.ArgumentParser(description = """
     Parses the MFT of an NTFS filesystem. The data returned depends on the flags selected by the user. 
     Functionality similar to Sleuthkit's fsstat/istat is possible, as well as a tentative count of various file-types found throughout the system. 
