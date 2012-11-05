@@ -98,7 +98,7 @@ def print_data(data, clusters, start_vcn, end_vcn, show_clusters = False):
     print "File fragmented:                 %s" % data.fragmented
     if show_clusters and len(clusters):
         print "Data Clusters: "
-        _clusters_ = reduce(lambda x, y: x + y, [range(idx[0], idx[0] + idx[1]) for idx in clusters])[::7]
+        _clusters_ = reduce(lambda x, y: x + y, [range(idx[0], idx[0] + idx[1]) for idx in clusters])
         for idx in range(len(_clusters_[::7])):
             print str(_clusters_[idx * 7:idx * 7 + 7]).replace(",", "")
     if data.res_data != None:

@@ -564,7 +564,7 @@ class MFTParser():
     def parse_filename(self, offset):
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         filename = self.entry[offset + 24:offset + attr_len]
-        parent = struct_q.unpack(filename[0:8])[0] & 0x00FFFFFF
+        parent = struct_q.unpack(filename[0:8])[0] & 0xFFFFFFFF
         ctime, mtime, atime = None, None, None
         if self.get_mactimes:
             try:
@@ -574,8 +574,8 @@ class MFTParser():
                 atime = time.ctime((struct_q.unpack(filename[32:40])[0] - NTFS_EPOCH) / 10 ** (7))
             except:
                 pass
-        alloc_size = struct_q.unpack(filename[40:48])[0]
-        real_size = struct_q.unpack(filename[48:56])[0]
+        alloc_size = struct_q.unpack(filename[40:48])[0] & 0xFFFFFFFF
+        real_size = struct_q.unpack(filename[48:56])[0] & 0xFFFFFFFF
         flags = [key for key in ATTRIBUTES if struct_i.unpack(filename[56:60])[0] & ATTRIBUTES[key]]
         name_length = struct_b.unpack(filename[64])[0]
         namespace = struct_b.unpack(filename[65])[0]
@@ -662,10 +662,10 @@ class MFTParser():
         name_offset = struct_h.unpack(idx_alloc[10:12])[0]
         attr_flags = struct_h.unpack(idx_alloc[12:14])[0]
         attr_id = struct_h.unpack(idx_alloc[14:16])[0]
-        start_vcn = struct_q.unpack(idx_alloc[16:24])[0]
-        end_vcn = struct_q.unpack(idx_alloc[24:32])[0]
+        start_vcn = struct_q.unpack(idx_alloc[16:24])[0] & 0xFFFFFFFF
+        end_vcn = struct_q.unpack(idx_alloc[24:32])[0] & 0xFFFFFFFF
         run_off = struct_h.unpack(idx_alloc[32:34])[0]
-        run_len = struct_q.unpack(idx_alloc[40:48])[0]
+        run_len = struct_q.unpack(idx_alloc[40:48])[0] & 0xFFFFFFFF
         attr_name = idx_alloc[name_offset:name_offset + (2 * name_length)].replace('\x00', '')
         if attr_name == "$SDH" or attr_name == "$SII":
             self.entry_offset += attr_len
@@ -683,9 +683,9 @@ class MFTParser():
             if tmp[0] == '0' or tmp[1] == '0':
                 break
             data = data[run_off + 1:]
-            run_len = struct_q.unpack(data[:run_bytes % 8] + ('\x00' * (8 - (run_bytes % 8))))[0]
+            run_len = struct_q.unpack(data[:run_bytes % 8] + ('\x00' * (8 - (run_bytes % 8))))[0] & 0xFFFFFFFF
             data = data[run_bytes:]
-            run_offset = struct_q.unpack(data[:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0]
+            run_offset = struct_q.unpack(data[:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0] & 0xFFFFFFFF
             data = data[run_offset_bytes:]
             if fragmented:
                     if max_sign[run_offset_bytes] >= run_offset:
@@ -735,7 +735,7 @@ class MFTParser():
                 break
             entry_len = struct_h.unpack(index_buffer[offset + 8:offset + 10])[0]
             #key_len = struct_h.unpack(index_buffer[offset + 10:offset + 12])[0]
-            flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0]
+            flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0] & 0xFFFF
             parent = struct_q.unpack(index_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
             entry_ctime, entry_mtime, entry_atime = None, None, None
             """
