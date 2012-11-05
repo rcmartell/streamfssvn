@@ -98,12 +98,11 @@ def print_data(data, clusters, start_vcn, end_vcn, show_clusters = False):
     print "File fragmented:                 %s" % data.fragmented
     if show_clusters and len(clusters):
         print "Data Clusters: "
-        _clusters = reduce(lambda x, y: x + y, [range(idx[0], idx[0] + idx[1]) for idx in clusters])
-        for idx in range(len(_clusters[::7])):
-            print str(_clusters[idx * 7:idx * 7 + 7]).replace(",", "")
+        _clusters_ = reduce(lambda x, y: x + y, [range(idx[0], idx[0] + idx[1]) for idx in clusters])[::7]
+        for idx in range(len(_clusters_[::7])):
+            print str(_clusters_[idx * 7:idx * 7 + 7]).replace(",", "")
     if data.res_data != None:
-        print "Resident Data: "
-        print data.res_data
+        print "Resident Data: %s" % data.res_data
     print ''
 
 def print_fsdata(parser):
@@ -141,7 +140,7 @@ def search(parser, name):
 
 
 if __name__ == "__main__":
-    import argparse, sys, gc, time
+    import argparse, sys
     argparser = argparse.ArgumentParser(description = """
     Parses the MFT of an NTFS filesystem. The data returned depends on the flags selected by the user. 
     Functionality similar to Sleuthkit's fsstat/istat is possible, as well as a tentative count of various file-types found throughout the system. 

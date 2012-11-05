@@ -279,7 +279,6 @@ class MFTParser():
                         else:
                             # Where the hell are we? Just go to the next entry...
                             break
-                    entry_num = self.entry_num
                     # To Prevent NoneType Errors if a
                     # standard info attribute is not present.
                     if self.get_mactimes:
@@ -307,7 +306,10 @@ class MFTParser():
                         if hasattr(self.filedata, 'res_data') and self.filedata.res_data != None:
                             res_data = self.filedata.res_data
                     if name != None and 'DIRECTORY' in flags:
-                            self.directories[self.entry_num] = (name, parent)
+                        while parent in self.directories and parent != 5:
+                            parent_name, parent = self.directories[parent]
+                            name = parent_name + '/' + name
+                        self.directories[self.entry_num] = (name, parent)
                     # We're not interested in MFT specific files nor deleted ones...
                     elif name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in flags:
                         # FILE_RECORDs represent each file's metadata
@@ -331,22 +333,12 @@ class MFTParser():
             except KeyboardInterrupt:
                 print "User aborted"
                 break
-        """
+
         if self.resolve_filepaths:
-            for directory in self.directories:
-                path = self.directories[directory][0]
-                parent = self.directories[directory][1]
-                try:
-                    while parent != 5:
-                        path = self.directories[parent][0] + "/" + path
-                        parent = self.directories[parent][1]
-                    self.directories[directory] = (path, parent)
-                except:
-                    pass
             for entry in self.entries:
                 parent = entry.parent
                 entry.name = self.directories[parent][0] + '/' + entry.name
-        """
+
         del(self.directories)
         gc.collect()
         self.img.close()
@@ -419,9 +411,9 @@ class MFTParser():
             prev_img_offset = self.img.tell()
             attr_id = struct_h.unpack(self.entry[offset + 14:offset + 16])[0]
             start_vcn = struct_q.unpack(self.entry[offset + 16:offset + 24])[0]
-            end_vcn = struct_q.unpack(self.entry[offset + 24:offset + 32])[0]
+            #end_vcn = struct_q.unpack(self.entry[offset + 24:offset + 32])[0]
             data_run_off = struct_h.unpack(self.entry[offset + 32:offset + 34])[0]
-            alloc_size = struct_q.unpack(self.entry[offset + 40:offset + 48])[0]
+            #alloc_size = struct_q.unpack(self.entry[offset + 40:offset + 48])[0]
             real_size = struct_q.unpack(self.entry[offset + 48:offset + 56])[0]
             init_size = struct_q.unpack(self.entry[offset + 56:offset + 64])[0]
             data_run_len = struct_q.unpack(self.entry[offset + 40:offset + 48])[0]
@@ -608,20 +600,20 @@ class MFTParser():
     def parse_idx_root(self, offset):
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         idx_root = self.entry[offset:offset + attr_len]
-        attr_type = idx_root[0:4]
+        #attr_type = idx_root[0:4]
         name_length = struct_b.unpack(idx_root[9])[0]
         name_offset = struct_h.unpack(idx_root[10:12])[0]
         attr_name = idx_root[name_offset:name_offset + (2 * name_length)].replace('\x00', '')
         attr_flags = struct_h.unpack(idx_root[12:14])[0]
         attr_id = struct_h.unpack(idx_root[14:16])[0]
-        attr_data_size = struct_i.unpack(idx_root[16:20])[0]
+        #attr_data_size = struct_i.unpack(idx_root[16:20])[0]
         attr_data_offset = struct_h.unpack(idx_root[20:22])[0]
         idx_root = idx_root[attr_data_offset:]
-        coll_sort_rule = struct_i.unpack(idx_root[4:8])[0]
-        clusters_per_entry = int(b2a_hex(struct_c.unpack( idx_root[12])[0]), 16)
+        #coll_sort_rule = struct_i.unpack(idx_root[4:8])[0]
+        #clusters_per_entry = int(b2a_hex(struct_c.unpack( idx_root[12])[0]), 16)
         first_idx_offset = struct_i.unpack(idx_root[16:20])[0]
         index_size = struct_i.unpack(idx_root[20:24])[0]
-        index_alloc_size = struct_i.unpack(idx_root[24:28])[0]
+        #index_alloc_size = struct_i.unpack(idx_root[24:28])[0]
         header_flags = struct_i.unpack(idx_root[28:32])[0]
         if attr_name == "$SDH" or attr_name == "$SII":
             self.entry_offset += attr_len
@@ -635,14 +627,19 @@ class MFTParser():
                 break
             mft_ref = struct_q.unpack(idx_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
             entry_len = struct_h.unpack(idx_buffer[offset + 8:offset + 10])[0]
-            key_len = struct_h.unpack(idx_buffer[offset + 10:offset + 12])[0]
+            #key_len = struct_h.unpack(idx_buffer[offset + 10:offset + 12])[0]
             parent = struct_q.unpack(idx_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
             entry_ctime, entry_mtime, entry_atime = None, None, None
-            if self.get_mactimes:            
-                entry_ctime = time.ctime((struct_q.unpack(idx_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
-                entry_mtime = time.ctime((struct_q.unpack(idx_buffer[offset + 32:offset + 40])[0] - NTFS_EPOCH) / 10 ** (7))
-                #entry_mft_mod_time = time.ctime((struct_q.unpack(idx_buffer[40:48])[0] - NTFS_EPOCH) / 10**(7))
-                entry_atime = time.ctime((struct_q.unpack(idx_buffer[offset + 48:offset + 56])[0] - NTFS_EPOCH) / 10 ** (7))
+            """
+            if self.get_mactimes:
+                try:        
+                    entry_ctime = time.ctime((struct_q.unpack(idx_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
+                    entry_mtime = time.ctime((struct_q.unpack(idx_buffer[offset + 32:offset + 40])[0] - NTFS_EPOCH) / 10 ** (7))
+                    #entry_mft_mod_time = time.ctime((struct_q.unpack(idx_buffer[40:48])[0] - NTFS_EPOCH) / 10**(7))
+                    entry_atime = time.ctime((struct_q.unpack(idx_buffer[offset + 48:offset + 56])[0] - NTFS_EPOCH) / 10 ** (7))
+                except:
+                    pass
+            """
             entry_alloc_size = struct_q.unpack(idx_buffer[offset + 56:offset + 64])[0]
             entry_real_size = struct_q.unpack(idx_buffer[offset + 64:offset + 72])[0]
             entry_flags = [key for key in ATTRIBUTES if struct_i.unpack(idx_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
@@ -673,7 +670,7 @@ class MFTParser():
         if attr_name == "$SDH" or attr_name == "$SII":
             self.entry_offset += attr_len
             return INDEX_ALLOC(attr_name, attr_flags, attr_id, start_vcn, end_vcn, 0, [], None)
-        data = self.entry[offset + run_offset:offset + run_offset + run_len]
+        data = self.entry[offset + run_off:offset + run_off + run_len]
         idx_blocks = []
         prev_run_offset = 0
         max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
@@ -688,6 +685,7 @@ class MFTParser():
             run_len = struct_q.unpack(data[:run_bytes % 8] + ('\x00' * (8 - (run_bytes % 8))))[0]
             data = data[run_bytes:]
             run_offset = struct_q.unpack(data[:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0]
+            print run_offset, run_len
             data = data[run_offset_bytes:]
             if fragmented:
                     if max_sign[run_offset_bytes] >= run_offset:
@@ -714,7 +712,7 @@ class MFTParser():
         fixup_offset = struct_h.unpack(index_block[4:6])[0] + 2
         fixup_len = struct_h.unpack(index_block[6:8])[0] + 1
         log_seq = struct_q.unpack(index_block[8:16])[0]
-        index_block_vcn = struct_q.unpack(index_block[16:24])[0]
+        index_block_vcn = struct_q.unpack(index_block[16:24])[0] & 0xFFFFFFFF
         sec_end = self.sector_size - 2
         index_block = list(index_block)
         for i in range(0, fixup_len, 2):
@@ -723,7 +721,7 @@ class MFTParser():
         index_block = pack("<%dc" % len(index_block), *index_block)
         first_idx_offset = struct_i.unpack(index_block[24:28])[0] + 24
         index_size = struct_i.unpack(index_block[28:32])[0] + 24
-        alloc_size = struct_i.unpack(index_block[32:36])[0] + 24
+        #alloc_size = struct_i.unpack(index_block[32:36])[0] + 24
         header_flags = struct_i.unpack(index_block[36:40])[0]
         idx_entries = []
         index_buffer = index_block[first_idx_offset:]
@@ -734,14 +732,19 @@ class MFTParser():
                 break
             mft_ref = struct_q.unpack(index_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
             entry_len = struct_h.unpack(index_buffer[offset + 8:offset + 10])[0]
-            key_len = struct_h.unpack(index_buffer[offset + 10:offset + 12])[0]
+            #key_len = struct_h.unpack(index_buffer[offset + 10:offset + 12])[0]
             flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0]
             parent = struct_q.unpack(index_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
             entry_ctime, entry_mtime, entry_atime = None, None, None
+            """
             if self.get_mactimes:
-                entry_ctime = time.ctime((struct_q.unpack(index_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
-                entry_mtime = time.ctime((struct_q.unpack(index_buffer[offset + 40:offset + 48])[0] - NTFS_EPOCH) / 10 ** (7))
-                entry_atime = time.ctime((struct_q.unpack(index_buffer[offset + 48:offset + 56])[0] - NTFS_EPOCH) / 10 ** (7))
+                try:
+                    entry_ctime = time.ctime((struct_q.unpack(index_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
+                    entry_mtime = time.ctime((struct_q.unpack(index_buffer[offset + 40:offset + 48])[0] - NTFS_EPOCH) / 10 ** (7))
+                    entry_atime = time.ctime((struct_q.unpack(index_buffer[offset + 48:offset + 56])[0] - NTFS_EPOCH) / 10 ** (7))
+                except:
+                    pass
+            """
             entry_alloc_size = struct_q.unpack(index_buffer[offset + 56:offset + 64])[0]
             entry_real_size = struct_q.unpack(index_buffer[offset + 64:offset + 72])[0]
             entry_flags = [key for key in ATTRIBUTES if struct_i.unpack(index_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]

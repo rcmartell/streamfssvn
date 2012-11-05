@@ -74,13 +74,12 @@ class StreamClient():
         self.clustermap = [-1] * self.num_clusters
         return
 
-    """
     def setup_file_handler(self):
         self.handler = FileHandler()
         self.file_queue = Queue()
         self.proc = Process(target = self.handler.handler_queue, args = (self.file_queue,))
         self.proc.start()
-    """
+    
 
     def process_entries(self, entries):
         """

@@ -19,10 +19,10 @@ class SummaryWriter():
         else:
             res_data = ""
         if not lastEntry:
-            entrystr = "{ \"%s\" : [ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" , \"%s\" ] },\n" % (num, name, path, ctime, mtime, atime, size, "".join(str(clusters)[1:-1]), res_data)
+            entrystr = "{ \"%s\" : [ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\" , \"%s\" ] },\n" % (num, path + '/' + name, ctime, mtime, atime, size, "".join(str(clusters)[1:-1]), res_data)
             self.fh.write(entrystr)
         else:
-            entrystr = "{ \"%s\" : [ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",  \"%s\" , \"%s\" ] } ] }\n" % (num, name, path, ctime, mtime, atime, size, "".join(str(clusters)[1:-1]), res_data)
+            entrystr = "{ \"%s\" : [ \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",  \"%s\" , \"%s\" ] } ] }\n" % (num, path + '/' + name, ctime, mtime, atime, size, "".join(str(clusters)[1:-1]), res_data)
             self.fh.write(entrystr)
             self.fh.close()
 
