@@ -333,12 +333,12 @@ class MFTParser():
             except KeyboardInterrupt:
                 print "User aborted"
                 break
-
+        """
         if self.resolve_filepaths:
             for entry in self.entries:
                 parent = entry.parent
                 entry.name = self.directories[parent][0] + '/' + entry.name
-
+        """
         del(self.directories)
         gc.collect()
         self.img.close()
@@ -622,7 +622,7 @@ class MFTParser():
         idx_buffer = idx_root[first_idx_offset + 16:]
         offset = 0
         while True:
-            flags = struct_i.unpack(idx_buffer[offset + 12:offset + 16])[0]
+            flags = struct_i.unpack(idx_buffer[offset + 12:offset + 16])[0] & 0xFFFF
             if flags & 0x2:
                 break
             mft_ref = struct_q.unpack(idx_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
@@ -640,8 +640,8 @@ class MFTParser():
                 except:
                     pass
             """
-            entry_alloc_size = struct_q.unpack(idx_buffer[offset + 56:offset + 64])[0]
-            entry_real_size = struct_q.unpack(idx_buffer[offset + 64:offset + 72])[0]
+            entry_alloc_size = struct_q.unpack(idx_buffer[offset + 56:offset + 64])[0] & 0xFFFFFFFF
+            entry_real_size = struct_q.unpack(idx_buffer[offset + 64:offset + 72])[0] & 0xFFFFFFFF
             entry_flags = [key for key in ATTRIBUTES if struct_i.unpack(idx_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
             entry_name_length = struct_b.unpack(idx_buffer[offset + 80])[0]
             entry_namespace = struct_b.unpack(idx_buffer[offset + 81])[0]
@@ -670,11 +670,12 @@ class MFTParser():
         if attr_name == "$SDH" or attr_name == "$SII":
             self.entry_offset += attr_len
             return INDEX_ALLOC(attr_name, attr_flags, attr_id, start_vcn, end_vcn, 0, [], None)
-        data = self.entry[offset + run_off:offset + run_off + run_len]
+        data = idx_alloc[run_off:run_off + run_len]
         idx_blocks = []
         prev_run_offset = 0
         max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
         fragmented = False
+        run_off = 0
         while True:
             tmp = b2a_hex(struct_c.unpack(data[run_off])[0])
             run_offset_bytes = int(tmp[0], 16)
@@ -685,7 +686,6 @@ class MFTParser():
             run_len = struct_q.unpack(data[:run_bytes % 8] + ('\x00' * (8 - (run_bytes % 8))))[0]
             data = data[run_bytes:]
             run_offset = struct_q.unpack(data[:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0]
-            print run_offset, run_len
             data = data[run_offset_bytes:]
             if fragmented:
                     if max_sign[run_offset_bytes] >= run_offset:
@@ -727,10 +727,12 @@ class MFTParser():
         index_buffer = index_block[first_idx_offset:]
         offset = 0
         while True:
-            flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0]
+            flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0] & 0xFFFF
             if flags & 0x2:
                 break
             mft_ref = struct_q.unpack(index_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
+            if mft_ref == 0:
+                break
             entry_len = struct_h.unpack(index_buffer[offset + 8:offset + 10])[0]
             #key_len = struct_h.unpack(index_buffer[offset + 10:offset + 12])[0]
             flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0]
@@ -745,8 +747,8 @@ class MFTParser():
                 except:
                     pass
             """
-            entry_alloc_size = struct_q.unpack(index_buffer[offset + 56:offset + 64])[0]
-            entry_real_size = struct_q.unpack(index_buffer[offset + 64:offset + 72])[0]
+            entry_alloc_size = struct_q.unpack(index_buffer[offset + 56:offset + 64])[0] & 0xFFFFFFFF
+            entry_real_size = struct_q.unpack(index_buffer[offset + 64:offset + 72])[0] & 0xFFFFFFFF
             entry_flags = [key for key in ATTRIBUTES if struct_i.unpack(index_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
             entry_name_length = struct_b.unpack(index_buffer[offset + 80])[0]
             entry_namespace = struct_b.unpack(index_buffer[offset + 81])[0]
