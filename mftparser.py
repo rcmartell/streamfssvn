@@ -373,7 +373,7 @@ class MFTParser():
         # If mft_base != 0, then we're in an extended data attribute entry
         # owned by mft_base's entry. Its attributes could not fit in a single record
         # so another entry was reserved for it.
-        mft_base = struct_q.unpack(self.entry[32:40])[0] & 0x00FFFFFF
+        mft_base = struct_q.unpack(self.entry[32:40])[0] & 0xFFFFFFFFFFFF
         # next_attr_id = struct_h.unpack(self.entry[40:42])[0]
         # MFT entry number, similar to an inode number
         entry_num = struct_i.unpack(self.entry[44:48])[0]
@@ -399,8 +399,8 @@ class MFTParser():
                 attr_len = struct_h.unpack(attr_list[offset + 4:offset + 6])[0]
                 name_length = struct_b.unpack(attr_list[offset + 6])[0]
                 name_offset = struct_b.unpack(attr_list[offset + 7])[0]
-                start_vcn = struct_q.unpack(attr_list[offset + 8:offset + 16])[0]
-                mft_ref = struct_q.unpack(attr_list[offset + 16:offset + 24])[0] & 0xFFFFFFFF
+                start_vcn = struct_q.unpack(attr_list[offset + 8:offset + 16])[0] & 0xFFFFFFFFFFFF
+                mft_ref = struct_q.unpack(attr_list[offset + 16:offset + 24])[0] & 0xFFFFFFFFFFFF
                 attr_id = struct_b.unpack(attr_list[offset + 24])[0]
                 name = attr_list[offset + name_offset: offset + name_offset + (2 * name_length)].replace('\x00', '')
                 attr_entries.append(ATTR_LIST_ENTRY(attr_type, attr_len, name_length, start_vcn, mft_ref, attr_id, name))
@@ -414,9 +414,9 @@ class MFTParser():
             #end_vcn = struct_q.unpack(self.entry[offset + 24:offset + 32])[0]
             data_run_off = struct_h.unpack(self.entry[offset + 32:offset + 34])[0]
             #alloc_size = struct_q.unpack(self.entry[offset + 40:offset + 48])[0]
-            real_size = struct_q.unpack(self.entry[offset + 48:offset + 56])[0]
-            init_size = struct_q.unpack(self.entry[offset + 56:offset + 64])[0]
-            data_run_len = struct_q.unpack(self.entry[offset + 40:offset + 48])[0]
+            real_size = struct_q.unpack(self.entry[offset + 48:offset + 56])[0] & 0xFFFFFFFFFFFF
+            init_size = struct_q.unpack(self.entry[offset + 56:offset + 64])[0] & 0xFFFFFFFFFFFF
+            data_run_len = struct_q.unpack(self.entry[offset + 40:offset + 48])[0] & 0xFFFFFFFFFFFF
             data = self.entry[offset + data_run_off:offset + data_run_off + real_size]
             run_offset = 0
             prev_run_offset = 0
@@ -431,9 +431,9 @@ class MFTParser():
                 if tmp[0] == '0' or tmp[1] == '0':
                     break
                 data = data[run_offset + 1:]
-                data_run_len = struct_q.unpack(data[0:data_run_bytes % 8] + ('\x00' * (8 - (data_run_bytes % 8))))[0]
+                data_run_len = struct_q.unpack(data[0:data_run_bytes % 8] + ('\x00' * (8 - (data_run_bytes % 8))))[0] & 0xFFFFFFFFFFFF
                 data = data[data_run_bytes:]
-                run_offset = struct_q.unpack(data[0:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0]
+                run_offset = struct_q.unpack(data[0:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0] & 0xFFFFFFFFFFFF
                 data = data[run_offset_bytes:]
                 if file_fragmented:
                         if max_sign[run_offset_bytes] >= run_offset:
@@ -456,8 +456,8 @@ class MFTParser():
                         attr_len = struct_h.unpack(attr_entry[offset + 4:offset + 6])[0]
                         name_length = struct_b.unpack(attr_entry[offset + 6])[0]
                         name_offset = struct_b.unpack(attr_entry[offset + 7])[0]
-                        entry_start_vcn = struct_q.unpack(attr_entry[offset + 8:offset + 16])[0]
-                        mft_ref = struct_q.unpack(attr_entry[offset + 16:offset + 24])[0] & 0xFFFFFFFF
+                        entry_start_vcn = struct_q.unpack(attr_entry[offset + 8:offset + 16])[0] & 0xFFFFFFFFFFFF
+                        mft_ref = struct_q.unpack(attr_entry[offset + 16:offset + 24])[0] & 0xFFFFFFFFFFFF
                         attr_id = struct_b.unpack(attr_entry[offset + 24])[0]
                         attr_name = attr_entry[offset + name_offset: offset + name_offset + (2 * name_length)].replace('\x00', '')
                         attr_entries.append(ATTR_LIST_ENTRY(attr_type, attr_len, name_length, entry_start_vcn, mft_ref, attr_id, attr_name))
@@ -564,7 +564,7 @@ class MFTParser():
     def parse_filename(self, offset):
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         filename = self.entry[offset + 24:offset + attr_len]
-        parent = struct_q.unpack(filename[0:8])[0] & 0xFFFFFFFF
+        parent = struct_q.unpack(filename[0:8])[0] & 0xFFFFFFFFFFFF
         ctime, mtime, atime = None, None, None
         if self.get_mactimes:
             try:
@@ -574,8 +574,8 @@ class MFTParser():
                 atime = time.ctime((struct_q.unpack(filename[32:40])[0] - NTFS_EPOCH) / 10 ** (7))
             except:
                 pass
-        alloc_size = struct_q.unpack(filename[40:48])[0] & 0xFFFFFFFF
-        real_size = struct_q.unpack(filename[48:56])[0] & 0xFFFFFFFF
+        alloc_size = struct_q.unpack(filename[40:48])[0] & 0xFFFFFFFFFFFF
+        real_size = struct_q.unpack(filename[48:56])[0] & 0xFFFFFFFFFFFF
         flags = [key for key in ATTRIBUTES if struct_i.unpack(filename[56:60])[0] & ATTRIBUTES[key]]
         name_length = struct_b.unpack(filename[64])[0]
         namespace = struct_b.unpack(filename[65])[0]
@@ -625,10 +625,10 @@ class MFTParser():
             flags = struct_i.unpack(idx_buffer[offset + 12:offset + 16])[0] & 0xFFFF
             if flags & 0x2:
                 break
-            mft_ref = struct_q.unpack(idx_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
+            mft_ref = struct_q.unpack(idx_buffer[offset:offset + 8])[0] & 0xFFFFFFFFFFFF
             entry_len = struct_h.unpack(idx_buffer[offset + 8:offset + 10])[0]
             #key_len = struct_h.unpack(idx_buffer[offset + 10:offset + 12])[0]
-            parent = struct_q.unpack(idx_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
+            parent = struct_q.unpack(idx_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFFFFFF
             entry_ctime, entry_mtime, entry_atime = None, None, None
             """
             if self.get_mactimes:
@@ -640,8 +640,8 @@ class MFTParser():
                 except:
                     pass
             """
-            entry_alloc_size = struct_q.unpack(idx_buffer[offset + 56:offset + 64])[0] & 0xFFFFFFFF
-            entry_real_size = struct_q.unpack(idx_buffer[offset + 64:offset + 72])[0] & 0xFFFFFFFF
+            entry_alloc_size = struct_q.unpack(idx_buffer[offset + 56:offset + 64])[0] & 0xFFFFFFFFFFFF
+            entry_real_size = struct_q.unpack(idx_buffer[offset + 64:offset + 72])[0] & 0xFFFFFFFFFFFF
             entry_flags = [key for key in ATTRIBUTES if struct_i.unpack(idx_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
             entry_name_length = struct_b.unpack(idx_buffer[offset + 80])[0]
             entry_namespace = struct_b.unpack(idx_buffer[offset + 81])[0]
@@ -662,10 +662,10 @@ class MFTParser():
         name_offset = struct_h.unpack(idx_alloc[10:12])[0]
         attr_flags = struct_h.unpack(idx_alloc[12:14])[0]
         attr_id = struct_h.unpack(idx_alloc[14:16])[0]
-        start_vcn = struct_q.unpack(idx_alloc[16:24])[0] & 0xFFFFFFFF
-        end_vcn = struct_q.unpack(idx_alloc[24:32])[0] & 0xFFFFFFFF
+        start_vcn = struct_q.unpack(idx_alloc[16:24])[0] & 0xFFFFFFFFFFFF
+        end_vcn = struct_q.unpack(idx_alloc[24:32])[0] & 0xFFFFFFFFFFFF
         run_off = struct_h.unpack(idx_alloc[32:34])[0]
-        run_len = struct_q.unpack(idx_alloc[40:48])[0] & 0xFFFFFFFF
+        run_len = struct_q.unpack(idx_alloc[40:48])[0] & 0xFFFFFFFFFFFF
         attr_name = idx_alloc[name_offset:name_offset + (2 * name_length)].replace('\x00', '')
         if attr_name == "$SDH" or attr_name == "$SII":
             self.entry_offset += attr_len
@@ -683,9 +683,9 @@ class MFTParser():
             if tmp[0] == '0' or tmp[1] == '0':
                 break
             data = data[run_off + 1:]
-            run_len = struct_q.unpack(data[:run_bytes % 8] + ('\x00' * (8 - (run_bytes % 8))))[0] & 0xFFFFFFFF
+            run_len = struct_q.unpack(data[:run_bytes % 8] + ('\x00' * (8 - (run_bytes % 8))))[0] & 0xFFFFFFFFFFFF
             data = data[run_bytes:]
-            run_offset = struct_q.unpack(data[:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0] & 0xFFFFFFFF
+            run_offset = struct_q.unpack(data[:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0] & 0xFFFFFFFFFFFF
             data = data[run_offset_bytes:]
             if fragmented:
                     if max_sign[run_offset_bytes] >= run_offset:
@@ -730,13 +730,13 @@ class MFTParser():
             flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0] & 0xFFFF
             if flags & 0x2:
                 break
-            mft_ref = struct_q.unpack(index_buffer[offset:offset + 8])[0] & 0xFFFFFFFF
+            mft_ref = struct_q.unpack(index_buffer[offset:offset + 8])[0] & 0xFFFFFFFFFFFF
             if mft_ref == 0:
                 break
             entry_len = struct_h.unpack(index_buffer[offset + 8:offset + 10])[0]
             #key_len = struct_h.unpack(index_buffer[offset + 10:offset + 12])[0]
             flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0] & 0xFFFF
-            parent = struct_q.unpack(index_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFF
+            parent = struct_q.unpack(index_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFFFFFF
             entry_ctime, entry_mtime, entry_atime = None, None, None
             """
             if self.get_mactimes:
@@ -747,8 +747,8 @@ class MFTParser():
                 except:
                     pass
             """
-            entry_alloc_size = struct_q.unpack(index_buffer[offset + 56:offset + 64])[0] & 0xFFFFFFFF
-            entry_real_size = struct_q.unpack(index_buffer[offset + 64:offset + 72])[0] & 0xFFFFFFFF
+            entry_alloc_size = struct_q.unpack(index_buffer[offset + 56:offset + 64])[0] & 0xFFFFFFFFFFFF
+            entry_real_size = struct_q.unpack(index_buffer[offset + 64:offset + 72])[0] & 0xFFFFFFFFFFFF
             entry_flags = [key for key in ATTRIBUTES if struct_i.unpack(index_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
             entry_name_length = struct_b.unpack(index_buffer[offset + 80])[0]
             entry_namespace = struct_b.unpack(index_buffer[offset + 81])[0]
