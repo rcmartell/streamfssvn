@@ -541,7 +541,6 @@ class MFTParser():
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         std_info = self.entry[offset + 24:offset + attr_len]
         ctime, mtime, atime, sid = None, None, None, None
-        """
         if self.get_mactimes:
             try:
                 ctime = time.ctime((struct_q.unpack(std_info[0:8])[0] - NTFS_EPOCH) / 10 ** (7))
@@ -550,7 +549,6 @@ class MFTParser():
                 atime = time.ctime((struct_q.unpack(std_info[24:32])[0] - NTFS_EPOCH) / 10 ** (7))
             except:
                 pass
-        """
         flags = [key for key in ATTRIBUTES if struct_i.unpack(std_info[32:36])[0] & ATTRIBUTES[key]]
         try:
             sid = struct_i.unpack(std_info[52:56])[0]
@@ -564,7 +562,6 @@ class MFTParser():
         filename = self.entry[offset + 24:offset + attr_len]
         parent = struct_q.unpack(filename[0:8])[0] & 0xFFFFFFFFFFFF
         ctime, mtime, atime = None, None, None
-        """
         if self.get_mactimes:
             try:
                 ctime = time.ctime((struct_q.unpack(filename[8:16])[0] - NTFS_EPOCH) / 10 ** (7))
@@ -573,7 +570,6 @@ class MFTParser():
                 atime = time.ctime((struct_q.unpack(filename[32:40])[0] - NTFS_EPOCH) / 10 ** (7))
             except:
                 pass
-        """
         alloc_size = struct_q.unpack(filename[40:48])[0] & 0xFFFFFFFFFFFF
         real_size = struct_q.unpack(filename[48:56])[0] & 0xFFFFFFFFFFFF
         flags = [key for key in ATTRIBUTES if struct_i.unpack(filename[56:60])[0] & ATTRIBUTES[key]]
@@ -630,7 +626,6 @@ class MFTParser():
             #key_len = struct_h.unpack(idx_buffer[offset + 10:offset + 12])[0]
             parent = struct_q.unpack(idx_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFFFFFF
             entry_ctime, entry_mtime, entry_atime = None, None, None
-            """
             if self.get_mactimes:
                 try:
                     entry_ctime = time.ctime((struct_q.unpack(idx_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
@@ -639,7 +634,6 @@ class MFTParser():
                     entry_atime = time.ctime((struct_q.unpack(idx_buffer[offset + 48:offset + 56])[0] - NTFS_EPOCH) / 10 ** (7))
                 except:
                     pass
-            """
             entry_alloc_size = struct_q.unpack(idx_buffer[offset + 56:offset + 64])[0] & 0xFFFFFFFFFFFF
             entry_real_size = struct_q.unpack(idx_buffer[offset + 64:offset + 72])[0] & 0xFFFFFFFFFFFF
             entry_flags = [key for key in ATTRIBUTES if struct_i.unpack(idx_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
