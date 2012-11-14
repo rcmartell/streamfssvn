@@ -63,12 +63,18 @@ def print_idx_root(parser):
     print ''
 
 
-def print_idx_alloc(parser):
+def print_idx_alloc(parser, clusters = None, show_clusters = False):
     print "*****************INDEX ALLOCATION**************"
     for block in parser.idx_alloc.idx_blocks:
         for entry in block.idx_entries:
             print entry.name, entry.file_flags, entry.mft_ref, entry.real_size
     print ''
+    if show_clusters and len(clusters):
+        print "Data Clusters: "
+        _clusters_ = reduce(lambda x, y: x + y, [range(idx[0], idx[0] + idx[1]) for idx in clusters])
+        for idx in range(len(_clusters_[::7])):
+            print str(_clusters_[idx * 7:idx * 7 + 7]).replace(",", "")
+
 
 def print_attr_list(parser):
     print "*****************ATTRIBUTE LIST****************"
@@ -142,9 +148,9 @@ def search(parser, name):
 if __name__ == "__main__":
     import argparse, sys
     argparser = argparse.ArgumentParser(description = """
-    Parses the MFT of an NTFS filesystem. The data returned depends on the flags selected by the user. 
-    Functionality similar to Sleuthkit's fsstat/istat is possible, as well as a tentative count of various file-types found throughout the system. 
-    Note: When using this option, the file-type is determined exclusively by extension, so counts may not truly reflect the contents of the system. 
+    Parses the MFT of an NTFS filesystem. The data returned depends on the flags selected by the user.
+    Functionality similar to Sleuthkit's fsstat/istat is possible, as well as a tentative count of various file-types found throughout the system.
+    Note: When using this option, the file-type is determined exclusively by extension, so counts may not truly reflect the contents of the system.
     """)
     argparser.add_argument('-t', '--target', help = "Target image/drive to be parsed.", required = True)
     argparser.add_argument('-p', '--partition', type = int, help = "Specify which partition is to be parsed. If none is specified target assumed to be a partition.", default = 0)
@@ -206,7 +212,7 @@ if __name__ == "__main__":
         if hasattr(parser, 'idx_root') and parser.idx_root != None:
             print_idx_root(parser)
         if hasattr(parser, 'idx_alloc') and parser.idx_alloc != None:
-            print_idx_alloc(parser)
+            print_idx_alloc(parser, parser.idx_alloc.clusters, show_clusters = True)
         if hasattr(parser, 'filedata') and parser.filedata != None:
             res_data = parser.filedata.res_data
             print_data(parser.filedata, parser.filedata.clusters, parser.filedata.start_vcn, parser.filedata.end_vcn, True)
