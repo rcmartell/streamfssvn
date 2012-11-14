@@ -760,7 +760,7 @@ class MFTParser():
             entry_filename = index_buffer[offset + 82:offset + 82 + (2 * entry_name_length)].replace('\x00', '')
             idx_entries.append(INDEX_ENTRY(mft_ref, flags, parent, entry_ctime, entry_mtime, entry_atime, entry_alloc_size, entry_real_size, entry_flags, entry_filename))
             offset += entry_len
-        return INDEX_BLOCK(log_seq, index_block_vcn, index_size, header_flags, idx_entries = idx_entries)
+        return INDEX_BLOCK(log_seq, index_block_vcn, index_size, None, header_flags, idx_entries)
 
     def parse_data_attr(self, offset):
         clusters = []
