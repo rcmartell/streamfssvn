@@ -55,7 +55,7 @@ class FILENAME():
     """Standard filename entry info"""
     __slots__ = ("parent", "ctime", "mtime", "atime", "alloc_size", "real_size", "flags", "name", "seq_num", "namespace")
     def __init__(self, _parent=None, _ctime=None, _mtime=None, _atime=None,
-                 _alloc_size=None, _real_size=None, _flags=None, _name_len=None, _name=None, _seq_num=None, _namespace=None):
+                 _alloc_size=None, _real_size=None, _flags=None, _name=None, _seq_num=None, _namespace=None):
         self.parent = _parent
         self.ctime = _ctime
         self.mtime = _mtime
@@ -63,7 +63,6 @@ class FILENAME():
         self.alloc_size = _alloc_size
         self.real_size = _real_size
         self.flags = _flags
-        self.name_len = _name_len
         self.name = _name
         self.seq_num = _seq_num
         self.namespace = _namespace
