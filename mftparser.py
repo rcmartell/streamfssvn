@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from __future__ import division
-from mft import *
+from mft import ATTR_LIST, ATTR_LIST_ENTRY
 import os, time, math, gc, sys
 from struct import unpack, pack, Struct
 from binascii import b2a_hex
@@ -59,6 +59,7 @@ class MFTParser():
         self.entries = []
         self.mft_data = None
         self.partition_offset = 0
+        gc.disable()
         if partition == 0:
             if unpack(">Q", self.img.read(0xB)[3:])[0] != NTFS_OEM_ID:
                 print "Invalid partition specified."
@@ -79,8 +80,8 @@ class MFTParser():
         self.num_bytes = self.num_sectors * self.sector_size
         self.num_clusters = int(math.ceil(self.num_bytes / self.cluster_size))
         self.mft_baseoffset = struct_q.unpack(self.img.read(8))[0] * self.cluster_size
-        self.mft_mir_baseoffset = struct_q.unpack(self.img.read(8))[0] * self.cluster_size
-        self.serial_num = hex(struct_q.unpack(self.img.read(16)[-8:])[0])
+        #self.mft_mir_baseoffset = struct_q.unpack(self.img.read(8))[0] * self.cluster_size
+        #self.serial_num = hex(struct_q.unpack(self.img.read(16)[-8:])[0])
 
     def get_cluster_size(self):
         return self.cluster_size
@@ -149,7 +150,7 @@ class MFTParser():
     def create_SecurityDescriptorTable(self):
         pass
 
-    def parse_mft(self, start = 0, end = None, full_parse = False, quickstat = False, cleanup = True, resolve_filepaths = False, parse_index_records = False, get_mactimes = False):
+    def parse_mft(self):
         """
         The main method/function of the parser. It accepts a 'start' entry if only a single MFT entry's data is desired (in which case the 'end' parameter is set to the same
         value as 'start'). The optional parameters 'full_parse', 'quickstat' and 'cleanup' are used to somewhat fine-tune the parser so that no more parsing/processing occurs
@@ -158,38 +159,36 @@ class MFTParser():
         entry objects from memory, as Python seems to be a little too lax on its garbage collection mechanisms. This is generally a good idea, as it cuts the memory usage
         of a full-parsing down significantly without adding too much overhead.
         """
-        current = start
+        current = 0
         self.pos = [0.0, 0.25, 0.50, 0.75]
-        self.directories = {}
-        self.full_parse = full_parse
-        self.quickstat = quickstat
-        self.resolve_filepaths = resolve_filepaths
-        self.parse_index_records = parse_index_records
-        self.cleanup = cleanup
-        self.get_mactimes = get_mactimes
+        directories = {}
         while 1:
             try:
                 idx, vcn = math.modf((current * MFT_ENTRY_SIZE) / self.cluster_size)
                 idx = self.pos.index(idx)
-                if int(vcn) >= len(self.mft_data) or (end != None and current > end):
+                if int(vcn) >= len(self.mft_data):
                     break
                 lcn = self.mft_data[int(vcn)]
                 address = (lcn * self.cluster_size) + (idx * MFT_ENTRY_SIZE) + self.partition_offset
                 self.img.seek(address, os.SEEK_SET)
                 self.entry = self.img.read(MFT_ENTRY_SIZE)
                 self.entry_offset = 0
-                self.data = []
-                self.filedata = None
-                clusters = []
+                self.entry_num = 0
                 self.alloc_status = UNALLOCATED
-                self.std_info, self.filename, self.attr_list, res_data = None, None, None, None
-                ctime, mtime, atime = None, None, None
-                flags = []
-                name, parent, real_size, data_size, size = None, None, 0, 0, 0
+                self.mft_base = 0
+                self.flags = []
+                self.real_size = 0
+                self.parent = 0
+                self.entry_name = None
+                self.path = None
+                self.clusters = []
+                self.data_size = 0
+                self.res_data = None
+                self.ctime, self.mtime, self.atime = 0, 0, 0
                 if self.entry[0:4] == MFT_ENTRY_SIG:
                     """ Beginning of MFT Entry """
-                    self.header = self.parse_mft_header()
-                    if self.header.mft_base != 0:
+                    self.mft_base, self.entry_num = self.parse_mft_header()
+                    if self.mft_base != 0:
                     # Part of a multi-entry data attribute, not a unique File Entry.
                     # It will eventually be included in an Attribute List attribute
                         current += 1
@@ -202,128 +201,106 @@ class MFTParser():
                         current_attr_sig = self.entry[self.entry_offset:self.entry_offset + 4]
 
                         if current_attr_sig == STANDARD_INFO_SIG:
-                            self.std_info = self.parse_std_info(self.entry_offset)
+                            self.entry_offset += struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
+                            #self.std_info = self.parse_std_info(self.entry_offset)
 
                         elif current_attr_sig == ATTR_LIST_SIG:
-                            attr_list_len = struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
                             if self.alloc_status == UNALLOCATED:
-                                self.entry_offset += attr_list_len
+                                self.entry_offset += struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
                             else:
-                                self.attr_list = self.parse_attr_list(self.entry_offset)
-                                self.parse_attr_list_entries(current)
+                                attr_entries = self.parse_attr_list(self.entry_offset)
+                                self.parse_attr_list_entries(current, attr_entries)
 
                         elif current_attr_sig == FILENAME_SIG:
-                            filename = self.parse_filename(self.entry_offset)
-                            if self.filename != None:
-                                if filename.namespace == 2:
-                                    continue
-                                else:
-                                    self.filename = filename
+                            parent, ctime, mtime, atime, real_size, flags, name, namespace = self.parse_filename(self.entry_offset)
+                            if namespace == 2:
+                                continue
                             else:
-                                self.filename = filename
+                                self.parent = parent
+                                self.ctime = ctime
+                                self.mtime = mtime
+                                self.atime = atime
+                                self.real_size = real_size
+                                self.flags = flags
+                                self.entry_name = name
 
                         elif current_attr_sig == OBJECT_ID_SIG:
-                            self.object_id = self.parse_object_id(self.entry_offset)
+                            self.parse_object_id(self.entry_offset)
 
                         elif current_attr_sig == SECURITY_DESC_SIG:
-                            self.sec_desc = self.parse_sec_desc(self.entry_offset)
+                            self.parse_sec_desc(self.entry_offset)
 
                         elif current_attr_sig == VOLUME_NAME_SIG:
-                            self.volume_name = self.parse_volume_name(self.entry_offset)
+                            self.parse_volume_name(self.entry_offset)
 
                         elif current_attr_sig == VOLUME_INFO_SIG:
-                            self.volume_info = self.parse_volume_info(self.entry_offset)
+                            self.parse_volume_info(self.entry_offset)
 
                         elif current_attr_sig == BITMAP_SIG:
                             self.parse_bitmap_attr(self.entry_offset)
 
                         elif current_attr_sig == DATA_SIG:
-                            attr_len = struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
-                            if self.quickstat or self.alloc_status == UNALLOCATED:
-                                self.entry_offset += attr_len
+                            if self.alloc_status == UNALLOCATED:
+                                self.entry_offset += struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
                             else:
-                                data_attrib = self.parse_data_attr(self.entry_offset)
-                                if data_attrib.attr_name == None:
-                                    if data_attrib.start_vcn == 0:
-                                        self.filedata = data_attrib
+                                (attr_name, start_vcn, real_size, clusters, res_data) = self.parse_data_attr(self.entry_offset)
+                                if attr_name == None:
+                                    if start_vcn == 0:
+                                        self.clusters = clusters
+                                        self.data_size = real_size
+                                        self.res_data = res_data
                                     else:
-                                        self.filedata.clusters.extend(data_attrib.clusters)
-                                        self.filedata.end_vcn = max(self.filedata.end_vcn, data_attrib.end_vcn)
-                                        if data_attrib.fragmented:
-                                            self.filedata.fragmented = True
-                                else:
-                                    self.data.append(data_attrib)
+                                        self.clusters.extend(clusters)
+
 
                         elif current_attr_sig == INDEX_ROOT_SIG:
-                            attr_len = struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
+                            self.entry_offset += struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
+                            """
                             if not self.parse_index_records or self.alloc_status == UNALLOCATED:
                                 self.entry_offset += attr_len
                             else:
                                 self.idx_root = self.parse_idx_root(self.entry_offset)
+                            """
 
                         elif current_attr_sig == INDEX_ALLOC_SIG:
-                            attr_len = struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
+                            self.entry_offset += struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
+                            """
                             if not self.parse_index_records or self.alloc_status == UNALLOCATED:
                                 self.entry_offset += attr_len
                             else:
                                 self.idx_alloc = self.parse_idx_alloc(self.entry_offset)
+                            """
 
                         elif current_attr_sig == LOG_UTIL_STREAM_SIG:
                             self.parse_data_attr(self.entry_offset)
-                            #self.log_util = self.parse_data_attr(self.entry_offset)
 
                         elif current_attr_sig == END_OF_ENTRY_SIG:
                             break
                         else:
                             # Where the hell are we? Just go to the next entry...
                             break
-                    # To Prevent NoneType Errors if a
-                    # standard info attribute is not present.
-                    if self.get_mactimes:
-                        if hasattr(self.std_info, 'ctime'):
-                            ctime = self.std_info.ctime
-                        if hasattr(self.std_info, 'mtime'):
-                            mtime = self.std_info.mtime
-                        if hasattr(self.std_info, 'atime'):
-                            atime = self.std_info.atime
-                    # Likewise for filename attributes
-                    if hasattr(self.filename, 'name'):
-                        name = self.filename.name
-                    if hasattr(self.filename, 'flags'):
-                        flags = self.filename.flags
-                    if hasattr(self.filename, 'real_size'):
-                        real_size = self.filename.real_size
-                    if hasattr(self.filename, 'parent'):
-                        parent = self.filename.parent
-                    # And of course, for data attributes
-                    if self.filedata != None:
-                        if hasattr(self.filedata, 'clusters') and len(self.filedata.clusters):
-                            clusters = self.filedata.clusters
-                        if hasattr(self.filedata, 'data_size'):
-                            data_size = self.filedata.data_size
-                        if hasattr(self.filedata, 'res_data') and self.filedata.res_data != None:
-                            res_data = self.filedata.res_data
-                    if name != None and 'DIRECTORY' in flags:
-                        while parent in self.directories and parent != 5:
-                            parent_name, parent = self.directories[parent]
-                            name = parent_name + '/' + name
-                        self.directories[current] = (name, parent)
+                    """
+                    if self.entry_name != None and 'DIRECTORY' in self.flags:
+                        parent = self.parent
+                        entry_name = self.entry_name
+                        while parent in directories and parent != 5:
+                            parent_name, parent = directories[parent]
+                            entry_name = parent_name + '/' + entry_name
+                        directories[current] = (entry_name, parent)
                     # We're not interested in MFT specific files nor deleted ones...
-                    elif name != None and name[0] != '$' and self.header.flags != 0 and 'DIRECTORY' not in flags:
-                        # FILE_RECORDs represent each file's metadata
-                        if real_size == 0:
-                            size = data_size
+                    """
+                    if self.entry_name != None and self.entry_name[0] != '$' and self.alloc_status != UNALLOCATED and 'DIRECTORY' not in self.flags:
+                        if self.real_size == 0:
+                            size = self.data_size
                         else:
-                            size = real_size
-                        self.entries.append(FILE_RECORD(name, current, parent, ctime, mtime, atime, size, clusters, res_data))
+                            size = self.real_size
+                        self.entries.append([self.entry_name, self.entry_num, self.path, self.parent, self.ctime, self.mtime, self.atime, size, self.clusters, self.res_data])
                     current += 1
-                    if self.cleanup:
-                        try:
-                            del(clusters)
-                            del(self.data)
-                            del(self.attr_list)
-                        except:
-                            pass
+                    try:
+                        del(self.clusters)
+                        del(self.attr_list)
+                    except:
+                        pass
                 else:
                     # We're not in an MFT Entry, move along now
                     current += 1
@@ -331,16 +308,17 @@ class MFTParser():
                 print "User aborted"
                 break
         """
-        if self.resolve_filepaths:
-            for entry in self.entries:
-                parent = entry.parent
-                entry.name = self.directories[parent][0] + '/' + entry.name
+        for entry in self.entries:
+            parent = entry[3]
+            entry[2] = directories[parent][0]
         """
-        del(self.directories)
-        gc.collect()
+        del(directories)
         self.img.close()
+        import cPickle
+        fh = open('filedump', 'wb')
+        cPickle.dump(self.entries, fh,  protocol=2)
         return self.entries
-
+        gc.enable()
 
     def parse_mft_header(self):
         """ Parse the Standard MFT Entry header. All entries should begin with this header. SHOULD.. """
@@ -358,10 +336,10 @@ class MFTParser():
             sec_end += self.sector_size
         # Pack the list back into binary
         self.entry = pack("<1024c", *self.entry)
-        lsn = struct_q.unpack(self.entry[8:16])[0]
-        seq_num = struct_h.unpack(self.entry[16:18])[0]
+        #lsn = struct_q.unpack(self.entry[8:16])[0]
+        #seq_num = struct_h.unpack(self.entry[16:18])[0]
         # Number of references to file
-        lnk_cnt = struct_h.unpack(self.entry[18:20])[0]
+        #lnk_cnt = struct_h.unpack(self.entry[18:20])[0]
         # Should always be 56 (0x38) bytes from start of header
         # first_attr_off = struct_h.unpack(self.entry[20:22])[0]
         # Directory, System, Hidden, etc.
@@ -376,7 +354,7 @@ class MFTParser():
         entry_num = struct_i.unpack(self.entry[44:48])[0]
         self.entry_offset += MFT_HEADER_LEN
         # Return an object modeling the entry's standard header
-        return MFT_STANDARD_HEADER(lsn, seq_num, lnk_cnt, flags, entry_num, mft_base)
+        return mft_base, entry_num
 
     def parse_attr_list(self, offset):
         """Parse the Attribute List attribute of an entry. Entries only have an attribute list if a single entry is too small
@@ -384,7 +362,7 @@ class MFTParser():
         attr_list_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         non_resident = struct_b.unpack(self.entry[offset + 8])[0]
         if non_resident == 0:
-            attr_id = struct_h.unpack(self.entry[offset + 14:offset + 16])[0]
+            #attr_id = struct_h.unpack(self.entry[offset + 14:offset + 16])[0]
             attr_list = self.entry[offset + 24:offset + 24 + attr_list_len]
             offset = 0
             attr_entries = []
@@ -393,25 +371,25 @@ class MFTParser():
                 if attr_type == 0:
                     break
                 attr_len = struct_h.unpack(attr_list[offset + 4:offset + 6])[0]
-                name_length = struct_b.unpack(attr_list[offset + 6])[0]
-                name_offset = struct_b.unpack(attr_list[offset + 7])[0]
-                start_vcn = struct_q.unpack(attr_list[offset + 8:offset + 16])[0] & 0xFFFFFFFFFFFF
+                #name_length = struct_b.unpack(attr_list[offset + 6])[0]
+                #name_offset = struct_b.unpack(attr_list[offset + 7])[0]
+                #start_vcn = struct_q.unpack(attr_list[offset + 8:offset + 16])[0] & 0xFFFFFFFFFFFF
                 mft_ref = struct_q.unpack(attr_list[offset + 16:offset + 24])[0] & 0xFFFFFFFFFFFF
-                attr_id = struct_b.unpack(attr_list[offset + 24])[0]
-                name = attr_list[offset + name_offset: offset + name_offset + (2 * name_length)].replace('\x00', '')
-                attr_entries.append(ATTR_LIST_ENTRY(attr_type, attr_len, name_length, start_vcn, mft_ref, attr_id, name))
+                #attr_id = struct_b.unpack(attr_list[offset + 24])[0]
+                #name = attr_list[offset + name_offset: offset + name_offset + (2 * name_length)].replace('\x00', '')
+                attr_entries.append(mft_ref)
                 offset += attr_len
             self.entry_offset += attr_list_len
-            return ATTR_LIST(non_resident, attr_list_len, attr_list_len, attr_entries, None)
+            return attr_entries
         else:
             prev_img_offset = self.img.tell()
-            attr_id = struct_h.unpack(self.entry[offset + 14:offset + 16])[0]
+            #attr_id = struct_h.unpack(self.entry[offset + 14:offset + 16])[0]
             start_vcn = struct_q.unpack(self.entry[offset + 16:offset + 24])[0]
             #end_vcn = struct_q.unpack(self.entry[offset + 24:offset + 32])[0]
             data_run_off = struct_h.unpack(self.entry[offset + 32:offset + 34])[0]
             #alloc_size = struct_q.unpack(self.entry[offset + 40:offset + 48])[0]
             real_size = struct_q.unpack(self.entry[offset + 48:offset + 56])[0] & 0xFFFFFFFFFFFF
-            init_size = struct_q.unpack(self.entry[offset + 56:offset + 64])[0] & 0xFFFFFFFFFFFF
+            #init_size = struct_q.unpack(self.entry[offset + 56:offset + 64])[0] & 0xFFFFFFFFFFFF
             data_run_len = struct_q.unpack(self.entry[offset + 40:offset + 48])[0] & 0xFFFFFFFFFFFF
             data = self.entry[offset + data_run_off:offset + data_run_off + real_size]
             run_offset = 0
@@ -419,14 +397,13 @@ class MFTParser():
             max_sign = [int(2 ** ((8 * x) - 1) - 1) for x in range(9)]
             file_fragmented = False
             attr_entries = []
-            clusters = []
             while 1:
                 tmp = b2a_hex(struct_c.unpack(data[0])[0])
                 run_offset_bytes = int(tmp[0], 16)
                 data_run_bytes = int(tmp[1], 16)
                 if tmp[0] == '0' or tmp[1] == '0':
                     break
-                data = data[run_offset + 1:]
+                data = data[1:]
                 data_run_len = struct_q.unpack(data[0:data_run_bytes % 8] + ('\x00' * (8 - (data_run_bytes % 8))))[0] & 0xFFFFFFFFFFFF
                 data = data[data_run_bytes:]
                 run_offset = struct_q.unpack(data[0:run_offset_bytes] + ('\x00' * (8 - run_offset_bytes)))[0] & 0xFFFFFFFFFFFF
@@ -450,15 +427,14 @@ class MFTParser():
                         except:
                             break
                         attr_len = struct_h.unpack(attr_entry[offset + 4:offset + 6])[0]
-                        name_length = struct_b.unpack(attr_entry[offset + 6])[0]
-                        name_offset = struct_b.unpack(attr_entry[offset + 7])[0]
-                        entry_start_vcn = struct_q.unpack(attr_entry[offset + 8:offset + 16])[0] & 0xFFFFFFFFFFFF
+                        #name_length = struct_b.unpack(attr_entry[offset + 6])[0]
+                        #name_offset = struct_b.unpack(attr_entry[offset + 7])[0]
+                        #entry_start_vcn = struct_q.unpack(attr_entry[offset + 8:offset + 16])[0] & 0xFFFFFFFFFFFF
                         mft_ref = struct_q.unpack(attr_entry[offset + 16:offset + 24])[0] & 0xFFFFFFFFFFFF
-                        attr_id = struct_b.unpack(attr_entry[offset + 24])[0]
-                        attr_name = attr_entry[offset + name_offset: offset + name_offset + (2 * name_length)].replace('\x00', '')
-                        attr_entries.append(ATTR_LIST_ENTRY(attr_type, attr_len, name_length, entry_start_vcn, mft_ref, attr_id, attr_name))
+                        #attr_id = struct_b.unpack(attr_entry[offset + 24])[0]
+                        #attr_name = attr_entry[offset + name_offset: offset + name_offset + (2 * name_length)].replace('\x00', '')
+                        attr_entries.append(mft_ref)
                         offset += attr_len
-                clusters.append((run_offset, data_run_len))
                 if data[0] == DATA_RUN_END:
                     break
                 else:
@@ -467,15 +443,15 @@ class MFTParser():
                     continue
             self.entry_offset += attr_list_len
             self.img.seek(prev_img_offset, os.SEEK_SET)
-            return ATTR_LIST(non_resident, real_size, init_size, attr_entries, clusters)
+            return attr_entries
 
-    def parse_attr_list_entries(self, current):
+    def parse_attr_list_entries(self, current, attr_entries):
         orig_entry_offset = self.entry_offset
         orig_entry = self.entry
         orig_img_offset = self.img.tell()
-        for attr in self.attr_list.attr_entries:
-            if attr.mft_ref != current:
-                idx, vcn = math.modf((attr.mft_ref * MFT_ENTRY_SIZE) / self.cluster_size)
+        for attr in attr_entries:
+            if attr != current:
+                idx, vcn = math.modf((attr * MFT_ENTRY_SIZE) / self.cluster_size)
                 idx = self.pos.index(idx)
                 lcn = self.mft_data[int(vcn)]
                 address = (lcn * self.cluster_size) + (idx * MFT_ENTRY_SIZE) + self.partition_offset
@@ -483,72 +459,67 @@ class MFTParser():
                 self.entry = self.img.read(MFT_ENTRY_SIZE)
                 self.parse_mft_header()
                 self.entry_offset = MFT_HEADER_LEN
-                if self.entry[self.entry_offset:self.entry_offset + 4] == FILENAME_SIG:
-                    filename = self.parse_filename(self.entry_offset)
-                    if self.filename != None:
-                        if filename.namespace == 2:
-                            continue
-                        else:
-                            self.filename = filename
+                current_attr_sig = self.entry[self.entry_offset:self.entry_offset + 4]
+                if current_attr_sig == FILENAME_SIG:
+                    parent, ctime, mtime, atime, real_size, flags, name, namespace = self.parse_filename(self.entry_offset)
+                    if namespace == 2:
+                        continue
                     else:
-                        self.filename = filename
-                elif self.entry[self.entry_offset:self.entry_offset + 4] == INDEX_ROOT_SIG:
-                    attr_len = struct_i.unpack(self.entry[self.entry_offset + 4:self.entry_offset + 8])[0]
-                    self.entry_offset += attr_len
-                elif self.entry[self.entry_offset:self.entry_offset + 4] == DATA_SIG:
-                    data_attrib = self.parse_data_attr(self.entry_offset)
-                    if data_attrib.attr_name == None:
-                        if data_attrib.start_vcn == 0:
-                            self.filedata = data_attrib
+                        self.parent = parent
+                        self.ctime = ctime
+                        self.mtime = mtime
+                        self.atime = atime
+                        self.real_size = real_size
+                        self.flags = flags
+                        self.entry_name = name
+                elif current_attr_sig == DATA_SIG:
+                    (attr_name, start_vcn, real_size, clusters, res_data) = self.parse_data_attr(self.entry_offset)
+                    if attr_name == None:
+                        if start_vcn == 0:
+                            self.clusters = clusters
+                            self.data_size = real_size
+                            self.res_data = res_data
                         else:
-                            self.filedata.clusters.extend(data_attrib.clusters)
-                            self.filedata.end_vcn = max(self.filedata.end_vcn, data_attrib.end_vcn)
-                            if data_attrib.fragmented:
-                                self.filedata.fragmented = True
-                    else:
-                        self.data.append(data_attrib)
+                            self.clusters.extend(clusters)
                 self.img.seek(orig_img_offset, os.SEEK_SET)
                 self.entry_offset = orig_entry_offset
                 self.entry = orig_entry
             else:
                 offset = self.entry_offset
                 if self.entry[offset:offset + 4] == DATA_SIG:
-                    data_attrib = self.parse_data_attr(self.entry_offset)
-                    if data_attrib.attr_name == None:
-                        if data_attrib.start_vcn == 0:
-                            self.filedata = data_attrib
+                    (attr_name, start_vcn, real_size, clusters, res_data) = self.parse_data_attr(self.entry_offset)
+                    if attr_name == None:
+                        if start_vcn == 0:
+                            self.clusters = clusters
+                            self.data_size = real_size
+                            self.res_data = res_data
                         else:
-                            self.filedata.clusters.extend(data_attrib.clusters)
-                            self.filedata.end_vcn = max(self.filedata.end_vcn, data_attrib.end_vcn)
-                            if data_attrib.fragmented:
-                                self.filedata.fragmented = True
-                    else:
-                        self.data.append(data_attrib)
+                            self.clusters.extend(clusters)
         return
 
-    #def parse_attr_def(self, offset):
-        #offset += 4
-        #attr_name = self.entry[offset:offset+128]
-        #type_id = struct_i.unpack(self.entry[offset+128:offset+132])[0]
-        #display_rule = struct_i.unpack(self.entry[offset+132:offset+136])[0]
-        #collation_rule = struct_i.unpack(self.entry[offset+136:offset+140])[0]
-        #flags = struct_i.unpack(self.entry[offset+140:offset+144])[0]
-        #min_size = struct_q.unpack(self.entry[offset+144:offset+152])[0]
-        #max_size = struct_q.unpack(self.entry[offset+152:offset+160])[0]
+    """
+    def parse_attr_def(self, offset):
+        offset += 4
+        attr_name = self.entry[offset:offset+128]
+        type_id = struct_i.unpack(self.entry[offset+128:offset+132])[0]
+        display_rule = struct_i.unpack(self.entry[offset+132:offset+136])[0]
+        collation_rule = struct_i.unpack(self.entry[offset+136:offset+140])[0]
+        flags = struct_i.unpack(self.entry[offset+140:offset+144])[0]
+        min_size = struct_q.unpack(self.entry[offset+144:offset+152])[0]
+        max_size = struct_q.unpack(self.entry[offset+152:offset+160])[0]
 
 
     def parse_std_info(self, offset):
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         std_info = self.entry[offset + 24:offset + attr_len]
         ctime, mtime, atime, sid = None, None, None, None
-        if self.get_mactimes:
-            try:
-                ctime = time.ctime((struct_q.unpack(std_info[0:8])[0] - NTFS_EPOCH) / 10 ** (7))
-                mtime = time.ctime((struct_q.unpack(std_info[8:16])[0] - NTFS_EPOCH) / 10 ** (7))
-                #mft_mod_time = time.ctime((struct_q.unpack(std_info[16:24])[0] - NTFS_EPOCH) / 10**(7))
-                atime = time.ctime((struct_q.unpack(std_info[24:32])[0] - NTFS_EPOCH) / 10 ** (7))
-            except:
-                pass
+        try:
+            ctime = time.ctime((struct_q.unpack(std_info[0:8])[0] - NTFS_EPOCH) / 10 ** (7))
+            mtime = time.ctime((struct_q.unpack(std_info[8:16])[0] - NTFS_EPOCH) / 10 ** (7))
+            #mft_mod_time = time.ctime((struct_q.unpack(std_info[16:24])[0] - NTFS_EPOCH) / 10**(7))
+            atime = time.ctime((struct_q.unpack(std_info[24:32])[0] - NTFS_EPOCH) / 10 ** (7))
+        except:
+            pass
         flags = [key for key in ATTRIBUTES if struct_i.unpack(std_info[32:36])[0] & ATTRIBUTES[key]]
         try:
             sid = struct_i.unpack(std_info[52:56])[0]
@@ -556,34 +527,37 @@ class MFTParser():
             pass
         self.entry_offset += attr_len
         return STANDARD_INFO(ctime, mtime, atime, flags, sid)
+    """
 
     def parse_filename(self, offset):
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         filename = self.entry[offset + 24:offset + attr_len]
         parent = struct_q.unpack(filename[0:8])[0] & 0xFFFFFFFFFFFF
         ctime, mtime, atime = None, None, None
-        if self.get_mactimes:
-            try:
-                ctime = time.ctime((struct_q.unpack(filename[8:16])[0] - NTFS_EPOCH) / 10 ** (7))
-                mtime = time.ctime((struct_q.unpack(filename[16:24])[0] - NTFS_EPOCH) / 10 ** (7))
-                #mft_mod_time = time.ctime((struct_q.unpack(filename[24:32])[0] - NTFS_EPOCH) / 10**(7))
-                atime = time.ctime((struct_q.unpack(filename[32:40])[0] - NTFS_EPOCH) / 10 ** (7))
-            except:
-                pass
-        alloc_size = struct_q.unpack(filename[40:48])[0] & 0xFFFFFFFFFFFF
+        try:
+            ctime = time.ctime((struct_q.unpack(filename[8:16])[0] - NTFS_EPOCH) / 10 ** (7))
+            mtime = time.ctime((struct_q.unpack(filename[16:24])[0] - NTFS_EPOCH) / 10 ** (7))
+            #mft_mod_time = time.ctime((struct_q.unpack(filename[24:32])[0] - NTFS_EPOCH) / 10**(7))
+            atime = time.ctime((struct_q.unpack(filename[32:40])[0] - NTFS_EPOCH) / 10 ** (7))
+        except:
+            pass
+        #alloc_size = struct_q.unpack(filename[40:48])[0] & 0xFFFFFFFFFFFF
         real_size = struct_q.unpack(filename[48:56])[0] & 0xFFFFFFFFFFFF
         flags = [key for key in ATTRIBUTES if struct_i.unpack(filename[56:60])[0] & ATTRIBUTES[key]]
         name_length = struct_b.unpack(filename[64])[0]
         namespace = struct_b.unpack(filename[65])[0]
         name = filename[66: 66 + (2 * name_length)].replace('\x00', '')
         self.entry_offset += attr_len
-        return FILENAME(parent, ctime, mtime, atime, alloc_size, real_size, flags, name, namespace)
+        return (parent, ctime, mtime, atime, real_size, flags, name, namespace)
 
     def parse_object_id(self, offset):
+        """
         object_id = b2a_hex(self.entry[offset + 39:offset + 23:-1])
         object_id = '-'.join([object_id[0:8], object_id[8:12], object_id[12:16], object_id[16:20], object_id[20:]])
-        self.entry_offset += 40
         return OBJECT_ID(object_id)
+        """
+        self.entry_offset += 40
+        return None
 
     def parse_volume_name(self, offset):
         self.entry_offset += struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
@@ -593,6 +567,7 @@ class MFTParser():
         self.entry_offset += struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         return None
 
+    """
     def parse_idx_root(self, offset):
         attr_len = struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
         idx_root = self.entry[offset:offset + attr_len]
@@ -734,7 +709,6 @@ class MFTParser():
             flags = struct_i.unpack(index_buffer[offset + 12:offset + 16])[0] & 0xFFFF
             parent = struct_q.unpack(index_buffer[offset + 16:offset + 24])[0] & 0xFFFFFFFFFFFF
             entry_ctime, entry_mtime, entry_atime = None, None, None
-            """
             if self.get_mactimes:
                 try:
                     entry_ctime = time.ctime((struct_q.unpack(index_buffer[offset + 24:offset + 32])[0] - NTFS_EPOCH) / 10 ** (7))
@@ -742,7 +716,6 @@ class MFTParser():
                     entry_atime = time.ctime((struct_q.unpack(index_buffer[offset + 48:offset + 56])[0] - NTFS_EPOCH) / 10 ** (7))
                 except:
                     pass
-            """
             entry_alloc_size = struct_q.unpack(index_buffer[offset + 56:offset + 64])[0] & 0xFFFFFFFFFFFF
             entry_real_size = struct_q.unpack(index_buffer[offset + 64:offset + 72])[0] & 0xFFFFFFFFFFFF
             entry_flags = [key for key in ATTRIBUTES if struct_i.unpack(index_buffer[offset + 72:offset + 76])[0] & ATTRIBUTES[key]]
@@ -755,6 +728,7 @@ class MFTParser():
             idx_entries.append(INDEX_ENTRY(mft_ref, flags, parent, entry_ctime, entry_mtime, entry_atime, entry_alloc_size, entry_real_size, entry_flags, entry_filename))
             offset += entry_len
         return INDEX_BLOCK(log_seq, index_block_vcn, index_size, None, header_flags, idx_entries)
+    """
 
     def parse_data_attr(self, offset):
         clusters = []
@@ -769,13 +743,13 @@ class MFTParser():
         name_offset = struct_h.unpack(data[10:12])[0]
         if name_length != 0:
             attr_name = data[name_offset:name_offset + (2 * name_length)].replace('\x00', '')
-        flags = [key for key in ATTRIBUTES if struct_h.unpack(data[12:14])[0] & ATTRIBUTES[key]]
-        attr_id = struct_h.unpack(data[14:16])[0]
+        #flags = [key for key in ATTRIBUTES if struct_h.unpack(data[12:14])[0] & ATTRIBUTES[key]]
+        #attr_id = struct_h.unpack(data[14:16])[0]
         if nonresident:
             start_vcn = struct_q.unpack(data[16:24])[0]
-            end_vcn = struct_q.unpack(data[24:32])[0]
+            #end_vcn = struct_q.unpack(data[24:32])[0]
             run_off = struct_h.unpack(data[32:34])[0]
-            alloc_size = struct_q.unpack(data[40:48])[0]
+            #alloc_size = struct_q.unpack(data[40:48])[0]
             real_size = struct_q.unpack(data[48:56])[0]
             while 1:
                 tmp = b2a_hex(struct_c.unpack(data[run_off])[0])
@@ -804,11 +778,11 @@ class MFTParser():
                     continue
         else:
             real_size = struct_i.unpack(data[12:16])[0]
-            alloc_size = struct_i.unpack(data[16:20])[0]
+            #alloc_size = struct_i.unpack(data[16:20])[0]
             content_off = struct_h.unpack(data[20:22])[0]
             res_data = data[content_off:]
         self.entry_offset += attr_len
-        return DATA_ATTR(nonresident, flags, attr_id, start_vcn, end_vcn, alloc_size, real_size, clusters, fragmented, res_data, attr_name)
+        return (attr_name, start_vcn, real_size, clusters, res_data)
 
     def parse_bitmap_attr(self, offset):
         self.entry_offset += struct_i.unpack(self.entry[offset + 4:offset + 8])[0]
