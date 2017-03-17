@@ -1,7 +1,0 @@
-; This file is used internally by git-svn
-; You should not have to edit it
-[svn-remote "svn"]
-	reposRoot = https://streamfs.svn.beanstalkapp.com/streamfs
-	uuid = 52c99cc0-f628-498f-958c-4819396f2c6c
-	branches-maxRev = 480
-	tags-maxRev = 480

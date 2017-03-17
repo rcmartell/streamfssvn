@@ -1,4 +1,0 @@
-rcmartell = Rob Martell <martell.r.c@gmail.com>
-rmartell = Rob Martell <martell.r.c@gmail.com>
-rob . = Rob Martell <martell.r.c@gmail.com>
-root = Rob Martell <martell.r.c@gmail.com>
